@@ -1,7 +1,11 @@
 <script setup lang="ts">
 import { IconStatusItem } from '@proj-airi/stage-ui/components'
 import { useConsciousnessStore } from '@proj-airi/stage-ui/stores/modules/consciousness'
+import { useDiscordStore } from '@proj-airi/stage-ui/stores/modules/discord'
+import { useFactorioStore } from '@proj-airi/stage-ui/stores/modules/gaming-factorio'
+import { useMinecraftStore } from '@proj-airi/stage-ui/stores/modules/gaming-minecraft'
 import { useSpeechStore } from '@proj-airi/stage-ui/stores/modules/speech'
+import { useTwitterStore } from '@proj-airi/stage-ui/stores/modules/twitter'
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 
@@ -10,6 +14,14 @@ import IconAnimation from '../../../components/IconAnimation.vue'
 import { useIconAnimation } from '../../../composables/icon-animation'
 
 const { t } = useI18n()
+
+// Initialize stores at the top level
+const consciousnessStore = useConsciousnessStore()
+const speechStore = useSpeechStore()
+const discordStore = useDiscordStore()
+const twitterStore = useTwitterStore()
+const minecraftStore = useMinecraftStore()
+const factorioStore = useFactorioStore()
 
 interface Module {
   id: string
@@ -30,7 +42,7 @@ const modulesList = computed<Module[]>(() => [
     description: t('settings.pages.modules.consciousness.description'),
     icon: 'i-solar:ghost-bold-duotone',
     to: '/settings/modules/consciousness',
-    configured: useConsciousnessStore().configured,
+    configured: consciousnessStore.configured,
   },
   {
     id: 'speech',
@@ -38,7 +50,7 @@ const modulesList = computed<Module[]>(() => [
     description: t('settings.pages.modules.speech.description'),
     icon: 'i-solar:user-speak-rounded-bold-duotone',
     to: '/settings/modules/speech',
-    configured: useSpeechStore().configured,
+    configured: speechStore.configured,
   },
   {
     id: 'hearing',
@@ -77,32 +89,32 @@ const modulesList = computed<Module[]>(() => [
     name: t('settings.pages.modules.messaging-discord.title'),
     description: t('settings.pages.modules.messaging-discord.description'),
     icon: 'i-simple-icons:discord',
-    to: '',
-    configured: false,
+    to: '/settings/modules/messaging-discord',
+    configured: discordStore.configured,
   },
   {
     id: 'x',
     name: t('settings.pages.modules.x.title'),
     description: t('settings.pages.modules.x.description'),
     icon: 'i-simple-icons:x',
-    to: '',
-    configured: false,
+    to: '/settings/modules/x',
+    configured: twitterStore.configured,
   },
   {
     id: 'game-minecraft',
     name: t('settings.pages.modules.gaming-minecraft.title'),
     description: t('settings.pages.modules.gaming-minecraft.description'),
     iconColor: 'i-vscode-icons:file-type-minecraft',
-    to: '',
-    configured: false,
+    to: '/settings/modules/gaming-minecraft',
+    configured: minecraftStore.configured,
   },
   {
     id: 'game-factorio',
     name: t('settings.pages.modules.gaming-factorio.title'),
     description: t('settings.pages.modules.gaming-factorio.description'),
     iconImage: '',
-    to: '',
-    configured: false,
+    to: '/settings/modules/gaming-factorio',
+    configured: factorioStore.configured,
   },
 ])
 
