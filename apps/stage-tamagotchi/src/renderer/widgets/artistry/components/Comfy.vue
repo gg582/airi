@@ -1,5 +1,9 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { useElectronEventaInvoke } from '@proj-airi/electron-vueuse'
+import { Button, FieldTextArea } from '@proj-airi/ui'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
+
+import { widgetsHideWindow, widgetsRemove } from '../../../../shared/eventa'
 
 const props = withDefaults(defineProps<{
   id?: string
@@ -20,6 +24,9 @@ const history = ref<{ url: string, prompt?: string, remixId?: string | number }[
 const currentIndex = ref(0)
 const isFlipped = ref(false)
 const errorOccurred = ref(false)
+
+const hideWindow = useElectronEventaInvoke(widgetsHideWindow)
+const removeWidget = useElectronEventaInvoke(widgetsRemove)
 
 // Add new images to history as they arrive
 watch(() => props.imageUrl, (newUrl) => {
@@ -68,6 +75,13 @@ function prevImage() {
 
 function toggleFlip() {
   isFlipped.value = !isFlipped.value
+}
+
+async function handleClose() {
+  if (props.id) {
+    await hideWindow({ id: props.id })
+    await removeWidget({ id: props.id })
+  }
 }
 </script>
 
@@ -168,6 +182,14 @@ function toggleFlip() {
             <span class="flex items-center justify-center pb-1 text-2xl leading-none font-mono">&gt;</span>
           </button>
         </div>
+
+        <!-- Close Button -->
+        <button
+          class="absolute right-3 top-3 z-30 size-8 flex items-center justify-center border border-white/20 rounded-full bg-black/40 text-white/70 backdrop-blur-md transition-all active:scale-95 hover:bg-black/70 hover:text-white"
+          @click.stop="handleClose"
+        >
+          <div class="i-iconify-material-symbols:close text-lg" />
+        </button>
 
         <!-- Counter & Flip Toggle -->
         <div class="absolute inset-x-0 bottom-2 z-10 flex items-center justify-between px-3">
