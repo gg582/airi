@@ -7,9 +7,11 @@ const emits = defineEmits<{
   (e: 'reset'): void
 }>()
 
-const { stageModelRenderer, stageViewControlsEnabled } = storeToRefs(useSettings())
-
-const mode = defineModel<'x' | 'y' | 'z' | 'scale'>({ required: true })
+const {
+  stageModelRenderer,
+  stageViewControlsEnabled,
+  stageViewControlsMode: mode,
+} = storeToRefs(useSettings())
 
 function handleViewControlsToggle(targetMode: 'x' | 'y' | 'z' | 'scale') {
   if (mode.value === targetMode) {

@@ -68,10 +68,10 @@ async function handleListSessions() {
       w-fit flex items-center justify-center rounded-xl p-2 backdrop-blur-md
       text="lg neutral-500 dark:neutral-400"
       transition-colors transition-transform active:scale-95
-      title="About"
+      title="Context"
       @click="showAbout = true"
     >
-      <div i-solar:info-circle-bold-duotone size-5 />
+      <div i-solar:notes-bold-duotone size-5 />
     </button>
     <AboutDialog v-model="showAbout">
       <AboutContent :subtitle="edition" :build-info="buildInfo" :links="aboutLinks" />

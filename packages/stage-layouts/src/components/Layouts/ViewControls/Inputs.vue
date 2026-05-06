@@ -7,10 +7,14 @@ import { storeToRefs } from 'pinia'
 import { computed } from 'vue'
 
 const props = defineProps<{
-  mode: 'x' | 'y' | 'z' | 'scale'
+  // Reserved for future props if needed
 }>()
 
-const { stageModelRenderer, stageViewControlsEnabled } = storeToRefs(useSettings())
+const {
+  stageModelRenderer,
+  stageViewControlsEnabled,
+  stageViewControlsMode: mode,
+} = storeToRefs(useSettings())
 const { modelOffset: vrmPosition, modelSize: vrmModelSize, cameraDistance: vrmCameraDistance } = storeToRefs(useModelStore())
 const { scale: live2dScale, position: live2dPosition } = storeToRefs(useLive2d())
 
@@ -141,7 +145,7 @@ const viewControlsValueScale = computed({
 })
 
 function resetOnMode() {
-  switch (props.mode) {
+  switch (mode.value) {
     case 'x':
       viewControlsValueX.value = 0
       break
@@ -166,25 +170,25 @@ defineExpose({
   <Transition name="fade-side-pops-in">
     <div v-if="stageViewControlsEnabled" :class="vrmControlsDisabled ? ['opacity-60', 'pointer-events-none'] : []">
       <Transition name="fade-side-pops-in" mode="out-in">
-        <div v-if="props.mode === 'x'" relative class="[&_.round-range-tooltip]:hover:opacity-100">
+        <div v-if="mode === 'x'" relative class="[&_.round-range-tooltip]:hover:opacity-100">
           <RoundRange v-model="viewControlsValueX" :min="viewControlsValueXMin" :max="viewControlsValueXMax" :step="0.01" :disabled="vrmControlsDisabled" data-direction="vertical" h="50%" write-vertical-left />
           <div class="round-range-tooltip" top="50%" translate-y="[-50%]" absolute left-10 font-mono op-0 transition="all duration-200 ease-in-out">
             {{ viewControlsValueX.toFixed(2) }}
           </div>
         </div>
-        <div v-else-if="props.mode === 'y'" relative class="[&_.round-range-tooltip]:hover:opacity-100">
+        <div v-else-if="mode === 'y'" relative class="[&_.round-range-tooltip]:hover:opacity-100">
           <RoundRange v-model="viewControlsValueY" :min="viewControlsValueYMin" :max="viewControlsValueYMax" :step="0.01" :disabled="vrmControlsDisabled" write-vertical-left h="50%" data-direction="vertical" />
           <div class="round-range-tooltip" top="50%" translate-y="[-50%]" absolute left-10 font-mono op-0 transition="all duration-200 ease-in-out">
             {{ viewControlsValueY.toFixed(2) }}
           </div>
         </div>
-        <div v-else-if="stageModelRenderer === 'vrm' && props.mode === 'z'" relative class="[&_.round-range-tooltip]:hover:opacity-100">
+        <div v-else-if="stageModelRenderer === 'vrm' && mode === 'z'" relative class="[&_.round-range-tooltip]:hover:opacity-100">
           <RoundRange v-model="viewControlsValueZ" :min="viewControlsValueZMin" :max="viewControlsValueZMax" :step="0.01" :disabled="vrmControlsDisabled" write-vertical-left h="50%" data-direction="vertical" />
           <div class="round-range-tooltip" top="50%" translate-y="[-50%]" absolute left-10 font-mono op-0 transition="all duration-200 ease-in-out">
             {{ viewControlsValueZ.toFixed(2) }}
           </div>
         </div>
-        <div v-else-if="props.mode === 'scale'" relative class="[&_.round-range-tooltip]:hover:opacity-100">
+        <div v-else-if="mode === 'scale'" relative class="[&_.round-range-tooltip]:hover:opacity-100">
           <RoundRange v-model="viewControlsValueScale" :min="0" :max="3" :step="0.0001" :disabled="vrmControlsDisabled" write-vertical-left h="50%" data-direction="vertical" />
           <div class="round-range-tooltip" top="50%" translate-y="[-50%]" absolute left-10 font-mono op-0 transition="all duration-200 ease-in-out">
             {{ viewControlsValueScale.toFixed(2) }}

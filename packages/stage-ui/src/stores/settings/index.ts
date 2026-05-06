@@ -63,6 +63,7 @@ export const useSettings = defineStore('settings', () => {
     stageModelSelectedFile: toRef(stageModel, 'stageModelSelectedFile'),
     stageModelSelectedDisplayModel: toRef(stageModel, 'stageModelSelectedDisplayModel'),
     stageViewControlsEnabled: toRef(stageModel, 'stageViewControlsEnabled'),
+    stageViewControlsMode: toRef(stageModel, 'stageViewControlsMode'),
     lastReloadReason: toRef(stageModel, 'lastReloadReason'),
 
     // Live2D settings

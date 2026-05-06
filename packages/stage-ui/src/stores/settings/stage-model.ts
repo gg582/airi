@@ -27,6 +27,7 @@ export const useSettingsStageModel = defineStore('settings-stage-model', () => {
   const stageModelRenderer = refManualReset<StageModelRenderer>(undefined)
 
   const stageViewControlsEnabled = refManualReset<boolean>(false)
+  const stageViewControlsMode = ref<'x' | 'y' | 'z' | 'scale'>('scale')
   const lastReloadReason = ref<string | undefined>(undefined)
 
   function isSameFile(f1?: File, f2?: File) {
@@ -145,6 +146,7 @@ export const useSettingsStageModel = defineStore('settings-stage-model', () => {
     stageModelSelectedFile.reset()
     stageModelRenderer.reset()
     stageViewControlsEnabled.reset()
+    stageViewControlsMode.value = 'scale'
 
     await updateStageModel('reset state')
   }
@@ -156,6 +158,7 @@ export const useSettingsStageModel = defineStore('settings-stage-model', () => {
     stageModelSelectedFile,
     stageModelSelectedDisplayModel,
     stageViewControlsEnabled,
+    stageViewControlsMode,
     lastReloadReason,
 
     initializeStageModel,

@@ -5,6 +5,7 @@ import Header from '@proj-airi/stage-layouts/components/Layouts/Header.vue'
 import InteractiveArea from '@proj-airi/stage-layouts/components/Layouts/InteractiveArea.vue'
 import MobileHeader from '@proj-airi/stage-layouts/components/Layouts/MobileHeader.vue'
 import MobileInteractiveArea from '@proj-airi/stage-layouts/components/Layouts/MobileInteractiveArea.vue'
+import ViewControlInputs from '@proj-airi/stage-layouts/components/Layouts/ViewControls/Inputs.vue'
 import workletUrl from '@proj-airi/stage-ui/workers/vad/process.worklet?worker&url'
 
 import { BackgroundProvider } from '@proj-airi/stage-layouts/components/Backgrounds'
@@ -179,6 +180,9 @@ watch([stream, () => vadLoaded.value], async ([s, loaded]) => {
       </div>
       <!-- page -->
       <div relative flex="~ 1 row gap-y-0 gap-x-2 <md:col">
+        <div v-if="!isMobile" class="fixed left-4 top-[50%] z-10 px-3 -translate-y-1/2">
+          <ViewControlInputs />
+        </div>
         <WidgetStage
           v-model:state="componentStateStage"
           flex-1 min-w="1/2"

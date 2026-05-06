@@ -40,7 +40,10 @@ const { streamingMessage } = storeToRefs(chatStream)
 const { sending } = storeToRefs(chatOrchestrator)
 const historyMessages = computed(() => messages.value as unknown as ChatHistoryItem[])
 
-const viewControlsActiveMode = ref<'x' | 'y' | 'z' | 'scale'>('scale')
+const {
+  stageViewControlsEnabled,
+  stageViewControlsMode: viewControlsActiveMode,
+} = storeToRefs(useSettings())
 const viewControlsInputsRef = useTemplateRef<InstanceType<typeof ViewControlInputs>>('viewControlsInputs')
 
 const messageInput = ref('')
@@ -66,7 +69,7 @@ function handleScreenshotClick() {
 }
 
 useResizeObserver(document.documentElement, () => screenSafeArea.update())
-const { themeColorsHueDynamic, stageViewControlsEnabled } = storeToRefs(useSettings())
+const { themeColorsHueDynamic } = storeToRefs(useSettings())
 const settingsAudioDevice = useSettingsAudioDevice()
 const { enabled, selectedAudioInput, stream, audioInputs } = storeToRefs(settingsAudioDevice)
 const { ingest, onAfterMessageComposed } = chatOrchestrator
@@ -173,7 +176,7 @@ onMounted(() => {
     </KeepAlive>
     <div class="relative w-full self-end">
       <div class="fixed top-[50%] z-15 px-3 -translate-y-1/2">
-        <ViewControlInputs ref="viewControlsInputs" :mode="viewControlsActiveMode" />
+        <ViewControlInputs ref="viewControlsInputs" />
       </div>
       <div class="absolute right-0 w-full px-3 pb-3 font-sans -translate-y-full">
         <div class="w-full flex flex-col items-end gap-1">
@@ -212,7 +215,7 @@ onMounted(() => {
             @background-picker="backgroundDialogOpen = true"
           />
 
-          <ActionViewControls v-model="viewControlsActiveMode" @reset="() => viewControlsInputsRef?.resetOnMode()" />
+          <ActionViewControls @reset="() => viewControlsInputsRef?.resetOnMode()" />
           <button
             class="w-fit flex items-center justify-center border-2 border-neutral-100/60 rounded-xl border-solid bg-neutral-50/70 p-2 backdrop-blur-md dark:border-neutral-800/30 dark:bg-neutral-800/70"
             title="Cleanup Messages"
@@ -227,7 +230,7 @@ onMounted(() => {
         <BasicTextarea
           v-model="messageInput"
           :placeholder="t('stage.message')"
-          class="max-h-[10lh] min-h-[calc(1lh+4px+4px)] w-full resize-none overflow-y-scroll border-2 border-neutral-200/60 rounded-[1lh] border-solid bg-neutral-100/80 px-4 py-0.5 text-neutral-500 outline-none backdrop-blur-md transition-all duration-250 ease-in-out scrollbar-none dark:border-neutral-700/60 dark:bg-neutral-950/80 dark:text-neutral-100 hover:text-neutral-600 placeholder:text-neutral-400 placeholder:transition-all placeholder:duration-250 placeholder:ease-in-out dark:hover:text-neutral-200 placeholder:dark:text-neutral-300 placeholder:hover:text-neutral-500 placeholder:dark:hover:text-neutral-400"
+          class="max-h-[10lh] min-h-[calc(1lh+4px+4px)] w-full resize-none overflow-y-scroll border-2 border-neutral-200/60 rounded-[1lh] border-solid bg-neutral-100/80 px-4 py-0.5 text-neutral-500 outline-none backdrop-blur-md transition-all duration-250 ease-in-out scrollbar-none dark:border-neutral-700/60 dark:bg-neutral-950/80 dark:text-neutral-100 hover:text-neutral-600 placeholder:text-neutral-900/60 placeholder:transition-all placeholder:duration-250 placeholder:ease-in-out dark:hover:text-neutral-200 placeholder:dark:text-white/60 placeholder:hover:text-neutral-500 placeholder:dark:hover:text-neutral-400"
           :class="[themeColorsHueDynamic ? 'transition-none placeholder:transition-none' : '']"
           default-height="1lh"
           @submit="handleSubmit"

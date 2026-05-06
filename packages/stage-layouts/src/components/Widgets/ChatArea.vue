@@ -533,7 +533,7 @@ onMounted(() => {
         v-model="messageInput"
         :send-mode="settingsChat.sendMode"
         :placeholder="isImagineMode ? 'Describe a scene to imagine...' : t('stage.message')"
-        text="neutral-800 dark:primary-100 placeholder:neutral-500 dark:placeholder:primary-300"
+        text="neutral-900 dark:primary-50 placeholder:neutral-900/60 dark:placeholder:white/60"
         bg="transparent"
         min-h="[100px]" max-h="[300px]" w-full
         p-4 font-medium
@@ -653,11 +653,11 @@ onMounted(() => {
       <button
         :class="[
           'max-h-[10lh] min-h-[1lh]',
-          'flex items-center justify-center rounded-md p-2 outline-none',
-          'transition-colors transition-transform active:scale-95',
+          'flex items-center justify-center border-2 rounded-xl p-2 outline-none',
+          'transition-colors transition-transform active:scale-95 backdrop-blur-md',
           activeCard?.extensions?.airi?.groundingEnabled
-            ? 'bg-amber-100 text-lg text-amber-600 dark:bg-amber-900/30 dark:text-amber-400'
-            : 'bg-neutral-100 text-lg text-neutral-500 hover:text-primary-500 dark:bg-neutral-800 dark:text-neutral-400 dark:hover:text-primary-400',
+            ? 'border-amber-500/50 bg-amber-500/10 text-lg text-amber-600 dark:bg-amber-900/30 dark:text-amber-400'
+            : 'border-neutral-100/60 bg-neutral-50/70 text-lg text-neutral-500 hover:text-primary-500 dark:border-neutral-800/30 dark:bg-neutral-800/70 dark:text-neutral-400 dark:hover:text-primary-400',
         ]"
         :title="activeCard?.extensions?.airi?.groundingEnabled ? 'Grounding Active — sensor data attached to messages' : 'Attach sensor data with each message (Visit Proactivity tab to preview)'"
         @click="airiCardStore.toggleGrounding(activeCardId)"
@@ -667,6 +667,7 @@ onMounted(() => {
 
       <!-- Memory Popover -->
       <ChatMemoryPopover
+        variant="mobile"
         show-cache-status
         :title="`Memory & Context for ${characterName}`"
         @view-context="showContext = true"
@@ -675,6 +676,7 @@ onMounted(() => {
 
       <!-- Images Popover (incl. Background Picker) -->
       <ChatImagesPopover
+        variant="mobile"
         :imagine-mode="isImagineMode"
         @toggle-imagine="isImagineMode = !isImagineMode"
         @attach="fileInput?.click()"
@@ -685,12 +687,7 @@ onMounted(() => {
 
       <!-- Clear Messages (Safety Hook) -->
       <button
-        class="max-h-[10lh] min-h-[1lh]"
-        bg="neutral-100 dark:neutral-800"
-        text="lg neutral-500 dark:neutral-400"
-        hover:text="red-500 dark:red-400"
-        flex items-center justify-center rounded-md p-2 outline-none
-        transition-colors transition-transform active:scale-95
+        class="max-h-[10lh] min-h-[1lh] flex items-center justify-center border-2 border-neutral-100/60 rounded-xl bg-neutral-50/70 p-2 text-lg text-neutral-500 outline-none backdrop-blur-md transition-colors transition-transform active:scale-95 dark:border-neutral-800/30 dark:bg-neutral-800/70 dark:text-neutral-400 hover:text-red-500 dark:hover:text-red-400"
         title="Clear Messages"
         @click="handleTrashClick"
       >
@@ -699,25 +696,22 @@ onMounted(() => {
 
       <!-- Smart Send Split Button -->
       <div
-        class="flex items-center gap-0.5 overflow-hidden rounded-lg shadow-sm transition-colors"
-        bg="primary-500 hover:primary-600"
+        class="flex items-center overflow-hidden border-2 border-neutral-100/60 rounded-xl border-solid bg-neutral-50/70 backdrop-blur-md transition-all dark:border-neutral-800/30 dark:bg-neutral-800/70"
         max-h="[10lh]"
       >
         <button
-          class="h-9 flex items-center justify-center px-3 outline-none transition-transform active:scale-95"
-          text="white"
+          class="h-9 w-10 flex items-center justify-center outline-none transition-transform active:scale-95 hover:bg-primary-500/10"
           title="Send Message"
           @click="handleSend"
         >
-          <div class="i-solar:plain-2-bold-duotone mr-1.5 text-lg" />
-          <span class="text-xs font-bold leading-none tracking-tighter uppercase">Send</span>
+          <div class="i-solar:plain-2-bold-duotone text-xl text-primary-600 dark:text-primary-400" />
         </button>
 
         <PopoverRoot>
           <PopoverTrigger as-child>
             <button
-              class="h-9 w-6 flex items-center justify-center border-l border-white/20 outline-none hover:bg-white/10"
-              text="white"
+              class="h-9 w-6 flex items-center justify-center border-l border-neutral-200/50 outline-none transition-colors dark:border-neutral-700/50 hover:bg-primary-500/10"
+              text="neutral-500 dark:neutral-400"
               title="Change Send Key Mode"
             >
               <div class="i-solar:alt-arrow-down-linear text-xs" />

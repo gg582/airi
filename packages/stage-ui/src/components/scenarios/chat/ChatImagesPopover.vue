@@ -94,32 +94,26 @@ const emit = defineEmits<{
 
         <!-- Image Journal -->
         <button
-          class="mb-1 w-full flex items-center justify-between rounded-xl p-2 text-left transition-all hover:bg-neutral-100 dark:hover:bg-neutral-800"
+          class="mb-2 w-full flex items-center gap-3 rounded-xl bg-neutral-50/50 p-2.5 text-left transition-all dark:bg-neutral-800/20 hover:bg-neutral-100 dark:hover:bg-neutral-800/30"
           @click="emit('view-journal')"
         >
-          <div class="flex items-center gap-2">
-            <div class="i-solar:gallery-bold-duotone text-neutral-400" />
-            <div class="flex flex-col">
-              <span class="text-xs text-neutral-600 font-medium dark:text-neutral-300">View Image Journal</span>
-              <span class="mt-0.5 text-[10px] text-neutral-400/70">Gallery to see AI generated images history.</span>
-            </div>
+          <div class="i-solar:gallery-favourite-bold-duotone text-lg text-neutral-600 dark:text-neutral-400" />
+          <div class="flex flex-col">
+            <span class="text-[13px] text-neutral-900 font-semibold leading-none dark:text-neutral-100">View Image Journal</span>
+            <span class="mt-1 text-[10px] text-neutral-600/70 dark:text-neutral-400/70">Gallery to see AI generated images history.</span>
           </div>
-          <div class="i-solar:alt-arrow-right-linear text-xs text-neutral-400" />
         </button>
 
         <!-- Change Background -->
         <button
-          class="w-full flex items-center justify-between rounded-xl p-2 text-left transition-all hover:bg-neutral-100 dark:hover:bg-neutral-800"
+          class="w-full flex items-center gap-3 rounded-xl bg-neutral-50/50 p-2.5 text-left transition-all dark:bg-neutral-800/20 hover:bg-neutral-100 dark:hover:bg-neutral-800/30"
           @click="emit('background-picker')"
         >
-          <div class="flex items-center gap-2">
-            <div class="i-solar:gallery-wide-bold-duotone text-neutral-400" />
-            <div class="flex flex-col">
-              <span class="text-xs text-neutral-600 font-medium dark:text-neutral-300">Change Background</span>
-              <span class="mt-0.5 text-[10px] text-neutral-400/70">Pick a new background image.</span>
-            </div>
+          <div class="i-solar:gallery-wide-bold-duotone text-lg text-neutral-600 dark:text-neutral-400" />
+          <div class="flex flex-col">
+            <span class="text-[13px] text-neutral-900 font-semibold leading-none dark:text-neutral-100">Change Background</span>
+            <span class="mt-1 text-[10px] text-neutral-600/70 dark:text-neutral-400/70">Pick a new background image.</span>
           </div>
-          <div class="i-solar:alt-arrow-right-linear text-xs text-neutral-400" />
         </button>
       </PopoverContent>
     </PopoverPortal>
