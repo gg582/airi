@@ -3,7 +3,7 @@ import type { AiriCard } from '@proj-airi/stage-ui/stores/modules/airi-card'
 
 import DOMPurify from 'dompurify'
 
-import { CharacterContextDialog } from '@proj-airi/stage-ui/components/scenarios/dialogs'
+import { CharacterContextDialog, StageBackgroundPicker } from '@proj-airi/stage-ui/components/scenarios/dialogs'
 import {
   useArtistryStore,
   useBackgroundStore,
@@ -59,11 +59,6 @@ const selectedCard = computed<AiriCard | undefined>(() => {
   if (!props.cardId)
     return undefined
   return cardStore.getCard(props.cardId)
-})
-
-// Journal entries for this card
-const journalEntries = computed(() => {
-  return backgroundStore.getCharacterJournalEntries(props.cardId)
 })
 
 // ... keep existing moduleSettings and characterSettings ...
@@ -146,18 +141,6 @@ interface Tab {
   label: string
   icon: string
 }
-
-// Background options including journal entries
-const backgroundOptions = computed(() => {
-  const backgrounds = backgroundStore.getCharacterBackgrounds(props.cardId)
-  return [
-    { value: 'none', label: t('settings.pages.card.creation.none') },
-    ...backgrounds.map(bg => ({
-      value: bg.id,
-      label: bg.type === 'journal' ? `Journal: ${bg.title}` : bg.title,
-    })),
-  ]
-})
 
 const activeBackgroundId = computed({
   get: () => selectedCard.value?.extensions?.airi?.modules?.activeBackgroundId || 'none',
@@ -248,39 +231,6 @@ const tabs = computed<Tab[]>(() => {
 
   return availableTabs
 })
-
-async function handleSetAsBackground(entry: any) {
-  activeBackgroundId.value = entry.id
-}
-
-async function handleDeleteEntry(id: string) {
-  if (confirm('Are you sure you want to delete this image from the journal?')) {
-    await backgroundStore.removeBackground(id)
-  }
-}
-
-async function handleRefreshGallery() {
-  isRefreshingGallery.value = true
-  try {
-    await backgroundStore.initializeStore()
-  }
-  finally {
-    isRefreshingGallery.value = false
-  }
-}
-
-async function handleDownloadEntry(id: string, title: string) {
-  const url = backgroundStore.getBackgroundUrl(id)
-  if (!url)
-    return
-
-  const link = document.createElement('a')
-  link.href = url
-  link.download = `${title || 'image'}.png`
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
-}
 
 // Active tab state - set to first available tab by default
 const activeTab = computed({
@@ -571,108 +521,7 @@ function getModuleDisplayValue(value: string | undefined, defaultValue: string |
 
             <!-- Gallery -->
             <div v-if="activeTab === 'gallery'">
-              <!-- Gallery Header / Preferred Background Selection -->
-              <div
-                :class="[
-                  'mb-6 flex flex-row items-center justify-between gap-4',
-                  'border-b border-neutral-100 pb-4 dark:border-neutral-700/50',
-                ]"
-              >
-                <div class="flex flex-row items-center gap-3">
-                  <div class="flex flex-col gap-1">
-                    <h3 text-sm font-medium>
-                      Pinned Background
-                    </h3>
-                    <p text-xs text-neutral-500>
-                      Select the image to show when this character is active.
-                    </p>
-                  </div>
-                  <button
-                    :class="[
-                      'flex items-center justify-center size-7 rounded-md',
-                      'bg-neutral-100 dark:bg-neutral-800 text-neutral-500',
-                      'hover:bg-neutral-200 dark:hover:bg-neutral-700 hover:text-neutral-700 dark:hover:text-neutral-300',
-                      'transition-all duration-200 active:scale-90',
-                    ]"
-                    :disabled="isRefreshingGallery"
-                    title="Refresh gallery"
-                    @click="handleRefreshGallery"
-                  >
-                    <div
-                      class="i-lucide:refresh-cw text-sm"
-                      :class="{ 'animate-spin': isRefreshingGallery }"
-                    />
-                  </button>
-                </div>
-                <div w-64>
-                  <Select
-                    v-model="activeBackgroundId"
-                    :options="backgroundOptions"
-                    placeholder="Select background"
-                  />
-                </div>
-              </div>
-
-              <div
-                v-if="journalEntries.length === 0"
-                :class="[
-                  'flex flex-col items-center justify-center',
-                  'border border-dashed border-neutral-200 rounded-xl',
-                  'bg-neutral-50/50 py-12 dark:border-neutral-700/50 dark:bg-neutral-900/50',
-                ]"
-              >
-                <div class="i-solar:gallery-wide-broken mb-3 text-5xl text-neutral-300 dark:text-neutral-600" />
-                <p class="text-neutral-500 dark:text-neutral-400">
-                  No images in the journal yet.
-                </p>
-              </div>
-              <div v-else class="grid grid-cols-2 max-h-120 gap-4 overflow-y-auto pr-2 lg:grid-cols-4 sm:grid-cols-3">
-                <div
-                  v-for="entry in journalEntries"
-                  :key="entry.id"
-                  class="group relative aspect-square overflow-hidden border border-neutral-200 rounded-lg bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-900"
-                  :class="{ 'ring-2 ring-primary-500 border-primary-500': activeBackgroundId === entry.id }"
-                >
-                  <img
-                    :src="backgroundStore.getBackgroundUrl(entry.id) ?? undefined"
-                    class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-110"
-                    loading="lazy"
-                  >
-                  <!-- Overlay Actions -->
-                  <div class="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/60 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
-                    <button
-                      class="flex items-center gap-1 rounded-full px-3 py-1.5 text-[10px] text-white font-bold backdrop-blur-md transition-all active:scale-95"
-                      :class="activeBackgroundId === entry.id ? 'bg-primary-500 hover:bg-primary-600' : 'bg-white/20 hover:bg-white/30'"
-                      @click="handleSetAsBackground(entry)"
-                    >
-                      <div :class="activeBackgroundId === entry.id ? 'i-solar:pin-bold' : 'i-solar:pin-linear'" />
-                      {{ activeBackgroundId === entry.id ? 'ACTIVE BG' : 'SET AS BG' }}
-                    </button>
-                    <button
-                      class="flex items-center gap-1 rounded-full bg-blue-500/80 px-3 py-1.5 text-[10px] text-white font-bold backdrop-blur-md transition-all active:scale-95 hover:bg-blue-500"
-                      @click="handleDownloadEntry(entry.id, entry.title)"
-                    >
-                      <div class="i-solar:download-square-linear" />
-                      DOWNLOAD
-                    </button>
-                    <button
-                      class="flex items-center gap-1 rounded-full bg-red-500/80 px-3 py-1.5 text-[10px] text-white font-bold backdrop-blur-md transition-all active:scale-95 hover:bg-red-500"
-                      @click="handleDeleteEntry(entry.id)"
-                    >
-                      <div class="i-solar:trash-bin-trash-linear" />
-                      DELETE
-                    </button>
-                  </div>
-                  <!-- Info Badge -->
-                  <div class="pointer-events-none absolute bottom-1 left-1 right-1 truncate rounded bg-black/40 px-1.5 py-0.5 text-[9px] text-white/90 backdrop-blur-sm">
-                    {{ entry.title }}
-                  </div>
-                  <!-- Active Indicator -->
-                  <div v-if="activeBackgroundId === entry.id" class="absolute left-1 top-1 rounded bg-primary-500 p-1 text-white shadow-lg">
-                    <div class="i-solar:pin-bold text-[10px]" />
-                  </div>
-                </div>
-              </div>
+              <StageBackgroundPicker :card-id="cardId" />
             </div>
 
             <!-- Studio -->

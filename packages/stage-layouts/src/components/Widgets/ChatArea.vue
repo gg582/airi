@@ -8,6 +8,7 @@ import {
   ChatImagesPopover,
   ChatMemoryPopover,
   ChatSessionModal,
+  StageBackgroundDialogPicker,
 } from '@proj-airi/stage-ui/components'
 import { useAudioAnalyzer } from '@proj-airi/stage-ui/composables'
 import { useAudioContext } from '@proj-airi/stage-ui/stores/audio'
@@ -50,6 +51,7 @@ const trashConfirmOpen = ref(false)
 const showContext = ref(false)
 const showSessions = ref(false)
 const backgroundDialogOpen = ref(false)
+const stageBackgroundDialogOpen = ref(false)
 const fileInput = useTemplateRef<HTMLInputElement>('fileInput')
 
 const providersStore = useProvidersStore()
@@ -681,7 +683,7 @@ onMounted(() => {
         @toggle-imagine="isImagineMode = !isImagineMode"
         @attach="fileInput?.click()"
         @screenshot="handleScreenshotClick"
-        @view-journal="navigateToImageJournal"
+        @view-journal="stageBackgroundDialogOpen = true"
         @background-picker="backgroundDialogOpen = true"
       />
 
@@ -749,6 +751,7 @@ onMounted(() => {
 
     <!-- Modals -->
     <BackgroundDialogPicker v-model="backgroundDialogOpen" />
+    <StageBackgroundDialogPicker v-model="stageBackgroundDialogOpen" :card-id="activeCardId" />
 
     <ChatSessionModal v-model="showSessions" />
 

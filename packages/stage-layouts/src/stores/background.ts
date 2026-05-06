@@ -30,6 +30,13 @@ export const useBackgroundStore = defineStore('stage-layouts:background', () => 
   const STORAGE_PREFIX = 'background-'
   const presets: BackgroundItem[] = [
     {
+      id: 'none',
+      label: 'None',
+      description: 'Solid background color',
+      kind: BackgroundKind.Image,
+      src: undefined,
+    },
+    {
       id: 'colorful-wave',
       label: 'Colorful Wave',
       description: 'Animated wave on cross grid',

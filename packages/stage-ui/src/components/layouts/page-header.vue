@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useMotion } from '@vueuse/motion'
-import { nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import { nextTick, onMounted, onUnmounted, ref, useAttrs, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 const props = withDefaults(defineProps<{
@@ -15,6 +15,21 @@ const props = withDefaults(defineProps<{
 
 const router = useRouter()
 const route = useRoute()
+const attrs = useAttrs()
+
+const emit = defineEmits<{
+  (e: 'back'): void
+}>()
+
+function handleBack() {
+  if (finalizedDisableBackButton.value)
+    return
+
+  if (attrs.onBack)
+    emit('back')
+  else
+    router.back()
+}
 
 const pageHeaderRef = ref<HTMLElement>()
 const title = ref(props.title)
@@ -63,7 +78,7 @@ watch([() => props.title, () => props.subtitle, route], async () => {
     flex="~ row items-center gap-2"
     bg="$bg-color"
   >
-    <button @click="router.back()">
+    <button @click="handleBack()">
       <div
         v-if="!finalizedDisableBackButton"
         i-solar:alt-arrow-left-line-duotone text-2xl

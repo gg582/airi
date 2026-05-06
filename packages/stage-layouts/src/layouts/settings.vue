@@ -81,7 +81,7 @@ onMounted(() => updateThemeColor())
   >
     <!-- Header -->
     <div
-      class="px-0 py-1 hidden sm:block md:px-3 md:py-3"
+      class="px-0 py-1 sm:block md:px-3 md:py-3"
       w-full gap-2
       bg="$bg-color"
     >
@@ -92,7 +92,7 @@ onMounted(() => updateThemeColor())
       <PageHeader
         :title="routeHeaderMetadata?.title || ''"
         :subtitle="routeHeaderMetadata?.subtitle"
-        :disable-back-button="route.path === '/settings'"
+        @back="route.path === '/settings' ? router.push('/') : router.back()"
       />
       <div id="settings-scroll-container" relative min-h-0 flex-1 overflow-y-auto scrollbar-none>
         <RouterView />

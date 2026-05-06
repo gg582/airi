@@ -56,6 +56,7 @@ const emit = defineEmits<{
 
         <!-- Take Screenshot -->
         <button
+          v-if="variant !== 'mobile'"
           class="mb-2 w-full flex items-center gap-3 rounded-xl bg-primary-50/50 p-2.5 text-left transition-all dark:bg-primary-900/20 hover:bg-primary-100 dark:hover:bg-primary-800/30"
           @click="emit('screenshot')"
         >
@@ -99,8 +100,8 @@ const emit = defineEmits<{
         >
           <div class="i-solar:gallery-favourite-bold-duotone text-lg text-neutral-600 dark:text-neutral-400" />
           <div class="flex flex-col">
-            <span class="text-[13px] text-neutral-900 font-semibold leading-none dark:text-neutral-100">View Image Journal</span>
-            <span class="mt-1 text-[10px] text-neutral-600/70 dark:text-neutral-400/70">Gallery to see AI generated images history.</span>
+            <span class="text-[13px] text-neutral-900 font-semibold leading-none dark:text-neutral-100">Stage Style</span>
+            <span class="mt-1 text-[10px] text-neutral-600/70 dark:text-neutral-400/70">Manage stage background from gallery.</span>
           </div>
         </button>
 
@@ -111,8 +112,8 @@ const emit = defineEmits<{
         >
           <div class="i-solar:gallery-wide-bold-duotone text-lg text-neutral-600 dark:text-neutral-400" />
           <div class="flex flex-col">
-            <span class="text-[13px] text-neutral-900 font-semibold leading-none dark:text-neutral-100">Change Background</span>
-            <span class="mt-1 text-[10px] text-neutral-600/70 dark:text-neutral-400/70">Pick a new background image.</span>
+            <span class="text-[13px] text-neutral-900 font-semibold leading-none dark:text-neutral-100">Toolbar Style</span>
+            <span class="mt-1 text-[10px] text-neutral-600/70 dark:text-neutral-400/70">Pick a new toolbar or wave style.</span>
           </div>
         </button>
       </PopoverContent>

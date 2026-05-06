@@ -141,7 +141,7 @@ function handleImageJournal() {
             @click="handleImageJournal"
           >
             <div class="i-solar:gallery-bold-duotone size-4 text-neutral-400 transition group-hover:text-primary-500" />
-            View Image Journal
+            Manage Stage
           </button>
 
           <button
