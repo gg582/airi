@@ -2,6 +2,7 @@
 import type { DisplayModel } from '../../../../stores/display-models'
 
 import { Live2DScene, useLive2d } from '@proj-airi/stage-ui-live2d'
+import { SpineScene } from '@proj-airi/stage-ui-spine'
 import { ThreeScene } from '@proj-airi/stage-ui-three'
 import { Button, Callout } from '@proj-airi/ui'
 import { useLocalStorage, useMouse } from '@vueuse/core'
@@ -160,6 +161,7 @@ async function handleApplyToActiveCharacter() {
     <Spine
       v-if="stageModelRenderer === 'spine'"
       :palette="palette"
+      :model-id="stageModelSelected"
       @extract-colors-from-model="$emit('extractColorsFromModel')"
     />
   </div>
@@ -191,6 +193,15 @@ async function handleApplyToActiveCharacter() {
         :model-src="stageModelSelectedUrl"
         :model-identity="stageModelSelected"
         @binary-loaded="vhackStore.setSourceArrayBuffer"
+      />
+    </div>
+  </template>
+  <!-- Spine component for 2D stage view -->
+  <template v-if="stageModelRenderer === 'spine'">
+    <div :class="[...(props.live2dSceneClass ? (typeof props.live2dSceneClass === 'string' ? [props.live2dSceneClass] : props.live2dSceneClass) : [])]">
+      <SpineScene
+        :model-src="stageModelSelectedUrl"
+        :model-id="stageModelSelected"
       />
     </div>
   </template>

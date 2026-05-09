@@ -12,6 +12,7 @@ import { ColorPalette } from '../../../widgets'
 const props = withDefaults(defineProps<{
   palette: string[]
   allowExtractColors?: boolean
+  modelId?: string
 }>(), {
   allowExtractColors: true,
 })
@@ -83,8 +84,31 @@ function handleSkinSelect(skinName: string | number | undefined) {
 }
 
 function toggleAnimation(name: string) {
-  const current = activeAnimations.value[name] || false
-  activeAnimations.value = { ...activeAnimations.value, [name]: !current }
+  const modelId = props.modelId || 'default'
+  const currentModelAnims = activeAnimations.value[modelId] || {}
+  const current = currentModelAnims[name] || false
+
+  activeAnimations.value = {
+    ...activeAnimations.value,
+    [modelId]: {
+      ...currentModelAnims,
+      [name]: !current,
+    },
+  }
+}
+
+function handleAnimationSelect(animationName: string | number | undefined) {
+  if (typeof animationName !== 'string')
+    return
+  currentAnimation.value = { ...currentAnimation.value, name: animationName }
+}
+
+function resetAllAnimations() {
+  const modelId = props.modelId || 'default'
+  activeAnimations.value = {
+    ...activeAnimations.value,
+    [modelId]: {},
+  }
 }
 </script>
 
@@ -101,7 +125,27 @@ function toggleAnimation(name: string) {
     size="sm"
     :expand="true"
   >
-    <!-- Animation -->
+    <!-- Idle Animation (Dropdown) -->
+    <div class="mb-2 px-1 text-[10px] text-neutral-400 font-bold tracking-wider uppercase">
+      Base Idle Animation
+    </div>
+    <Select
+      :model-value="currentAnimation.name"
+      :options="animationOptions"
+      class="mb-4 w-full"
+      @update:model-value="handleAnimationSelect"
+    />
+
+    <!-- Independent Animations (Grid) -->
+    <div class="mb-2 flex items-center justify-between px-1">
+      <span class="text-[10px] text-neutral-400 font-bold tracking-wider uppercase">Independent Overlays</span>
+      <button
+        class="rounded-md bg-neutral-100 px-2 py-0.5 text-xs text-neutral-600 transition-colors dark:bg-neutral-800 hover:bg-neutral-200 dark:text-neutral-300 dark:hover:bg-neutral-700"
+        @click="resetAllAnimations"
+      >
+        Reset All
+      </button>
+    </div>
     <div v-if="availableAnimations.length > 0" class="mb-4 flex flex-wrap gap-1">
       <button
         v-for="anim in availableAnimations"
@@ -109,7 +153,7 @@ function toggleAnimation(name: string) {
         :class="[
           'relative rounded-md px-2 py-1 text-xs transition-all duration-150',
           'border border-solid select-none',
-          activeAnimations[anim.name]
+          (activeAnimations[props.modelId || 'default'] || {})[anim.name]
             ? 'bg-primary-500/20 border-primary-400 text-primary-600 dark:text-primary-300 font-medium'
             : 'bg-neutral-50 dark:bg-neutral-800/60 border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-700',
         ]"

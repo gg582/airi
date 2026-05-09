@@ -70,8 +70,8 @@ export const useSpine = defineStore('spine', () => {
     () => ({ ...defaultSpineAnimation }),
   )
 
-  /** Active independent animations. */
-  const activeAnimations = useLocalStorageManualReset<Record<string, boolean>>(
+  /** Active independent animations keyed by model ID. */
+  const activeAnimations = useLocalStorageManualReset<Record<string, Record<string, boolean>>>(
     'settings/spine/active-animations',
     () => ({}),
   )

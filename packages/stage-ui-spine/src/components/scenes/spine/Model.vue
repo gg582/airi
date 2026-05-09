@@ -227,7 +227,7 @@ async function loadModel() {
             applyCurrentAnimation()
 
             // Apply active independent animations.
-            applyActiveAnimations(activeAnimations.value)
+            applyActiveAnimations(activeAnimations.value[props.modelId] || {})
 
             emits('modelLoaded')
             resolve()
@@ -397,6 +397,15 @@ function applyActiveAnimations(activeAnims: Record<string, boolean>) {
     const trackIndex = 10 + index
     const isActive = activeAnims[anim.name] || false
 
+    // Skip the animation that is currently set as the base idle animation
+    if (anim.name === currentAnimation.value?.name) {
+      const currentTrack = animationState.getCurrent(trackIndex)
+      if (currentTrack && currentTrack.animation.name === anim.name) {
+        animationState.setEmptyAnimation(trackIndex, props.defaultMixDuration)
+      }
+      return
+    }
+
     const currentTrack = animationState.getCurrent(trackIndex)
     const isPlaying = currentTrack && currentTrack.animation.name === anim.name
 
@@ -464,7 +473,7 @@ watch(currentAnimation, () => {
 }, { deep: true })
 
 watch(activeAnimations, (newVal) => {
-  applyActiveAnimations(newVal)
+  applyActiveAnimations(newVal[props.modelId] || {})
 }, { deep: true })
 
 watch(currentSkin, (skinName) => {
