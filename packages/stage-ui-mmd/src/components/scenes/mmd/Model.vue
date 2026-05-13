@@ -26,6 +26,7 @@ import { loadVMDAnimation } from '../../../composables/mmd/animation'
 import { loadMmd } from '../../../composables/mmd/core'
 import { useMMDEmote } from '../../../composables/mmd/expression'
 import { useMMDLipSync } from '../../../composables/mmd/lip-sync'
+import { useMmd } from '../../../stores/mmd'
 
 export interface Vec3 { x: number, y: number, z: number }
 export interface SceneBootstrap {
@@ -91,6 +92,7 @@ const mmdLipSync = props.audioContext
   ? useMMDLipSync(props.audioContext, currentAudioSource)
   : null
 
+const mmdStore = useMmd()
 const { onBeforeRender } = useLoop()
 
 // Render loop
@@ -196,6 +198,11 @@ async function loadModel(url: string) {
       return
     }
     console.log('[MMDModel] loadMmd succeeded!', { mesh: result.mmd.mesh.name })
+    console.log('[MMDModel] Available Morph Targets:', Object.keys(result.mmd.mesh.morphTargetDictionary || {}))
+    console.log('[MMDModel] Available Bones:', result.mmd.mesh.skeleton?.bones.map((b: any) => b.name) || [])
+
+    // Update store with available morphs
+    mmdStore.availableMorphs = Object.keys(result.mmd.mesh.morphTargetDictionary || {})
 
     // Clean up previous model before adding the new one to the scene,
     // so the old and new models never coexist in the scene simultaneously.
