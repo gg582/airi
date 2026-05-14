@@ -63,6 +63,7 @@ export async function loadSpineModelPreview(file: File): Promise<string | undefi
     return await new Promise<string | undefined>((resolve) => {
       let resolved = false
       let frameCount = 0
+      let frame1DataUrl: string | undefined
       const zip = new JSZip()
       const finish = (value: string | undefined) => {
         if (resolved)
@@ -111,13 +112,6 @@ export async function loadSpineModelPreview(file: File): Promise<string | undefi
 
             console.log(`[Spine Preview] SkeletonData width=${skeletonData.width}, height=${skeletonData.height}, positioned at x=${skeleton.x}, y=${skeleton.y}`)
 
-            // Clear any default animations to prevent the scene from blowing up at frame 4
-            const anyApp = canvasApp as any
-            if (anyApp.animationState) {
-              console.log('[Spine Preview] Clearing animation tracks')
-              anyApp.animationState.clearTracks()
-            }
-
             ;(canvasApp as unknown as { __previewSkeleton: import('@esotericsoftware/spine-webgl').Skeleton }).__previewSkeleton = skeleton
           },
           update: (canvasApp: import('@esotericsoftware/spine-webgl').SpineCanvas, _delta: number) => {
@@ -142,46 +136,64 @@ export async function loadSpineModelPreview(file: File): Promise<string | undefi
 
             frameCount++
 
-            // Capture frame
-            if (frameCount <= 120) {
-              try {
-                const dataUrl = canvas!.toDataURL('image/png')
-                const base64Data = dataUrl.split(',')[1]
-                zip.file(`frame_${String(frameCount).padStart(3, '0')}.png`, base64Data, { base64: true })
+            // Set to true to record 120 frames and download a ZIP for debugging
+            const DEBUG_MODE = false
+
+            if (DEBUG_MODE) {
+              // Capture frame
+              if (frameCount <= 120) {
+                try {
+                  const dataUrl = canvas!.toDataURL('image/png')
+                  const base64Data = dataUrl.split(',')[1]
+                  zip.file(`frame_${String(frameCount).padStart(3, '0')}.png`, base64Data, { base64: true })
+
+                  // Save frame 1 for the preview result
+                  if (frameCount === 1) {
+                    frame1DataUrl = dataUrl
+                  }
+                }
+                catch (err) {
+                  console.error('[Spine] Failed to capture frame:', err)
+                }
               }
-              catch (err) {
-                console.error('[Spine] Failed to capture frame:', err)
+
+              if (frameCount !== 120)
+                return
+
+              // At frame 120, generate zip and download
+              console.log('[Spine] Reached 120 frames. Generating ZIP...')
+              zip.generateAsync({ type: 'blob' }).then((blob) => {
+                const url = URL.createObjectURL(blob)
+                const a = document.createElement('a')
+                a.href = url
+                a.download = `spine_frames_${Date.now()}.zip`
+                document.body.appendChild(a)
+                a.click()
+                document.body.removeChild(a)
+                URL.revokeObjectURL(url)
+                console.log('[Spine] Frames ZIP downloaded')
+
+                // Now finish the preview with frame 1
+                finish(frame1DataUrl)
+              }).catch((err) => {
+                console.error('[Spine] Failed to generate ZIP:', err)
+                finish(undefined)
+              })
+            }
+            else {
+              // Production mode: Capture frame 1 and exit immediately
+              if (frameCount === 1) {
+                try {
+                  const dataUrl = canvas!.toDataURL('image/png')
+                  finish(dataUrl)
+                }
+                catch (err) {
+                  console.error('[Spine] Failed to capture preview frame:', err)
+                  finish(undefined)
+                }
+                canvasApp.dispose() // Stop the render loop
               }
             }
-
-            if (frameCount !== 120)
-              return
-
-            // At frame 120, generate zip and download
-            console.log('[Spine] Reached 120 frames. Generating ZIP...')
-            zip.generateAsync({ type: 'blob' }).then((blob) => {
-              const url = URL.createObjectURL(blob)
-              const a = document.createElement('a')
-              a.href = url
-              a.download = `spine_frames_${Date.now()}.zip`
-              document.body.appendChild(a)
-              a.click()
-              document.body.removeChild(a)
-              URL.revokeObjectURL(url)
-              console.log('[Spine] Frames ZIP downloaded')
-
-              // Now finish the preview with the last frame
-              try {
-                const dataUrl = canvas!.toDataURL('image/png')
-                finish(dataUrl)
-              }
-              catch (err) {
-                finish(undefined)
-              }
-            }).catch((err) => {
-              console.error('[Spine] Failed to generate ZIP:', err)
-              finish(undefined)
-            })
           },
         }
 
