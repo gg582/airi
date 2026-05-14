@@ -65,6 +65,7 @@ const {
 } = storeToRefs(spineStore)
 
 let isUnmounted = false
+let loggedBBoxThisLoad = false
 const modelLoadMutex = new Mutex()
 const modelLoading = ref(false)
 
@@ -221,6 +222,7 @@ function disposeSpine() {
 
 async function loadModel() {
   await modelLoadMutex.acquire()
+  loggedBBoxThisLoad = false
 
   modelLoading.value = true
   componentState.value = 'loading'
@@ -423,7 +425,33 @@ async function loadModel() {
           if (!skeleton)
             return
           const renderer = sc.renderer
+
+          const oldWidth = canvas.value.width
+          const oldHeight = canvas.value.height
+
           renderer.resize(spine.ResizeMode.Expand)
+
+          if (canvas.value.width !== oldWidth || canvas.value.height !== oldHeight) {
+            applyTransformFromStore()
+          }
+
+          if (!loggedBBoxThisLoad && canvas.value) {
+            loggedBBoxThisLoad = true
+            const rect = canvas.value.getBoundingClientRect()
+            console.log('[Spine Debug] Stage/Canvas CSS BBox:', { width: rect.width, height: rect.height, left: rect.left, top: rect.top })
+            console.log('[Spine Debug] Canvas Internal Buffer:', { width: canvas.value.width, height: canvas.value.height })
+            console.log('[Spine Debug] Skeleton Origin:', { x: skeleton.x, y: skeleton.y, scaleX: skeleton.scaleX, scaleY: skeleton.scaleY })
+
+            for (const area of model0HitAreas) {
+              const bone = skeleton.findBone(area.name)
+              if (bone) {
+                const boneCanvasX = canvas.value.width / 2 + bone.worldX * skeleton.scaleX
+                const boneCanvasY = canvas.value.height / 2 - bone.worldY * skeleton.scaleY
+                console.log(`[Spine Debug] Hit Area [${area.name}]: bone.worldX=${bone.worldX.toFixed(2)}, bone.worldY=${bone.worldY.toFixed(2)} | Calculated Center=(${boneCanvasX.toFixed(2)}, ${boneCanvasY.toFixed(2)})`)
+              }
+            }
+          }
+
           sc.gl.clearColor(0, 0, 0, 0)
           sc.gl.clear(sc.gl.COLOR_BUFFER_BIT)
           renderer.begin()
