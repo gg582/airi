@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useElectronEventaContext, useElectronEventaInvoke } from '@proj-airi/electron-vueuse'
+import { useMmd } from '@proj-airi/stage-ui-mmd'
 import { useCustomVrmAnimationsStore, useModelStore } from '@proj-airi/stage-ui-three'
 import { useLive2d } from '@proj-airi/stage-ui/stores/live2d'
 import { useAiriCardStore } from '@proj-airi/stage-ui/stores/modules/airi-card'
@@ -8,9 +9,9 @@ import { useLiveSessionStore } from '@proj-airi/stage-ui/stores/modules/live-ses
 import { useVisionStore } from '@proj-airi/stage-ui/stores/modules/vision'
 import { useProvidersStore } from '@proj-airi/stage-ui/stores/providers'
 import { useSettings, useSettingsAudioDevice } from '@proj-airi/stage-ui/stores/settings'
+import { useColorMode } from '@vueuse/core'
 import { storeToRefs } from 'pinia'
 import { computed, ref, toRef, watch } from 'vue'
-import { useColorMode } from '@vueuse/core'
 import { useI18n } from 'vue-i18n'
 import { toast } from 'vue-sonner'
 
@@ -301,7 +302,13 @@ function triggerRandomEmotion() {
 
 // === Favorite (Superseded by Wardrobe) ===
 // const hasFavorite = computed(() => !!favoriteExpression.value)
-const currentIdleAnimationLabel = computed(() => customVrmAnimationsStore.animationLabelByKey[vrmIdleAnimation.value] ?? vrmIdleAnimation.value)
+const currentIdleAnimationLabel = computed(() => {
+  if (stageModelRenderer.value === 'mmd') {
+    const mmdStore = useMmd()
+    return mmdStore.currentMotion || 'None'
+  }
+  return customVrmAnimationsStore.animationLabelByKey[vrmIdleAnimation.value] ?? vrmIdleAnimation.value
+})
 // const isFavoriteActive = computed(() => {
 //   if (!favoriteExpression.value)
 //     return false
@@ -319,6 +326,23 @@ const currentIdleAnimationLabel = computed(() => customVrmAnimationsStore.animat
 // }
 
 function cycleAnimation() {
+  if (stageModelRenderer.value === 'mmd') {
+    const mmdStore = useMmd()
+    const allKeys = mmdStore.availableMotions
+    if (allKeys.length === 0) {
+      toast.error('No MMD motions available', { id: 'animation-cycle' })
+      return
+    }
+    const currentKey = mmdStore.currentMotion
+    const currentIndex = allKeys.indexOf(currentKey)
+    const nextIndex = (currentIndex + 1) % allKeys.length
+    const nextAnimation = allKeys[nextIndex]
+
+    mmdStore.currentMotion = nextAnimation
+    toast.info(`Cycling MMD: ${nextAnimation}`, { id: 'animation-cycle' })
+    return
+  }
+
   const cardIdleAnimations = activeCard.value?.extensions?.airi?.acting?.idleAnimations || []
   const allKeys = customVrmAnimationsStore.animationKeys
   const hasCardSubset = cardIdleAnimations.length > 0

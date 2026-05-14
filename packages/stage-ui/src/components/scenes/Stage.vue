@@ -14,7 +14,7 @@ import { createLive2DLipSync } from '@proj-airi/model-driver-lipsync'
 import { wlipsyncProfile } from '@proj-airi/model-driver-lipsync/shared/wlipsync'
 import { createPlaybackManager, createSpeechPipeline } from '@proj-airi/pipelines-audio'
 import { Live2DScene, useLive2d } from '@proj-airi/stage-ui-live2d'
-import { MMDScene } from '@proj-airi/stage-ui-mmd'
+import { MMDScene, useMmd } from '@proj-airi/stage-ui-mmd'
 import { SpineScene } from '@proj-airi/stage-ui-spine'
 import { ThreeScene, useCustomVrmAnimationsStore, useModelStore } from '@proj-airi/stage-ui-three'
 import { animations } from '@proj-airi/stage-ui-three/assets/vrm'
@@ -299,6 +299,42 @@ const emotionsQueue = createQueue<EmotionPayload>({
         }
         else {
           console.warn('[Stage] spineViewerRef is NULL')
+        }
+      }
+      else if (stageModelRenderer.value === 'mmd') {
+        const emotionName = ctx.data.name
+        const intensity = ctx.data.intensity
+        // eslint-disable-next-line no-console
+        console.log('[Stage] MMD emotion/motion processing:', { name: emotionName, intensity })
+
+        const mmdStore = useMmd()
+
+        // 1. Check if it's a motion (fuzzy match without .vmd)
+        const matchedMotion = mmdStore.availableMotions.find((m) => {
+          const cleanName = m.replace('.vmd', '')
+          return m === emotionName || cleanName === emotionName
+        })
+
+        if (matchedMotion) {
+          mmdStore.currentMotion = matchedMotion
+          console.log('[Stage] Triggered MMD motion:', matchedMotion)
+        }
+        else {
+          // 2. It's an expression (morph)
+          // The LLM might emit the MAPPED name. We need to find the RAW name!
+          const mappings = mmdStore.morphMappings || {}
+          let rawMorphName = emotionName
+
+          // Reverse lookup in mappings (raw -> mapped)
+          for (const [raw, mapped] of Object.entries(mappings)) {
+            if (mapped === emotionName) {
+              rawMorphName = raw
+              break
+            }
+          }
+
+          mmdStore.previewExpression = rawMorphName
+          console.log('[Stage] Triggered MMD expression:', rawMorphName)
         }
       }
     },
