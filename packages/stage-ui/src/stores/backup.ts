@@ -1,6 +1,5 @@
 import { useLocalStorageManualReset } from '@proj-airi/stage-shared/composables'
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
 
 import { useDataMaintenance } from '../composables/use-data-maintenance'
 

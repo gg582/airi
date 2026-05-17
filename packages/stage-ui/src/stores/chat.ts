@@ -289,6 +289,10 @@ export const useChatOrchestratorStore = defineStore('chat-orchestrator', () => {
       }
       // --------------------------------
 
+      const inferenceUserMessage = options.triggerOnly
+        ? null
+        : { role: 'user' as const, content: inferenceContent, createdAt: sendingCreatedAt, id: userMessageId }
+
       let inferenceMessages: any[] = []
 
       // --- Grounding Injection ---
@@ -310,7 +314,6 @@ export const useChatOrchestratorStore = defineStore('chat-orchestrator', () => {
           inferenceMessages = nextInferenceMessages
         }
         else {
-          const inferenceUserMessage = { role: 'user' as const, content: inferenceContent, createdAt: sendingCreatedAt, id: userMessageId }
           const nextInferenceMessages = [...sessionMessagesForSend, inferenceUserMessage]
           nextInferenceMessages.splice(sessionMessagesForSend.length, 0, groundingMessage)
           inferenceMessages = nextInferenceMessages
@@ -322,7 +325,6 @@ export const useChatOrchestratorStore = defineStore('chat-orchestrator', () => {
           inferenceMessages = [...sessionMessagesForSend]
         }
         else {
-          const inferenceUserMessage = { role: 'user' as const, content: inferenceContent, createdAt: sendingCreatedAt, id: userMessageId }
           inferenceMessages = [...sessionMessagesForSend, inferenceUserMessage]
         }
       }
@@ -332,12 +334,16 @@ export const useChatOrchestratorStore = defineStore('chat-orchestrator', () => {
       // Rule: System Message + last 6 conversation messages + current user input.
       if (isVlmTurn) {
         const systemMessage = inferenceMessages.find(m => m.role === 'system')
-        const historyWithoutSystem = inferenceMessages.filter(m => m.role !== 'system' && m !== inferenceUserMessage)
+        const historyWithoutSystem = inferenceMessages.filter(m => m.role !== 'system' && (!inferenceUserMessage || m !== inferenceUserMessage))
         const trimmedHistory = historyWithoutSystem.slice(-6)
 
         inferenceMessages = systemMessage
-          ? [systemMessage, ...trimmedHistory, inferenceUserMessage]
-          : [...trimmedHistory, inferenceUserMessage]
+          ? [systemMessage, ...trimmedHistory]
+          : [...trimmedHistory]
+
+        if (inferenceUserMessage) {
+          inferenceMessages.push(inferenceUserMessage)
+        }
 
         chatLog(`[ChatDebug] VLM turn detected. Trimmed history from ${sessionMessagesForSend.length + 1} to ${inferenceMessages.length} messages.`)
       }
