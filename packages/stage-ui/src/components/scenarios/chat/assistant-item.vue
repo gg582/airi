@@ -2,7 +2,7 @@
 import type { ChatAssistantMessage, ChatHistoryItem, ChatSlices, ChatSlicesText } from '../../../types/chat'
 
 import { storeToRefs } from 'pinia'
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { toast } from 'vue-sonner'
 
@@ -297,6 +297,15 @@ async function handleForkAndSwitch() {
 
 // Visual FX state parsing (re-injected from main)
 const showLoader = computed(() => props.showPlaceholder)
+
+onMounted(() => {
+  console.log('[ChatDebug:AssistantItem] Message data received:', {
+    id: props.message.id,
+    content: props.message.content,
+    rawContent: (props.message as any).rawContent,
+    slices: JSON.parse(JSON.stringify(props.message.slices || [])),
+  })
+})
 
 function getMoodArchetype(text: string): string | null {
   if (!text || typeof text !== 'string')
