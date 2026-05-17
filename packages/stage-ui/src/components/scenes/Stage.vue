@@ -24,7 +24,7 @@ import { generateSpeech } from '@xsai/generate-speech'
 import { storeToRefs } from 'pinia'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 
-import { parseActor, useSpecialTokenQueue } from '../../composables/queues'
+import { getActorColor, parseActor, useSpecialTokenQueue } from '../../composables/queues'
 import { categorizeResponse } from '../../composables/response-categoriser'
 import { llmInferenceEndToken } from '../../constants'
 import { EMOTION_EmotionMotionName_value, EMOTION_VRMExpressionName_value, EmotionThinkMotionName } from '../../constants/emotions'
@@ -110,30 +110,8 @@ const { post: postCaption } = useBroadcastChannel<CaptionChannelEvent, CaptionCh
 // This is a hardware-level fix because the 'airi-caption-overlay' empty string reset was failing.
 const { data: sessionUpdate } = useBroadcastChannel<any, any>({ name: 'airi-chat-stream' })
 
-const actorColors = new Map<string, string>()
 const parserActorId = ref<string>('default')
 const playbackActorId = ref<string>('default')
-
-function getActorColor(id: string): string {
-  if (!actorColors.has(id)) {
-    // Generate a stable, vibrant HSL color from the actor ID
-    let hash = 0
-    for (let i = 0; i < id.length; i++) {
-      hash = id.charCodeAt(i) + ((hash << 5) - hash)
-    }
-
-    const h = Math.abs(hash) % 360
-    // We lock saturation and lightness into high ranges (90-100% sat, 70-80% light)
-    // This ensures the text is always bright, punchy, and readable against dark backgrounds.
-    const s = 90 + (Math.abs(hash >> 8) % 10)
-    const l = 70 + (Math.abs(hash >> 16) % 10)
-
-    const color = `hsl(${h}, ${s}%, ${l}%)`
-    actorColors.set(id, color)
-    console.log(`[CaptionDebug] Assigned vibrant stable color to actor "${id}":`, color)
-  }
-  return actorColors.get(id)!
-}
 
 const assistantCaptionSegments = ref<CaptionSegment[]>([])
 

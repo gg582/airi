@@ -145,3 +145,25 @@ export function parseActor(content: string) {
     return null
   return match[1].trim()
 }
+
+const actorColors = new Map<string, string>()
+
+export function getActorColor(id: string): string {
+  if (!actorColors.has(id)) {
+    // Generate a stable, vibrant HSL color from the actor ID
+    let hash = 0
+    for (let i = 0; i < id.length; i++) {
+      hash = id.charCodeAt(i) + ((hash << 5) - hash)
+    }
+
+    const h = Math.abs(hash) % 360
+    // We lock saturation and lightness into high ranges (90-100% sat, 70-80% light)
+    // This ensures the text is always bright, punchy, and readable against dark backgrounds.
+    const s = 90 + (Math.abs(hash >> 8) % 10)
+    const l = 70 + (Math.abs(hash >> 16) % 10)
+
+    const color = `hsl(${h}, ${s}%, ${l}%)`
+    actorColors.set(id, color)
+  }
+  return actorColors.get(id)!
+}

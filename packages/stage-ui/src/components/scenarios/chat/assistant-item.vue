@@ -10,6 +10,7 @@ import JournalMomentModal from './JournalMomentModal.vue'
 import ChatResponsePart from './response-part.vue'
 import ChatToolCallBlock from './tool-call-block.vue'
 
+import { getActorColor } from '../../../composables/queues'
 import { useChatOrchestratorStore } from '../../../stores/chat'
 import { useChatSessionStore } from '../../../stores/chat/session-store'
 import { useTextJournalStore } from '../../../stores/memory-text-journal'
@@ -33,6 +34,51 @@ const emit = defineEmits<{
   (e: 'copy'): void
   (e: 'delete'): void
 }>()
+
+function injectActorColors(content: string): string {
+  if (!content)
+    return ''
+
+  const actorRegex = /<\|ACTOR:\s*([\w-]+)\s*(?:\|>|>)/gi
+  const regex = new RegExp(actorRegex)
+  let match
+  let lastIndex = 0
+  let result = ''
+  let lastSpanOpen = false
+
+  while ((match = regex.exec(content)) !== null) {
+    const actorId = match[1].trim()
+    const matchIndex = match.index
+
+    // Add text before this tag
+    result += content.slice(lastIndex, matchIndex)
+
+    // If there was a previous span open, close it
+    if (lastSpanOpen) {
+      result += '</span>'
+      lastSpanOpen = false
+    }
+
+    // Open a new span with the actor's color
+    const color = getActorColor(actorId)
+    result += `<span style="color: ${color}">`
+    lastSpanOpen = true
+
+    lastIndex = regex.lastIndex
+  }
+
+  // Add the remaining text
+  if (lastIndex < content.length) {
+    result += content.slice(lastIndex)
+  }
+
+  // Close the last span if it was open
+  if (lastSpanOpen) {
+    result += '</span>'
+  }
+
+  return result
+}
 
 const showJournalModal = ref(false)
 
@@ -526,7 +572,7 @@ const resolvedSlices = computed(() => {
                 />
                 <template v-else-if="slice.type === 'tool-call-result'" />
                 <template v-else-if="slice.type === 'text'">
-                  <MarkdownRenderer :content="slice.text" />
+                  <MarkdownRenderer :content="injectActorColors(slice.text)" />
                 </template>
               </template>
             </div>
