@@ -3,7 +3,6 @@ import { useElectronEventaInvoke } from '@proj-airi/electron-vueuse'
 import { CUSTOMIZER_CATALOG } from '@proj-airi/stage-ui/constants/control-customizer'
 import { useLiveSessionStore } from '@proj-airi/stage-ui/stores/modules/live-session'
 import { useSettings, useSettingsAudioDevice, useSettingsControlStrip } from '@proj-airi/stage-ui/stores/settings'
-import { usePositioningStore } from '@proj-airi/stage-ui/stores/settings/positioning'
 import { storeToRefs } from 'pinia'
 import { computed, ref } from 'vue'
 
@@ -11,7 +10,6 @@ import { electronCustomizerToggleVisibility } from '../../shared/eventa'
 
 const settingsStore = useSettings()
 const controlStripStore = useSettingsControlStrip()
-const positioningStore = usePositioningStore()
 const settingsAudioDeviceStore = useSettingsAudioDevice()
 const liveSessionStore = useLiveSessionStore()
 
@@ -23,7 +21,7 @@ const toggleCustomizerVisibility = useElectronEventaInvoke(electronCustomizerTog
 const modelSelected = computed(() => settingsStore.stageModelSelected || 'default')
 
 // Navigation state
-const activeGroupId = ref('ai-gemini')
+const activeGroupId = ref('stage-view')
 
 const activeGroup = computed(() => {
   return CUSTOMIZER_CATALOG.find(g => g.id === activeGroupId.value) || CUSTOMIZER_CATALOG[0]
@@ -87,21 +85,40 @@ function isItemOnStrip(itemId: string): boolean {
 }
 
 function toggleItemOnStrip(itemId: string) {
-  const btn = buttons.value.find(b => b.id === itemId)
-  if (btn) {
-    btn.enabled = !btn.enabled
+  console.log(`[DIAG][Toggle] Called with itemId: "${itemId}"`)
+  console.log(`[DIAG][Toggle] BEFORE — buttons ref:`, JSON.stringify(buttons.value.map(b => ({ id: b.id, enabled: b.enabled }))))
+  console.log(`[DIAG][Toggle] BEFORE — localStorage raw:`, localStorage.getItem('settings/control-strip/buttons')?.slice(0, 300))
+
+  const idx = buttons.value.findIndex(b => b.id === itemId)
+  if (idx !== -1) {
+    const oldEnabled = buttons.value[idx].enabled
+    buttons.value = buttons.value.map((btn, i) =>
+      i === idx ? { ...btn, enabled: !btn.enabled } : btn,
+    )
+    console.log(`[DIAG][Toggle] Flipped "${itemId}" from ${oldEnabled} to ${!oldEnabled}`)
   }
   else {
     const catalogItem = CUSTOMIZER_CATALOG.flatMap(g => g.items).find(i => i.id === itemId)
     if (catalogItem) {
-      buttons.value.push({
+      buttons.value = [...buttons.value, {
         id: catalogItem.id,
         enabled: true,
         label: catalogItem.label,
         icon: catalogItem.icon,
-      })
+      }]
+      console.log(`[DIAG][Toggle] Added new button "${itemId}" from catalog`)
+    }
+    else {
+      console.log(`[DIAG][Toggle] WARNING: "${itemId}" not found in buttons OR catalog`)
     }
   }
+
+  console.log(`[DIAG][Toggle] AFTER — buttons ref:`, JSON.stringify(buttons.value.map(b => ({ id: b.id, enabled: b.enabled }))))
+  // Check localStorage directly after assignment
+  setTimeout(() => {
+    const lsAfter = localStorage.getItem('settings/control-strip/buttons')
+    console.log(`[DIAG][Toggle] AFTER 50ms — localStorage raw:`, lsAfter?.slice(0, 300))
+  }, 50)
 }
 
 // Action triggers
@@ -112,46 +129,8 @@ function handleAction(actionId: string) {
   }
 }
 
-const currentPosition = computed(() => {
-  return positioningStore.getPosition(modelSelected.value)
-})
-
-const xVal = computed({
-  get: () => currentPosition.value.x,
-  set: (v) => {
-    positioningStore.setPosition(modelSelected.value, {
-      ...currentPosition.value,
-      x: Number(v),
-    })
-  },
-})
-
-const yVal = computed({
-  get: () => currentPosition.value.y,
-  set: (v) => {
-    positioningStore.setPosition(modelSelected.value, {
-      ...currentPosition.value,
-      y: Number(v),
-    })
-  },
-})
-
-const scaleVal = computed({
-  get: () => currentPosition.value.scale,
-  set: (v) => {
-    positioningStore.setPosition(modelSelected.value, {
-      ...currentPosition.value,
-      scale: Number(v),
-    })
-  },
-})
-
 async function closeWindow() {
   await toggleCustomizerVisibility(false)
-}
-
-function resetPlacement() {
-  positioningStore.setPosition(modelSelected.value, { x: 0, y: 0, scale: 1 })
 }
 </script>
 
@@ -171,7 +150,8 @@ function resetPlacement() {
         </div>
         <!-- Action Buttons (non-draggable) -->
         <button
-          class="pointer-events-auto rounded-lg p-1.5 text-neutral-400 transition-all duration-200 active:scale-95 hover:bg-white/10 hover:text-neutral-100 dark:hover:bg-neutral-800/60"
+          class="pointer-events-auto cursor-pointer rounded-lg p-1.5 text-neutral-400 transition-all duration-200 active:scale-95 hover:bg-white/10 hover:text-neutral-100 dark:hover:bg-neutral-800/60"
+          style="-webkit-app-region: no-drag;"
           @click="closeWindow"
         >
           <div class="i-solar:close-square-linear text-lg" />
@@ -285,69 +265,6 @@ function resetPlacement() {
               </div>
             </div>
           </div>
-
-          <!-- Viewport offset coordinates controls inside Viewport & Controls category -->
-          <div v-if="activeGroupId === 'viewport-controls'" class="mt-1 space-y-3">
-            <div class="flex items-center justify-between border-t border-white/5 pt-3">
-              <span class="text-[11px] text-sky-400/95 font-bold tracking-wider uppercase">Avatar Position Sliders</span>
-              <button
-                class="text-[10px] text-neutral-400 transition-colors hover:text-sky-300"
-                @click="resetPlacement"
-              >
-                Reset Coordinate Defaults
-              </button>
-            </div>
-
-            <div class="border border-white/5 rounded-xl bg-white/5 p-3 space-y-4 dark:bg-neutral-900/40">
-              <!-- X Slider -->
-              <div class="space-y-1.5">
-                <div class="flex justify-between text-[11px] text-neutral-400 font-medium">
-                  <span>Horizontal (X)</span>
-                  <span class="text-neutral-200 font-mono">{{ xVal.toFixed(2) }}</span>
-                </div>
-                <input
-                  v-model.number="xVal"
-                  type="range"
-                  min="-3"
-                  max="3"
-                  step="0.05"
-                  class="h-1 w-full cursor-pointer appearance-none rounded-lg bg-neutral-800 accent-sky-400 focus:outline-none"
-                >
-              </div>
-
-              <!-- Y Slider -->
-              <div class="space-y-1.5">
-                <div class="flex justify-between text-[11px] text-neutral-400 font-medium">
-                  <span>Vertical (Y)</span>
-                  <span class="text-neutral-200 font-mono">{{ yVal.toFixed(2) }}</span>
-                </div>
-                <input
-                  v-model.number="yVal"
-                  type="range"
-                  min="-3"
-                  max="3"
-                  step="0.05"
-                  class="h-1 w-full cursor-pointer appearance-none rounded-lg bg-neutral-800 accent-sky-400 focus:outline-none"
-                >
-              </div>
-
-              <!-- Scale Slider -->
-              <div class="space-y-1.5">
-                <div class="flex justify-between text-[11px] text-neutral-400 font-medium">
-                  <span>Scale (Zoom)</span>
-                  <span class="text-neutral-200 font-mono">{{ scaleVal.toFixed(2) }}x</span>
-                </div>
-                <input
-                  v-model.number="scaleVal"
-                  type="range"
-                  min="0.1"
-                  max="4"
-                  step="0.05"
-                  class="h-1 w-full cursor-pointer appearance-none rounded-lg bg-neutral-800 accent-sky-400 focus:outline-none"
-                >
-              </div>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -370,23 +287,6 @@ function resetPlacement() {
 .scrollbar-hide {
   -ms-overflow-style: none;
   scrollbar-width: none;
-}
-
-/* Accent style range inputs */
-input[type="range"]::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: #38bdf8;
-  cursor: pointer;
-  box-shadow: 0 0 6px rgba(56, 189, 248, 0.6);
-  transition: all 0.15s ease-out;
-}
-input[type="range"]::-webkit-slider-thumb:hover {
-  transform: scale(1.2);
-  box-shadow: 0 0 10px rgba(56, 189, 248, 0.9);
 }
 </style>
 

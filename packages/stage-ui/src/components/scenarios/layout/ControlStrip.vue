@@ -8,7 +8,7 @@ import { useSettingsAudioDevice } from '../../../stores/settings/audio-device'
 import { useSettingsControlStrip } from '../../../stores/settings/control-strip'
 
 const controlStripStore = useSettingsControlStrip()
-const { orientation, buttons, stageEnabled, chatOpen, captionOpen } = storeToRefs(controlStripStore)
+const { orientation, buttons, stageEnabled, chatOpen, captionOpen, backgroundTint } = storeToRefs(controlStripStore)
 
 const settingsAudioDeviceStore = useSettingsAudioDevice()
 const { enabled: micEnabled } = storeToRefs(settingsAudioDeviceStore)
@@ -167,6 +167,8 @@ function getButtonTitle(btnId: string, defaultLabel: string): string {
     :style="{
       top: `${position.y}px`,
       right: `${position.x}px`,
+      backgroundColor: backgroundTint,
+      opacity: 0.85,
     }"
     @contextmenu="handleRightClick"
   >

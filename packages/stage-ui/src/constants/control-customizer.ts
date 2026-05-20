@@ -25,6 +25,23 @@ export const CUSTOMIZER_CATALOG: CustomizerGroup[] = [
     icon: 'i-solar:tuning-outline',
     items: [
       {
+        id: 'stage',
+        label: 'Actor Stage',
+        description: 'Toggles rendering of the Live2D/VRM actor stage.',
+        icon: 'i-solar:clapperboard-play-bold-duotone',
+        type: 'toggle',
+        defaultOnStrip: true,
+        binding: 'stageEnabled',
+      },
+      {
+        id: 'always-on-top',
+        label: 'Always-on-Top',
+        description: 'Toggles window floating status above full-screen applications.',
+        icon: 'i-solar:pin-linear',
+        type: 'toggle',
+        defaultOnStrip: false,
+      },
+      {
         id: 'viewport-tactile',
         label: 'Tactile Mode',
         description: 'Pointer click triggers active pokes; character looks at mouse cursor.',
@@ -114,15 +131,6 @@ export const CUSTOMIZER_CATALOG: CustomizerGroup[] = [
         binding: 'chatOpen',
       },
       {
-        id: 'stage',
-        label: 'Actor Stage',
-        description: 'Toggles rendering of the Live2D/VRM actor stage.',
-        icon: 'i-solar:clapperboard-play-bold-duotone',
-        type: 'toggle',
-        defaultOnStrip: true,
-        binding: 'stageEnabled',
-      },
-      {
         id: 'mic',
         label: 'Microphone Toggle',
         description: 'Toggles voice input capturing.',
@@ -130,14 +138,6 @@ export const CUSTOMIZER_CATALOG: CustomizerGroup[] = [
         type: 'toggle',
         defaultOnStrip: true,
         binding: 'micEnabled',
-      },
-      {
-        id: 'always-on-top',
-        label: 'Always-on-Top',
-        description: 'Toggles window floating status above full-screen applications.',
-        icon: 'i-solar:pin-linear',
-        type: 'toggle',
-        defaultOnStrip: false,
       },
       {
         id: 'theme-mode',
