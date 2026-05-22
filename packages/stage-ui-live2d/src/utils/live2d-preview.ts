@@ -9,6 +9,36 @@ import { Live2DFactory, Live2DModel } from 'pixi-live2d-display/cubism4'
  * Render a Live2D zip/file to an offscreen canvas and return a padded preview data URL.
  */
 export async function loadLive2DModelPreview(input: File | string, parameters?: Record<string, number>) {
+  if (typeof input !== 'string') {
+    try {
+      const JSZip = (await import('jszip')).default
+      const zip = await JSZip.loadAsync(input)
+
+      // Try to find an icon.png or icon.jpg inside the zip (could be in a subfolder)
+      const iconFileName = Object.keys(zip.files).find((name) => {
+        const lower = name.toLowerCase()
+        return lower.endsWith('icon.png') || lower.endsWith('icon.jpg')
+      })
+      if (iconFileName) {
+        const fileData = await zip.files[iconFileName].async('blob')
+
+        // Convert blob to Data URL
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader()
+          reader.onload = () => resolve(reader.result as string)
+          reader.onerror = reject
+          reader.readAsDataURL(fileData)
+        })
+
+        console.log(`[Live2D Preview] Found ${iconFileName} in zip, using it as preview.`)
+        return dataUrl
+      }
+    }
+    catch (e) {
+      console.error('[Live2D Preview] Failed to inspect zip for icon:', e)
+    }
+  }
+
   Live2DModel.registerTicker(Ticker)
   extensions.add(TickerPlugin)
 
@@ -58,25 +88,6 @@ export async function loadLive2DModelPreview(input: File | string, parameters?: 
     const res = await fetch(objUrl)
     const blob = await res.blob()
     const fileName = typeof input === 'string' ? input.split('/').pop() || 'model.zip' : input.name
-
-    // Debug: Read zip content to investigate URL error
-    if (typeof input !== 'string') {
-      try {
-        const JSZip = (await import('jszip')).default
-        const zip = await JSZip.loadAsync(input)
-        const modelJsonFile = Object.keys(zip.files).find(name => name.endsWith('.model3.json'))
-        if (modelJsonFile) {
-          const jsonText = await zip.files[modelJsonFile].async('text')
-          const jsonData = JSON.parse(jsonText)
-          console.log('🔍 [Live2D Preview] model3.json content:', jsonData)
-          console.log('🔍 [Live2D Preview] FileReferences:', jsonData.FileReferences)
-          console.log('🔍 [Live2D Preview] Zip files:', Object.keys(zip.files))
-        }
-      }
-      catch (e) {
-        console.error('🔍 [Live2D Preview] Failed to inspect zip:', e)
-      }
-    }
 
     console.log('🔍 [Live2D Preview] Calling setupLive2DModel with:', fileName)
     await Live2DFactory.setupLive2DModel(modelInstance, [new File([blob], fileName)], { autoInteract: false })
