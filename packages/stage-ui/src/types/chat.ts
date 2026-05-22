@@ -28,6 +28,8 @@ export interface ChatAssistantMessage extends AssistantMessage {
     id: string
     result?: string | CommonContentPart[]
   }[]
+  id?: string
+  createdAt?: number
   /**
    * The full raw LLM output including orchestration tokens (`<|ACTOR:|>`, `<|ACT:|>`, etc.)
    * and reasoning blocks. Stored separately from `content` (which is display-friendly) so
@@ -75,6 +77,8 @@ export interface ChatStreamEventContext {
   contexts: Record<string, ContextMessage[]>
   composedMessage: Array<Message>
   input?: WebSocketEventInputs
+  assistantMessageId?: string
+  assistantMessageCreatedAt?: number
 }
 
 export type ChatStreamEvent

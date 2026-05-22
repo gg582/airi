@@ -221,6 +221,9 @@ export const useChatOrchestratorStore = defineStore('chat-orchestrator', () => {
       id: nanoid(),
     })
 
+    streamingMessageContext.assistantMessageId = buildingMessage.id
+    streamingMessageContext.assistantMessageCreatedAt = buildingMessage.createdAt
+
     const updateUI = () => {
       if (isForegroundSession()) {
         streamingMessage.value = JSON.parse(JSON.stringify(buildingMessage))
@@ -869,7 +872,7 @@ export const useChatOrchestratorStore = defineStore('chat-orchestrator', () => {
                 break
               case 'text-delta': {
                 const healedText = healMozibake(event.text)
-                chatLog('text-delta:', healedText)
+                // chatLog('text-delta:', healedText)
                 fullText += healedText
                 rawFullText += healedText
                 turnRawContent += healedText

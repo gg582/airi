@@ -305,7 +305,7 @@ export const useChatSessionStore = defineStore('chat-session', () => {
     void persistSession(sessionId)
   }
 
-  function setSessionMessages(sessionId: string, next: ChatHistoryItem[]) {
+  async function setSessionMessages(sessionId: string, next: ChatHistoryItem[]) {
     const prev = sessionMessages.value[sessionId] ?? []
     const prevIds = new Set(prev.map(m => m.id).filter(Boolean))
 
@@ -319,13 +319,27 @@ export const useChatSessionStore = defineStore('chat-session', () => {
     sessionMessages.value[sessionId] = nextWithIds
 
     // 3. Persist
-    void persistSession(sessionId)
+    await persistSession(sessionId)
 
     // 4. Broadcast ONLY truly new messages based on stable IDs
     for (const msg of nextWithIds) {
       if (msg.id && !prevIds.has(msg.id)) {
+        console.log(`[ChatStore] Adding message to history (setSessionMessages):`, {
+          id: msg.id,
+          role: msg.role,
+          createdAt: msg.createdAt,
+          contentPreview: typeof msg.content === 'string' ? msg.content.slice(0, 60) : '[Complex Content]',
+          source: (msg as any).metadata?.source ?? 'unknown',
+          metadata: (msg as any).metadata,
+        })
         broadcastStreamEvent({ type: 'session-updated', sessionId, message: JSON.parse(JSON.stringify(msg)) })
       }
+    }
+
+    // 5. Broadcast session-refreshed if any previous messages were removed
+    const removedAny = prev.some(m => m.id && !nextWithIds.some(n => n.id === m.id))
+    if (removedAny) {
+      broadcastStreamEvent({ type: 'session-refreshed', sessionId })
     }
   }
 
@@ -335,6 +349,16 @@ export const useChatSessionStore = defineStore('chat-session', () => {
     const current = sessionMessages.value[sessionId] ?? []
     sessionMessages.value[sessionId] = [...current, message]
     void persistSession(sessionId)
+
+    console.log(`[ChatStore] Inscribing turn in session ${sessionId}:`, {
+      id: message.id,
+      role: message.role,
+      createdAt: message.createdAt,
+      contentPreview: typeof message.content === 'string' ? message.content.slice(0, 60) : '[Complex Content]',
+      source: (message as any).metadata?.source ?? 'unknown',
+      metadata: (message as any).metadata,
+    })
+
     // NOTICE: Broadcast the actual message payload so other windows can apply it directly
     // without waiting for the DB write to complete (avoids race condition).
     broadcastStreamEvent({ type: 'session-updated', sessionId, message: JSON.parse(JSON.stringify(message)) })
@@ -352,7 +376,9 @@ export const useChatSessionStore = defineStore('chat-session', () => {
       const stored = await chatSessionsRepo.getSession(sessionId)
       if (stored) {
         const currentMessages = sessionMessages.value[sessionId] ?? []
-        const mergedMessages = mergeLoadedSessionMessages(stored.messages, currentMessages)
+        const mergedMessages = force
+          ? stored.messages
+          : mergeLoadedSessionMessages(stored.messages, currentMessages)
 
         // Ensure the meta messageCount is correct and up to date
         const actualCount = mergedMessages.length
@@ -806,18 +832,19 @@ export const useChatSessionStore = defineStore('chat-session', () => {
     }
   }
 
-  function deleteMessage(messageId: string, sessionId = activeSessionId.value) {
+  async function deleteMessage(messageId: string, sessionId = activeSessionId.value) {
     if (!sessionId)
       return
     const current = sessionMessages.value[sessionId] ?? []
     const next = current.filter(msg => msg.id !== messageId)
     if (next.length !== current.length) {
       sessionMessages.value[sessionId] = next
-      void persistSession(sessionId)
+      await persistSession(sessionId)
+      broadcastStreamEvent({ type: 'session-refreshed', sessionId })
     }
   }
 
-  function deleteMessagesFromHere(messageId: string, sessionId = activeSessionId.value) {
+  async function deleteMessagesFromHere(messageId: string, sessionId = activeSessionId.value) {
     if (!sessionId)
       return
     const current = sessionMessages.value[sessionId] ?? []
@@ -825,7 +852,8 @@ export const useChatSessionStore = defineStore('chat-session', () => {
     if (index !== -1) {
       const next = current.slice(0, index + 1)
       sessionMessages.value[sessionId] = next
-      void persistSession(sessionId)
+      await persistSession(sessionId)
+      broadcastStreamEvent({ type: 'session-refreshed', sessionId })
     }
   }
 
@@ -969,12 +997,26 @@ export const useChatSessionStore = defineStore('chat-session', () => {
       return
 
     const { sessionId, message } = event
-    console.info('[ChatSession] Cross-window session-updated, applying message directly', { sessionId, role: message.role })
-    // Apply directly to store — no DB roundtrip needed
     const current = sessionMessages.value[sessionId] ?? []
     // Deduplicate by message id if present
-    if (message.id && current.some(m => m.id === message.id))
+    if (message.id && current.some(m => m.id === message.id)) {
+      console.log(`[ChatStore] Cross-window session-updated DEDUPLICATED message:`, {
+        id: message.id,
+        role: message.role,
+        contentPreview: typeof message.content === 'string' ? message.content.slice(0, 60) : '[Complex Content]',
+      })
       return
+    }
+
+    console.log(`[ChatStore] Cross-window session-updated ADDING message:`, {
+      id: message.id,
+      role: message.role,
+      createdAt: message.createdAt,
+      contentPreview: typeof message.content === 'string' ? message.content.slice(0, 60) : '[Complex Content]',
+      source: (message as any).metadata?.source ?? 'unknown',
+      metadata: (message as any).metadata,
+    })
+
     const nextMessages = [...current, message]
     sessionMessages.value[sessionId] = nextMessages
 
