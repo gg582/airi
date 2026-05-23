@@ -1177,9 +1177,9 @@ export const useChatOrchestratorStore = defineStore('chat-orchestrator', () => {
           (messages) => {
             console.log(`[IngestDebug] Watcher callback triggered. Messages length: ${messages.length}`)
             const found = messages.some((m) => {
-              const meta = (m as any).metadata
-              const matched = meta && meta.clientMessageId === clientMessageId
-              console.log(`[IngestDebug] Checking msg in history:`, { id: m.id, role: m.role, hasMeta: !!meta, clientMessageId: meta?.clientMessageId, matched })
+              const clientMsgId = (m as any).clientMessageId || (m as any).metadata?.clientMessageId
+              const matched = clientMsgId === clientMessageId
+              console.log(`[IngestDebug] Checking msg in history:`, { id: m.id, role: m.role, clientMsgId, matched })
               return matched
             })
             if (found) {
