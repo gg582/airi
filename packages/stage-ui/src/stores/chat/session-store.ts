@@ -1016,9 +1016,11 @@ export const useChatSessionStore = defineStore('chat-session', () => {
       source: (message as any).metadata?.source ?? 'unknown',
       metadata: (message as any).metadata,
     })
+    console.log(`[IngestDebug] Cross-window ADDING message payload stringified:`, JSON.stringify(message))
 
     const nextMessages = [...current, message]
     sessionMessages.value[sessionId] = nextMessages
+    console.log(`[IngestDebug] Updated sessionMessages in memory. Count is now: ${sessionMessages.value[sessionId].length}`)
 
     // Reactively update local metadata count and timestamp in other windows
     const meta = sessionMetas.value[sessionId]

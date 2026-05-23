@@ -1142,8 +1142,8 @@ export const useChatOrchestratorStore = defineStore('chat-orchestrator', () => {
     chatLog('Ingesting message:', { sendingMessage, sessionId, sending: sending.value })
 
     if (!isMainWindow) {
-      chatLog('Ingesting from secondary window. Broadcasting to main window.')
       const clientMessageId = nanoid()
+      console.log(`[IngestDebug] Secondary window ingesting. clientMessageId: ${clientMessageId}. Target session: ${sessionId}`)
       const metadata = { ...options.metadata, clientMessageId }
 
       return new Promise<void>((resolve, reject) => {
@@ -1164,17 +1164,26 @@ export const useChatOrchestratorStore = defineStore('chat-orchestrator', () => {
         // Wait up to 5 seconds for the message to be sync-broadcasted back
         timeoutId = setTimeout(() => {
           cleanup()
+          console.error(`[IngestDebug] TIMEOUT waiting for clientMessageId: ${clientMessageId}`)
           reject(new Error('Ingestion timeout: main process did not acknowledge the message.'))
         }, 5000)
 
         stopWatch = watch(
-          () => chatSession.getSessionMessages(sessionId),
+          () => {
+            const msgs = chatSession.getSessionMessages(sessionId)
+            console.log(`[IngestDebug] Watcher getter ran. Target messages count: ${msgs.length}`)
+            return msgs
+          },
           (messages) => {
+            console.log(`[IngestDebug] Watcher callback triggered. Messages length: ${messages.length}`)
             const found = messages.some((m) => {
               const meta = (m as any).metadata
-              return meta && meta.clientMessageId === clientMessageId
+              const matched = meta && meta.clientMessageId === clientMessageId
+              console.log(`[IngestDebug] Checking msg in history:`, { id: m.id, role: m.role, hasMeta: !!meta, clientMessageId: meta?.clientMessageId, matched })
+              return matched
             })
             if (found) {
+              console.log(`[IngestDebug] Found matching clientMessageId: ${clientMessageId}! Resolving promise.`)
               cleanup()
               resolve()
             }
