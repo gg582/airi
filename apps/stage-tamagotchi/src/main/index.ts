@@ -732,6 +732,39 @@ app.on('window-all-closed', () => {
   }
 })
 
+app.on('activate', (event) => {
+  event.preventDefault()
+  const allWindows = BrowserWindow.getAllWindows()
+
+  // 1. Settings Window (if it exists and is visible)
+  const settingsWin = allWindows.find(w => !w.isDestroyed() && w.getTitle() === 'AIRI - Settings' && w.isVisible())
+  if (settingsWin) {
+    settingsWin.focus()
+    return
+  }
+
+  // 2. Actor Stage Window (if it exists and is visible)
+  const stageWin = allWindows.find(w => !w.isDestroyed() && w.getTitle() === 'AIRI - Actor Stage' && w.isVisible())
+  if (stageWin) {
+    stageWin.focus()
+    return
+  }
+
+  // 3. Chat Window (if it exists and is visible)
+  const chatWin = allWindows.find(w => !w.isDestroyed() && w.getTitle() === 'AIRI - Chat Window' && w.isVisible())
+  if (chatWin) {
+    chatWin.focus()
+    return
+  }
+
+  // 4. Fallback to Control Strip / Main Window
+  const mainWin = allWindows.find(w => !w.isDestroyed() && (w as any).__is_main_window === true)
+  if (mainWin) {
+    mainWin.show()
+    mainWin.focus()
+  }
+})
+
 let isQuitting = false
 app.on('before-quit', async (event) => {
   if (isQuitting)

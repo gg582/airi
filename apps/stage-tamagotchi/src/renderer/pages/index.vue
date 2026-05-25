@@ -762,6 +762,9 @@ onMounted(async () => {
     window.electron.ipcRenderer.on('caption-window-state', (_, isOpen: boolean) => {
       controlStripStore.captionOpen = isOpen
     })
+    window.electron.ipcRenderer.on('stage-window-state', (_, isOpen: boolean) => {
+      controlStripStore.stageEnabled = isOpen
+    })
   }
 
   if (typeof window !== 'undefined') {

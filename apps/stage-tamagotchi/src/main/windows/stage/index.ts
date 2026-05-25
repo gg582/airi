@@ -116,6 +116,25 @@ export async function setupActorStageWindow(params: {
     setTimeout(() => restoreBounds(), 500)
   })
 
+  window.on('close', (event) => {
+    event.preventDefault()
+    window.hide()
+  })
+
+  window.on('show', () => {
+    const mainWin = BrowserWindow.getAllWindows().find(w => (w as any).__is_main_window === true)
+    if (mainWin && !mainWin.isDestroyed()) {
+      mainWin.webContents.send('stage-window-state', true)
+    }
+  })
+
+  window.on('hide', () => {
+    const mainWin = BrowserWindow.getAllWindows().find(w => (w as any).__is_main_window === true)
+    if (mainWin && !mainWin.isDestroyed()) {
+      mainWin.webContents.send('stage-window-state', false)
+    }
+  })
+
   function handleNewBounds(newBounds: { x: number, y: number, width: number, height: number }) {
     if (window.isDestroyed())
       return
