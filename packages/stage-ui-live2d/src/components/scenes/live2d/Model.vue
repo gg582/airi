@@ -121,6 +121,28 @@ const initialModelHeight = ref<number>(0)
 const mouthOpenSize = computed(() => Math.max(0, Math.min(100, props.mouthOpenSize)))
 const lastUpdateTime = ref(0)
 const artMeshColors = ref<Record<string, string>>({})
+const neutralParameterBaseline = ref<number[]>([])
+const settledIdleParameterBaseline = ref<number[]>([])
+
+enum Live2DMotionPlaybackContext {
+  // The user is inspecting the raw motion in settings, so favor literal playback.
+  SettingsPreview = 'settings-preview',
+  // The model is on stage or actor route, where idle should feel like a settled living pose.
+  StageIdle = 'stage-idle',
+  // A tactile/tap reaction should interrupt immediately, then hand control back to idle.
+  StageReaction = 'stage-reaction',
+  // Fallback for regular programmatic motion starts.
+  Direct = 'direct',
+}
+
+enum Live2DMotionPlaybackPolicy {
+  // Honor the model author metadata as directly as possible.
+  LiteralPreview = 'literal-preview',
+  // Treat short looping idle files as settle-into-idle motions, then let blink/breath/physics live.
+  NaturalIdleSettle = 'natural-idle-settle',
+  // Play a reaction immediately without treating it as the standing idle baseline.
+  ReactionThenIdle = 'reaction-then-idle',
+}
 
 function selectedRuntimeMotionKey(suffix: 'group' | 'index') {
   return `live2d-${props.modelId || 'global'}-selected-motion-${suffix}`
@@ -155,6 +177,54 @@ function parseCycleMotions(idleAnimations: string[] | undefined) {
     .filter(m => m.group && !Number.isNaN(m.index)) || []
 }
 
+function getRouteHash() {
+  return window.location.hash || '#/'
+}
+
+function isStageRoute() {
+  const hash = getRouteHash()
+  return hash === '#/' || hash.startsWith('#/stage') || hash.startsWith('#/actor')
+}
+
+function isSettingsRoute() {
+  return getRouteHash().startsWith('#/settings')
+}
+
+function isConfiguredIdleMotion(group: string, index: number) {
+  const cycleMotions = parseCycleMotions(props.idleAnimations)
+  if (cycleMotions.some(m => m.group === group && m.index === index))
+    return true
+
+  const selectedMotion = getSelectedRuntimeMotion()
+  return selectedMotion?.group === group && selectedMotion.index === index
+}
+
+function resolveMotionPlaybackContext(group: string, index = 0) {
+  if (isSettingsRoute())
+    return Live2DMotionPlaybackContext.SettingsPreview
+
+  if (isStageRoute() && isConfiguredIdleMotion(group, index))
+    return Live2DMotionPlaybackContext.StageIdle
+
+  if (isStageRoute())
+    return Live2DMotionPlaybackContext.StageReaction
+
+  return Live2DMotionPlaybackContext.Direct
+}
+
+function resolveMotionPlaybackPolicy(context: Live2DMotionPlaybackContext) {
+  switch (context) {
+    case Live2DMotionPlaybackContext.StageIdle:
+      return Live2DMotionPlaybackPolicy.NaturalIdleSettle
+    case Live2DMotionPlaybackContext.StageReaction:
+      return Live2DMotionPlaybackPolicy.ReactionThenIdle
+    case Live2DMotionPlaybackContext.SettingsPreview:
+    case Live2DMotionPlaybackContext.Direct:
+    default:
+      return Live2DMotionPlaybackPolicy.LiteralPreview
+  }
+}
+
 const { isDark: dark } = useTheme()
 const breakpoints = useBreakpoints(breakpointsTailwind)
 const isMobile = computed(() => breakpoints.between('sm', 'md').value || breakpoints.smaller('sm').value)
@@ -167,6 +237,81 @@ const dropShadowFilter = shallowRef(new DropShadowFilter({
 
 function getCoreModel() {
   return model.value?.internalModel?.coreModel as any
+}
+
+function captureNeutralParameterBaseline(coreModel: any) {
+  const count = coreModel.getParameterCount?.()
+  if (typeof count !== 'number')
+    return
+
+  neutralParameterBaseline.value = Array.from({ length: count }, (_, index) => {
+    const defaultValue = coreModel.getParameterDefaultValue?.(index)
+    if (typeof defaultValue === 'number')
+      return defaultValue
+
+    return coreModel.getParameterValueByIndex?.(index) ?? 0
+  })
+}
+
+function captureSettledIdleParameterBaseline(coreModel: any) {
+  const count = coreModel.getParameterCount?.()
+  if (typeof count !== 'number')
+    return
+
+  settledIdleParameterBaseline.value = Array.from({ length: count }, (_, index) => {
+    return coreModel.getParameterValueByIndex?.(index) ?? 0
+  })
+
+  // Capture samples for logging
+  const sampleParams: Record<string, number> = {}
+  const paramIds = coreModel._parameterIds || coreModel._model?._parameterIds || []
+  paramIds.forEach((id: string, index: number) => {
+    if (index < 10 || id.includes('Angle') || id.includes('Eye') || id.includes('Mouth') || id.includes('Breath') || id.includes('Cheek')) {
+      sampleParams[id] = Number((coreModel.getParameterValueByIndex?.(index) ?? 0).toFixed(2))
+    }
+  })
+
+  console.info(
+    `[Live2D-Baseline] 📸 Captured Settled Idle Snapshot | Reason: "Idle motion finished settling with breath/blink" | State:`,
+    {
+      parameterCount: count,
+      sampleValues: sampleParams,
+    },
+  )
+}
+
+function restoreNeutralParameterBaseline(coreModel: any) {
+  const hasSettledSnapshot = settledIdleParameterBaseline.value.length > 0
+  const baselineToUse = hasSettledSnapshot ? settledIdleParameterBaseline.value : neutralParameterBaseline.value
+
+  if (baselineToUse.length === 0) {
+    console.warn(`[Live2D-Transition] 🧹 Restoring Model Baseline | No baseline available to restore`)
+    return
+  }
+
+  baselineToUse.forEach((value, index) => {
+    coreModel.setParameterValueByIndex?.(index, value)
+  })
+  coreModel.saveParameters?.()
+
+  // Log snapshot restore action
+  const sampleParams: Record<string, number> = {}
+  const paramIds = coreModel._parameterIds || coreModel._model?._parameterIds || []
+  paramIds.forEach((id: string, index: number) => {
+    if (index < 10 || id.includes('Angle') || id.includes('Eye') || id.includes('Mouth') || id.includes('Breath') || id.includes('Cheek')) {
+      sampleParams[id] = Number((coreModel.getParameterValueByIndex?.(index) ?? 0).toFixed(2))
+    }
+  })
+
+  console.info(
+    `[Live2D-Transition] 🧹 Restoring Model Baseline | Actions:`,
+    {
+      action: 'stop-all-motions',
+      snapshotUsed: hasSettledSnapshot ? 'settled-idle-snapshot' : 'load-time-neutral-defaults',
+      parametersRestoredCount: baselineToUse.length,
+      restoredValuesSample: sampleParams,
+    },
+  )
 }
 
 function setScaleAndPosition() {
@@ -424,6 +569,7 @@ async function loadModel() {
   modelLoading.value = true
   availableExpressions.value = []
   expressionData.value = []
+  settledIdleParameterBaseline.value = []
 
   // activeExpressions.value is NOT wiped here to preserve card state, ghost keys are cleaned up later
   componentState.value = 'loading'
@@ -529,6 +675,7 @@ async function loadModel() {
     const internalModel = model.value.internalModel
     const coreModel = internalModel.coreModel
     const motionManager = internalModel.motionManager
+    captureNeutralParameterBaseline(coreModel)
     coreModel.setParameterValueById('ParamMouthOpenY', mouthOpenSize.value)
 
     availableMotions.value = Object
@@ -544,9 +691,14 @@ async function loadModel() {
     const cycleMotions = parseCycleMotions(props.idleAnimations)
 
     const configureMotionLoop = (groupName: string, indexStr: string) => {
+      const motionIndex = Number.parseInt(indexStr)
+      const context = resolveMotionPlaybackContext(groupName, motionIndex)
+      const policy = resolveMotionPlaybackPolicy(context)
+      if (policy === Live2DMotionPlaybackPolicy.NaturalIdleSettle)
+        return
+
       const groupIndex = (motionManager.groups as Record<string, any>)[groupName]
       if (groupIndex !== undefined && motionManager.motionGroups[groupIndex]) {
-        const motionIndex = Number.parseInt(indexStr)
         const motion = motionManager.motionGroups[groupIndex][motionIndex]
         if (motion && motion._looper) {
           // Force the motion to loop
@@ -696,6 +848,19 @@ async function loadModel() {
     motionManager.on('motionFinish', () => {
       if (!live2dIdleAnimationEnabled.value) {
         return
+      }
+
+      const current = currentMotion.value
+      if (current) {
+        const context = resolveMotionPlaybackContext(current.group, current.index)
+        const policy = resolveMotionPlaybackPolicy(context)
+        if (policy === Live2DMotionPlaybackPolicy.NaturalIdleSettle) {
+          console.info('[Live2D Policy] Stage idle settled; leaving neutral baseline intact without immediate restart')
+          if (settledIdleParameterBaseline.value.length === 0) {
+            captureSettledIdleParameterBaseline(coreModel)
+          }
+          return
+        }
       }
 
       // Parse current card cycle subset
@@ -987,12 +1152,56 @@ async function setMotion(motionName: string, index?: number) {
 
   console.info('Setting motion:', motionName, 'index:', index)
   try {
+    await applyMotionPlaybackPolicy(motionName, index ?? 0)
     await model.value.motion(motionName, index, MotionPriority.FORCE)
     console.info('Motion started successfully:', motionName)
   }
   catch (error) {
     console.error('Failed to start motion:', motionName, error)
   }
+}
+
+async function applyMotionPlaybackPolicy(motionName: string, index: number) {
+  const currentModel = model.value
+  const motionManager = currentModel?.internalModel?.motionManager
+  if (!motionManager)
+    return
+
+  const context = resolveMotionPlaybackContext(motionName, index)
+  const policy = resolveMotionPlaybackPolicy(context)
+  const motion = await motionManager.loadMotion?.(motionName, index)
+  if (!motion)
+    return
+
+  console.info(
+    `[Live2D-Policy] 🔀 Motion Transition Requested | Context Info:`,
+    {
+      motionName,
+      index,
+      routeHash: window.location.hash || '#/',
+      isStageRoute: isStageRoute(),
+      isConfiguredIdle: isConfiguredIdleMotion(motionName, index),
+      resolvedContext: context,
+      resolvedPolicy: policy,
+    },
+  )
+
+  // ALWAYS stop previous motions and restore the baseline during a transition
+  motionManager.stopAllMotions()
+  restoreNeutralParameterBaseline(currentModel.internalModel.coreModel)
+
+  if (policy === Live2DMotionPlaybackPolicy.NaturalIdleSettle) {
+    motion.setIsLoop?.(false)
+    if (motion._looper)
+      motion._looper.loopDuration = motion.getLoopDuration?.() ?? motion._motionData?.duration ?? -1
+    console.info('[Live2D Policy] Playing stage idle as a clean settle motion:', motionName, index)
+    return
+  }
+
+  const definition = motionManager.definitions?.[motionName]?.[index]
+  const shouldLoop = definition?.Loop ?? motion._motionData?.loop
+  if (typeof shouldLoop === 'boolean')
+    motion.setIsLoop?.(shouldLoop)
 }
 
 const dropShadowColorComputer = ref<HTMLDivElement>()
