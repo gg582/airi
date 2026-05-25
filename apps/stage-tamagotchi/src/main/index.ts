@@ -743,17 +743,17 @@ app.on('activate', (event) => {
     return
   }
 
-  // 2. Actor Stage Window (if it exists and is visible)
-  const stageWin = allWindows.find(w => !w.isDestroyed() && w.getTitle() === 'AIRI - Actor Stage' && w.isVisible())
-  if (stageWin) {
-    stageWin.focus()
-    return
-  }
-
-  // 3. Chat Window (if it exists and is visible)
+  // 2. Chat Window (if it exists and is visible)
   const chatWin = allWindows.find(w => !w.isDestroyed() && w.getTitle() === 'AIRI - Chat Window' && w.isVisible())
   if (chatWin) {
     chatWin.focus()
+    return
+  }
+
+  // 3. Actor Stage Window (if it exists and is visible)
+  const stageWin = allWindows.find(w => !w.isDestroyed() && w.getTitle() === 'AIRI - Actor Stage' && w.isVisible())
+  if (stageWin) {
+    stageWin.focus()
     return
   }
 
