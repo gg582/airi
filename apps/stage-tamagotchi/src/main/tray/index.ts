@@ -88,7 +88,10 @@ export function setupTray(params: {
       const mainWindowConfig = config.windows?.find((w: any) => w.title === 'AIRI' && w.tag === 'main')
 
       const contextMenu = Menu.buildFromTemplate([
-        { label: params.i18n.t('tamagotchi.electron.tray.menu.labels.label.show'), click: () => toggleWindowShow(params.mainWindow) },
+        { label: params.i18n.t('tamagotchi.electron.tray.menu.labels.label.show'), click: () => {
+          params.mainWindow.show()
+          params.mainWindow.focus()
+        } },
         { type: 'separator' },
         {
           label: params.i18n.t('tamagotchi.electron.tray.menu.labels.label.align_to'),
@@ -282,12 +285,18 @@ export function setupTray(params: {
 
     appTray.setToolTip('Project AIRI')
     if (!isMacOS) {
-      appTray.addListener('click', () => toggleWindowShow(params.mainWindow))
+      appTray.addListener('click', () => {
+        params.mainWindow.show()
+        params.mainWindow.focus()
+      })
     }
 
     // On macOS, there's a special double-click event
     if (isMacOS) {
-      appTray.addListener('double-click', () => toggleWindowShow(params.mainWindow))
+      appTray.addListener('double-click', () => {
+        params.mainWindow.show()
+        params.mainWindow.focus()
+      })
     }
   })()
 }
