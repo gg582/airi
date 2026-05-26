@@ -92,6 +92,10 @@ live2d:
     description: Giới hạn tốc độ khung hình hiển thị
     options:
       unlimited: Không giới hạn
+  customization:
+    tabs:
+      expressions: Biểu cảm
+      animations: Chuyển động
 microphone: Micro
 models: Mô hình
 pages:

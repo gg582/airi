@@ -89,6 +89,10 @@ live2d:
     description: 렌더링 주사율 제한
     options:
       unlimited: 무제한
+  customization:
+    tabs:
+      expressions: 표정
+      animations: 모션
 microphone: 마이크
 models: 모델
 pages:

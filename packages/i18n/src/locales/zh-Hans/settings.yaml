@@ -89,6 +89,10 @@ live2d:
     description: 限制渲染帧率
     options:
       unlimited: 无限制
+  customization:
+    tabs:
+      expressions: 表情
+      animations: 动作
 microphone: 麦克风
 models: 模型
 pages:

@@ -91,6 +91,10 @@ live2d:
     description: Limit rendering frame rate
     options:
       unlimited: No Limit
+  customization:
+    tabs:
+      expressions: Эмоции
+      animations: Движения
 microphone: Микрофон
 models: Модель
 pages:

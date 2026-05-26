@@ -92,6 +92,10 @@ live2d:
     description: Limitar velocidad de fotogramas
     options:
       unlimited: Sin límite
+  customization:
+    tabs:
+      expressions: Expresiones
+      animations: Movimientos
 microphone: Micrófono
 models: Modelo
 pages:

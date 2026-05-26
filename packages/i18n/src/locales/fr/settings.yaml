@@ -93,6 +93,10 @@ live2d:
     description: Limiter la fréquence d'image du rendu
     options:
       unlimited: Aucune Limite
+  customization:
+    tabs:
+      expressions: Expressions
+      animations: Mouvements
 microphone: Microphone
 models: Modèle
 pages:

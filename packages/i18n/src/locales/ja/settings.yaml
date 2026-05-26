@@ -89,6 +89,10 @@ live2d:
     description: レンダリングフレームレートを制限
     options:
       unlimited: 制限なし
+  customization:
+    tabs:
+      expressions: 表情
+      animations: モーション
 microphone: マイク
 models: モデル
 pages:

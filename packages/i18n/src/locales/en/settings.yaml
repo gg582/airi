@@ -131,6 +131,10 @@ live2d:
     description: Limit rendering frame rate
     options:
       unlimited: No Limit
+  customization:
+    tabs:
+      expressions: Expressions
+      animations: Motions
 microphone: Microphone
 models: Model
 groups:
@@ -831,7 +835,8 @@ pages:
       openai-compatible-audio-transcription:
         description: Bring Your Own Endpoint - Custom OpenAI-compatible STT endpoint
       aliyun-nls-transcription:
-        description: Multilingual Powerhouse - Robust real-time STT with deep Chinese dialect support
+        description: Multilingual Powerhouse - Robust real-time STT with deep Chinese
+          dialect support
       comet-api-transcription:
         description: Enterprise-grade cloud transcription
       aws-polly-tts:
