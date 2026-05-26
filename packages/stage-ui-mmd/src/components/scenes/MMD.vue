@@ -6,7 +6,7 @@ import { Screen } from '@proj-airi/ui'
 import { TresCanvas } from '@tresjs/core'
 import { storeToRefs } from 'pinia'
 import { ACESFilmicToneMapping, Euler, MathUtils, PerspectiveCamera, Vector3 } from 'three'
-import { ref, shallowRef, watch } from 'vue'
+import { computed, ref, shallowRef, watch } from 'vue'
 
 import MMDModel from './mmd/Model.vue'
 
@@ -52,7 +52,45 @@ const {
   hemisphereLightIntensity,
 
   envSelect,
+
+  scale: storeScale,
+  modelOffset,
+  modelRotationY,
+  cameraFOV,
+  cameraDistance,
+  trackingMode,
+  eyeHeight,
+  lookAtTarget,
+  cameraPosition,
+  modelSize,
+  modelOrigin,
 } = storeToRefs(mmdStore)
+
+const computedModelOffset = computed(() => {
+  return {
+    x: props.positionX !== undefined ? props.positionX / 100 : modelOffset.value.x,
+    y: props.positionY !== undefined ? props.positionY / 100 : modelOffset.value.y,
+    z: modelOffset.value.z,
+  }
+})
+
+const computedScale = computed(() => {
+  return props.scale !== undefined ? props.scale : storeScale.value
+})
+
+watch(cameraFOV, (fov) => {
+  if (camera.value) {
+    camera.value.fov = fov
+    camera.value.updateProjectionMatrix()
+  }
+})
+
+watch([cameraDistance, eyeHeight, lookAtTarget], ([distance, height, target]) => {
+  if (camera.value) {
+    camera.value.position.set(0, height, distance || 5)
+    camera.value.lookAt(target.x, target.y, target.z)
+  }
+})
 
 const dirLightRef = ref<InstanceType<typeof DirectionalLight>>()
 
@@ -111,9 +149,27 @@ function onTresReady() {
 }
 
 function onSceneBootstrap(data: any) {
+  // Update store values from bootstrap data
+  eyeHeight.value = data.eyeHeight
+  modelOrigin.value = data.modelOrigin
+  modelSize.value = data.modelSize
+
+  if (cameraDistance.value === 0) {
+    cameraDistance.value = data.cameraDistance
+  }
+  if (cameraPosition.value.x === 0 && cameraPosition.value.y === 0 && cameraPosition.value.z === -1) {
+    cameraPosition.value = data.cameraPosition
+  }
+  if (lookAtTarget.value.x === 0 && lookAtTarget.value.y === 0 && lookAtTarget.value.z === 0) {
+    lookAtTarget.value = data.lookAtTarget
+  }
+
+  // Position camera
   if (camera.value) {
-    camera.value.position.set(data.cameraPosition.x, data.cameraPosition.y, data.cameraPosition.z)
-    camera.value.lookAt(data.lookAtTarget.x, data.lookAtTarget.y, data.lookAtTarget.z)
+    camera.value.position.set(cameraPosition.value.x, cameraPosition.value.y, cameraPosition.value.z)
+    camera.value.lookAt(lookAtTarget.value.x, lookAtTarget.value.y, lookAtTarget.value.z)
+    camera.value.fov = cameraFOV.value
+    camera.value.updateProjectionMatrix()
   }
 }
 
@@ -165,14 +221,14 @@ function handleWheel(event: WheelEvent) {
           :paused="paused"
           :current-audio-source="currentAudioSource"
           :texture-map="textureMap"
-          :model-offset="{ x: props.positionX, y: props.positionY, z: 0 }"
-          :model-rotation-y="0"
-          :look-at-target="{ x: 0, y: 0, z: -100 }"
-          tracking-mode="orbit"
-          :eye-height="1.5"
-          :camera-position="{ x: 0, y: 1.5, z: 5 }"
+          :model-offset="computedModelOffset"
+          :model-rotation-y="modelRotationY"
+          :look-at-target="lookAtTarget"
+          :tracking-mode="trackingMode"
+          :eye-height="eyeHeight"
+          :camera-position="cameraPosition"
           :camera="camera"
-          :scale="props.scale"
+          :scale="computedScale"
           :preview-expression="props.previewExpression"
           :idle-animations="props.idleAnimations"
           :idle-animation="`/assets/mmd/animations/${currentMotion}`"
