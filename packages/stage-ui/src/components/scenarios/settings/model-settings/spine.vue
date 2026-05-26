@@ -510,7 +510,7 @@ const activeCustomizationTab = ref('expressions')
     size="sm"
     :expand="true"
   >
-    <FieldRange v-model="scale" as="div" :min="0.1" :max="3" :step="0.01" :label="t('settings.spine.scale-and-position.scale')">
+    <FieldRange v-model="scale" as="div" :min="0.1" :max="6" :step="0.01" :label="t('settings.spine.scale-and-position.scale')">
       <template #label>
         <div flex items-center>
           <div>{{ t('settings.spine.scale-and-position.scale') }}</div>

@@ -83,6 +83,13 @@ let prevActiveAnimations: Record<string, boolean> = {}
 let model0Motions: Record<string, any> = {}
 let model0HitAreas: any[] = []
 let loadedBlobUrls: Record<string, string> | undefined
+/**
+ * Base scale read from model0.json `options.scale_factor`.
+ * Scene-type models authored in external editors set this to bring the
+ * skeleton's world units into a renderable pixel range. Defaults to 1 so
+ * models without a model0.json are unaffected.
+ */
+let model0ScaleFactor = 1
 /** Single audio instance for model0 motions — prevents overlapping playback. */
 let currentSpineAudio: HTMLAudioElement | null = null
 /** Motions already fired in the current activation cycle — prevents re-trigger after one-shot finishes. */
@@ -242,6 +249,7 @@ function disposeSpine() {
 async function loadModel() {
   await modelLoadMutex.acquire()
   loggedBBoxThisLoad = false
+  model0ScaleFactor = 1
 
   modelLoading.value = true
   componentState.value = 'loading'
@@ -327,6 +335,32 @@ async function loadModel() {
       return
     }
 
+    // Inspect actual texture dimensions to see if they've been resized from the atlas size.
+    const actualDimensions: Record<string, { width: number, height: number }> = {}
+    if (blobUrls) {
+      const isTexture = (p: string) => /\.(png|jpg|jpeg|webp)$/i.test(p)
+      await Promise.all(Object.entries(blobUrls).map(([path, url]) => {
+        if (!isTexture(path))
+          return Promise.resolve()
+        return new Promise<void>((resolve) => {
+          const img = new Image()
+          img.onload = () => {
+            actualDimensions[path] = { width: img.naturalWidth, height: img.naturalHeight }
+            const bare = path.includes('/') ? path.slice(path.lastIndexOf('/') + 1) : path
+            actualDimensions[bare] = { width: img.naturalWidth, height: img.naturalHeight }
+            resolve()
+          }
+          img.onerror = () => resolve()
+          img.src = url
+        })
+      }))
+    }
+
+    if (rawData && rawData[assetPaths.atlasPath]) {
+      const originalAtlas = rawData[assetPaths.atlasPath] as string
+      rawData[assetPaths.atlasPath] = patchAtlasText(originalAtlas, actualDimensions)
+    }
+
     await new Promise<void>((resolve, reject) => {
       const app: SpineCanvasApp = {
         loadAssets: (sc) => {
@@ -366,6 +400,26 @@ async function loadModel() {
               ? new spine.SkeletonBinary(attachmentLoader).readSkeletonData(am.require(assetPaths.skeletonPath) as Uint8Array)
               : new spine.SkeletonJson(attachmentLoader).readSkeletonData(am.require(assetPaths.skeletonPath) as string)
 
+            // Parse model0.json before positioning so scale_factor is known
+            // when applyTransformFromStore() runs below.
+            let model0Data: any
+            const model0Str = rawData?.['model0.json']
+            if (model0Str) {
+              try {
+                model0Data = JSON.parse(model0Str as string)
+                // Read scale_factor: scene-type models set this to bring
+                // their large atlas coordinate space into a displayable range.
+                const sf = model0Data?.options?.scale_factor
+                if (typeof sf === 'number' && sf > 0) {
+                  model0ScaleFactor = sf
+                  console.log(`[Spine] model0 scale_factor=${sf}`)
+                }
+              }
+              catch (e) {
+                console.error('[Spine] Failed to parse model0.json:', e)
+              }
+            }
+
             skeleton = new spine.Skeleton(skeletonData)
             skeleton.setToSetupPose()
             applyTransformFromStore()
@@ -390,25 +444,18 @@ async function loadModel() {
             // Inventory animations and skins, populate the store.
             const animations = skeletonData.animations.map(animation => ({ name: animation.name, duration: animation.duration }))
 
-            // Check for model0.json
-            const model0Str = rawData?.['model0.json']
-            if (model0Str) {
-              try {
-                const model0 = JSON.parse(model0Str as string)
-                if (model0.motions) {
-                  model0Motions = model0.motions
-                  for (const key in model0.motions) {
-                    if (key !== 'idle' && !animations.find(a => a.name === key)) {
-                      animations.push({ name: key, duration: 0 }) // virtual motion
-                    }
+            // Apply motions and hit_areas from the already-parsed model0Data.
+            if (model0Data) {
+              if (model0Data.motions) {
+                model0Motions = model0Data.motions
+                for (const key in model0Data.motions) {
+                  if (key !== 'idle' && !animations.find(a => a.name === key)) {
+                    animations.push({ name: key, duration: 0 }) // virtual motion
                   }
                 }
-                if (model0.hit_areas) {
-                  model0HitAreas = model0.hit_areas
-                }
               }
-              catch (e) {
-                console.error('[Spine] Failed to parse model0.json:', e)
+              if (model0Data.hit_areas) {
+                model0HitAreas = model0Data.hit_areas
               }
             }
 
@@ -486,6 +533,21 @@ async function loadModel() {
                 const boneCanvasY = canvas.value.height / 2 - bone.worldY
                 console.log(`[Spine Debug] Hit Area [${area.name}]: bone.worldX=${bone.worldX.toFixed(2)}, bone.worldY=${bone.worldY.toFixed(2)} | Calculated Center=(${boneCanvasX.toFixed(2)}, ${boneCanvasY.toFixed(2)})`)
               }
+            }
+
+            if (skeleton.bones) {
+              console.group('[Spine Debug] All Bones (Setup/First Frame)')
+              console.log(`Total Bones: ${skeleton.bones.length}`)
+              const boneInfo = skeleton.bones.map(b => ({
+                name: b.data.name,
+                parent: b.parent ? b.parent.data.name : 'none',
+                x: Number(b.x.toFixed(2)),
+                y: Number(b.y.toFixed(2)),
+                worldX: Number(b.worldX.toFixed(2)),
+                worldY: Number(b.worldY.toFixed(2)),
+              }))
+              console.table(boneInfo)
+              console.groupEnd()
             }
           }
 
@@ -604,14 +666,53 @@ function applyTransformFromStore() {
   if (!skeleton || !canvas.value)
     return
 
-  // Centre the skeleton roughly at the bottom-middle of the canvas, then
-  // apply user offsets/scale on top. This mirrors the Live2D anchor.
   const w = canvas.value.width
   const h = canvas.value.height
-  skeleton.x = w / 2 + props.xOffset
-  skeleton.y = h * 0.05 + props.yOffset
-  skeleton.scaleX = props.scale
-  skeleton.scaleY = props.scale
+  const data = skeleton.data
+
+  // Effective scale = model0.json scale_factor × user scale.
+  // model0ScaleFactor is 1 for models without a model0.json.
+  const effectiveScale = model0ScaleFactor * props.scale
+
+  const bbCenterX = data.x + data.width / 2
+  const bottomPadY = h * 0.05
+
+  if (model0ScaleFactor !== 1) {
+    // In Spine WebGL, the camera is centered at (0, 0), so the visible canvas
+    // coordinates range from -w/2 to w/2 (X) and -h/2 to h/2 (Y).
+    skeleton.x = -bbCenterX * effectiveScale + props.xOffset
+    skeleton.y = -h / 2 + bottomPadY - data.y * effectiveScale + props.yOffset
+  }
+  else {
+    // Standard character model: root-relative positioning.
+    skeleton.x = props.xOffset
+    skeleton.y = props.yOffset
+  }
+  skeleton.scaleX = effectiveScale
+  skeleton.scaleY = effectiveScale
+
+  // [Spine:Origin] Diagnostic — remove once positioning is confirmed correct.
+  console.group('[Spine:Origin] applyTransformFromStore')
+  console.table({
+    'canvas.width': w,
+    'canvas.height': h,
+    'model0ScaleFactor': model0ScaleFactor,
+    'props.scale (user)': props.scale,
+    'effectiveScale': effectiveScale,
+    'data.x (bbox left)': data.x,
+    'data.y (bbox bottom)': data.y,
+    'data.width': data.width,
+    'data.height': data.height,
+    'bbCenterX': bbCenterX,
+    'bbCenterY (data.y + h/2)': data.y + data.height / 2,
+    'bottomPadY (h*0.05)': bottomPadY,
+    'skeleton.x → set to': skeleton.x,
+    'skeleton.y → set to': skeleton.y,
+    'props.xOffset': props.xOffset,
+    'props.yOffset': props.yOffset,
+  })
+  console.log('[Spine:Origin] Bones (first 5 world positions after setToSetupPose):', skeleton.bones.slice(0, 5).map(b => ({ name: b.data.name, worldX: b.worldX.toFixed(1), worldY: b.worldY.toFixed(1) })))
+  console.groupEnd()
 }
 
 function applyCurrentAnimation() {
@@ -687,6 +788,11 @@ function applyActiveAnimations(activeAnims: Record<string, boolean>) {
 
         const randomIndex = Math.floor(Math.random() * motionConfig.length)
         const config = motionConfig[randomIndex]
+
+        if (!config || !config.file) {
+          console.warn(`[Spine] Triggered motion "${anim.name}" has no animation file defined. Skipping.`)
+          return
+        }
 
         state.setAnimation(trackIndex, config.file, false)
 
@@ -866,6 +972,84 @@ watch(paused, () => {
   // the update step from advancing time (handled in the update callback).
   // We still let render run so the last frame remains visible.
 })
+
+function patchAtlasText(
+  atlasText: string,
+  actualDimensions: Record<string, { width: number, height: number }>,
+): string {
+  const lines = atlasText.split(/\r?\n/)
+  const patchedLines: string[] = []
+
+  let scaleX = 1
+  let scaleY = 1
+  let currentActualWidth = 0
+  let currentActualHeight = 0
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]
+    const trimmed = line.trim()
+
+    // Detect page block header (image filename, doesn't contain colon or comma and is not indented)
+    if (trimmed.length > 0 && line[0] !== ' ' && line[0] !== '\t' && !trimmed.includes(':') && !trimmed.includes(',')) {
+      const dim = actualDimensions[trimmed]
+      if (dim) {
+        currentActualWidth = dim.width
+        currentActualHeight = dim.height
+      }
+      else {
+        currentActualWidth = 0
+        currentActualHeight = 0
+      }
+      patchedLines.push(line)
+      continue
+    }
+
+    if (trimmed.startsWith('size:')) {
+      const parts = trimmed.substring(5).split(',')
+      if (parts.length === 2) {
+        const currentTextureWidth = Number.parseInt(parts[0])
+        const currentTextureHeight = Number.parseInt(parts[1])
+        if (currentActualWidth > 0 && currentActualHeight > 0 && (currentTextureWidth !== currentActualWidth || currentTextureHeight !== currentActualHeight)) {
+          scaleX = currentActualWidth / currentTextureWidth
+          scaleY = currentActualHeight / currentTextureHeight
+          patchedLines.push(`size:${currentActualWidth},${currentActualHeight}`)
+          continue
+        }
+      }
+      patchedLines.push(line)
+      continue
+    }
+
+    if (scaleX !== 1 || scaleY !== 1) {
+      if (trimmed.startsWith('bounds:')) {
+        const parts = trimmed.substring(7).split(',')
+        if (parts.length === 4) {
+          const x = Math.round(Number.parseInt(parts[0]) * scaleX)
+          const y = Math.round(Number.parseInt(parts[1]) * scaleY)
+          const w = Math.round(Number.parseInt(parts[2]) * scaleX)
+          const h = Math.round(Number.parseInt(parts[3]) * scaleY)
+          patchedLines.push(`${line.substring(0, line.indexOf('bounds:'))}bounds:${x},${y},${w},${h}`)
+          continue
+        }
+      }
+      if (trimmed.startsWith('offsets:')) {
+        const parts = trimmed.substring(8).split(',')
+        if (parts.length === 4) {
+          const x = Math.round(Number.parseInt(parts[0]) * scaleX)
+          const y = Math.round(Number.parseInt(parts[1]) * scaleY)
+          const w = Math.round(Number.parseInt(parts[2]) * scaleX)
+          const h = Math.round(Number.parseInt(parts[3]) * scaleY)
+          patchedLines.push(`${line.substring(0, line.indexOf('offsets:'))}offsets:${x},${y},${w},${h}`)
+          continue
+        }
+      }
+    }
+
+    patchedLines.push(line)
+  }
+
+  return patchedLines.join('\n')
+}
 
 onMounted(async () => {
   // First load is triggered by the immediate watch above when the canvas
