@@ -617,11 +617,7 @@ app.whenReady().then(async () => {
         }
       })
 
-      defineInvokeHandler(context, electronGetMonitorCount, async () => {
-        return screen.getAllDisplays().length
-      })
-
-      defineInvokeHandler(context, electronResetWindowPositions, async () => {
+      const handleResetWindowPositions = async () => {
         console.log('[@proj-airi/stage-tamagotchi] [Main] Resetting all window positions...')
         const primaryDisplay = screen.getPrimaryDisplay()
         const workArea = primaryDisplay.workArea
@@ -701,7 +697,22 @@ app.whenReady().then(async () => {
         if (capWin && !capWin.isDestroyed()) {
           capWin.setBounds(captionBounds)
         }
+      }
+
+      ipcMain.on('reset-window-positions-action', handleResetWindowPositions)
+
+      // NOTICE: ControlStrip.vue calls `ipcRenderer.invoke('eventa:invoke:electron:windows:get-monitor-count')
+      // directly (via the raw Electron IPC invoke path, which requires ipcMain.handle).
+      // defineInvokeHandler routes over Eventa's 'eventa-message' channel instead, so it
+      // cannot satisfy a raw ipcRenderer.invoke call. We register both to cover both paths.
+      defineInvokeHandler(context, electronGetMonitorCount, async () => {
+        return screen.getAllDisplays().length
       })
+      ipcMain.handle('eventa:invoke:electron:windows:get-monitor-count', async () => {
+        return screen.getAllDisplays().length
+      })
+
+      defineInvokeHandler(context, electronResetWindowPositions, handleResetWindowPositions)
 
       if (deps.stageWindow && !deps.stageWindow.isDestroyed()) {
         deps.stageWindow.on('show', () => {
