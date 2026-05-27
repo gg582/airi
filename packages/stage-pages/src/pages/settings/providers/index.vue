@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { IconStatusItem, RippleGrid } from '@proj-airi/stage-ui/components'
+import { ModelCacheManager } from '@proj-airi/stage-ui/components/scenarios/settings'
 import { useAnalytics } from '@proj-airi/stage-ui/composables'
 import { useRippleGridState } from '@proj-airi/stage-ui/composables/use-ripple-grid-state'
 import { useArtistryStore } from '@proj-airi/stage-ui/stores/modules/artistry'
@@ -301,6 +302,10 @@ const providerBlocks = computed(() => {
         />
       </template>
     </RippleGrid>
+
+    <div mt-6 max-w-2xl>
+      <ModelCacheManager />
+    </div>
   </div>
   <div
     v-motion
