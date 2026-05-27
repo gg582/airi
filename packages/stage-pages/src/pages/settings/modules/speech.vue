@@ -285,7 +285,7 @@ function handleDeleteProvider(providerId: string) {
     </div>
 
     <!-- Tab Contents -->
-    <div v-if="activeTab === 'global'" v-slot="global" flex="~ col md:row gap-6">
+    <div v-if="activeTab === 'global'" flex="~ col md:row gap-6">
       <div bg="neutral-100 dark:[rgba(0,0,0,0.3)]" rounded-xl p-4 flex="~ col gap-4" class="h-fit w-full md:w-[40%]">
         <div>
           <div flex="~ col gap-4">
@@ -713,7 +713,7 @@ function handleDeleteProvider(providerId: string) {
       </div>
     </div>
 
-    <div v-else-if="activeTab === 'studio'" v-slot="studio">
+    <div v-else-if="activeTab === 'studio'">
       <AudioStudio />
     </div>
   </div>
