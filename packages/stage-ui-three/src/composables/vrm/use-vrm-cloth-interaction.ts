@@ -407,10 +407,10 @@ export function useVRMClothInteraction() {
       vrmEmote.setEmotion('neutral')
     }
 
-    updateTether(vrm)
+    updateTether()
   }
 
-  function updateTether(vrm: VRM) {
+  function updateTether() {
     if (tetherLine.value) {
       tetherLine.value.visible = false
     }

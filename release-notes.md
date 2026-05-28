@@ -1,36 +1,38 @@
-# Release Notes: AIRI v0.9.3-stable
+# Release Notes: AIRI v0.9.4-stable
 
-Welcome to **AIRI v0.9.3-stable**! This release brings a massive overhaul to our Live2D model integration, introducing interactive tactile feedback, in-memory multi-model Zip splitting, and motion audio playback. It also resolves critical text-streaming issues with tool calls, fixes emoji corruption, and adds several UX polish wins.
+Welcome to **AIRI v0.9.4-stable**! This is a major feature release delivering a new WebGPU inference engine, Audio Studio, Spine character improvements, unified character avatars, and a premium card browser — alongside a broad sweep of stability fixes across Live2D, VRM, MMD, and the Control Strip.
 
 ## 🚀 Key Highlights
 
-### 🎭 Live2D Tactile Mode & Multi-Model Ingestion
-* **Full Tactile Mode & Hover Glow**: Implemented an interactive tactile feedback mode for Live2D models, including highly precise hit-test coordinate translation, smart `hitArea` motion mappings, and an aesthetic hover glow overlay indicating interactive zones.
-* **In-Memory Zip Splitting & Discovery**: Designed an in-memory multi-model Zip file splitter with real-time toast feedback. It automatically discovers motions, fixes manifest naming errors, and heals motions dictionaries on the fly.
-* **Motion Audio Playback**: Enabled motion-associated audio playback for both Live2D and Spine characters on the actor route, ensuring referenced audio assets are correctly packaged during ingestion.
-* **LocalStorage Quota Fix**: Converted parameter metadata and available motions to reactive refs to prevent browser `QuotaExceededError` issues in `localStorage`.
+### 🧠 WebGPU Inference Engine
+* **Unified WebGPU Infrastructure**: Ported the WebGPU inference engine from upstream, enabling on-device model execution with hardware acceleration.
+* **VAD Web Worker & Semantic Search Scheduler**: Integrated voice activity detection and semantic indexing as dedicated background web workers to keep the UI fully responsive.
+* **ModelCacheManager UI**: Full UI for browsing, downloading, and managing local inference models.
+* **Whisper Fixes**: Resolved WAV decoding by passing raw ArrayBuffers directly to the Whisper worker, and corrected English-only model constraint options.
 
-### 🛠️ Streamed Text & Tool Call Polish
-* **Dynamic Parser Recreation**: Solved the issue where text arriving immediately after a native tool call was dropped by dynamically recreating the parser and interceptor instances.
-* **Text Buffer Flushing**: Fixed text slicing bugs by forcefully flushing parser buffers before enqueuing tool calls.
-* **Emoji Recovery**: Enhanced `healMozibake` to correctly handle surrogate pairs, preventing emoji corruption.
+### 🎵 Audio Studio
+* **Dynamic Web Audio DSP**: Implemented a full Audio Studio with live voice processing effects (EQ, reverb, dynamics) and a voice library playground with real-time preview controls.
+* **Virtual Audio Studio Provider**: Added localization keys and provider integration for the audio studio pipeline.
 
-### 🖼️ UI/UX Polish & Stability
-* **Fullscreen Lightbox Picker**: Added a gorgeous fullscreen preview lightbox within the stage background picker.
-* **Stabilized Window Behavior**: Removed the resource-intensive always-on-top watcher loop from the main window to improve responsiveness and eliminated infinite bounds-clobbering loops.
-* **Cross-Window Syncing**: Added cross-window synchronization for session deletions, and resolved state-sync race conditions when editing messages.
+### ✨ Sparkle AI Field Generator
+* **Settings-Wide Generation**: Rolled out the Sparkle AI generation button across all AIRI Card tabs — Visual DNA, Stealth Heartbeat, Identity, Behavior, Artistry, and more.
+* **Textarea Upgrades**: Converted key long-form fields (Visual DNA, Stealth Heartbeat Prompt) from inputs to resizable textareas for better editing UX.
 
-***
+### 🎭 Character & Model Improvements
+* **Unified CharacterAvatar Component**: Replaced scattered avatar rendering with a single reactive `CharacterAvatar` component with async-load race condition guards.
+* **Spine Enhancements**: Auto-detect premultiplied alpha from atlas headers, idle animation cycling, drag-to-pan and wheel-to-scale, and rich hit-area diagnostics.
+* **VRM Fixes**: Corrected inverted X-axis drag direction and implemented idle animation cycling with proper Three.js object isolation.
+* **MMD Improvements**: Pre-decode textures in parallel, synchronize scene loading, unified positioning/lighting controls, and fixed Y-axis inversion during canvas dragging.
+* **Live2D Captions**: OS notification toast fallback for captions, deduplicated runtime motions, and coalesced localized text in settings.
 
-## 📝 Detailed Changelog
+### 🖥️ Control Strip & UI Polish
+* **Characters Popover**: Brand new characters popover widget in the Control Strip for quick character switching.
+* **Card Browser & Import Wizard**: Integrated card browser webview and CardImportWizard for importing character cards directly from the settings UI.
+* **Window Title Registry**: Centralized `ROUTE_TITLES` registry with dynamic window titles for actor stage, captions, and control strip routes.
+* **Customizer Drag Fix**: Replaced HTML5 DnD with pointer-event-based sorting on the preview strip to eliminate Chromium drag cancellation bugs.
 
-### 🖥️ Desktop (stage-tamagotchi) & Electron Main Process
-* Removed always-on-top watcher from the main window to stabilize bounds.
-* Resolved state synchronization loops and Shift+Enter double-ingestion bugs.
-* Synchronized chat session deletions across multiple open windows.
-
-### 📦 UI & Shared Modules (stage-ui / stage-shared)
-* Implemented unified ingestion and self-healing cleansing pipelines for complex Live2D models.
-* Ported AvailableMotions to refs, removing LocalStorage write spikes.
-* Resolved motion audio playback in actor routes.
-* Stabilized runtime motion cycling and layout overflows.
+### 🛡️ Stability & Bug Fixes
+* **Session Deletion Fix**: Upstream fixes from PR #1819 for managing deleted sessions and cross-window sync.
+* **VRM Cloth Line Artifact**: Hidden the tetherLine by default to prevent stray visual artifacts during repositioning.
+* **NaN Coordinate Guard**: Fixed window disappearing loop caused by NaN coordinates in stage preset restoration.
+* **ControlStrip Popover Fix**: Prevented `onClickOutside` from fighting the `handleAction` toggle in ControlStrip popovers.
