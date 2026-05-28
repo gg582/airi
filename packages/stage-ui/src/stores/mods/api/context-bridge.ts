@@ -3,6 +3,7 @@ import type { UserMessage } from '@xsai/shared-chat'
 
 import type { ChatStreamEvent, ContextMessage } from '../../../types/chat'
 
+import { errorMessageFrom } from '@moeru/std'
 import { isStageTamagotchi, isStageWeb } from '@proj-airi/stage-shared'
 import { useBroadcastChannel } from '@vueuse/core'
 import { Mutex } from 'es-toolkit'
@@ -88,19 +89,30 @@ export const useContextBridgeStore = defineStore('mods:api:context-bridge', () =
       let isProcessingRemoteStream = false
 
       const { stop } = watch(incomingContext, (event) => {
-        if (event)
-          chatContext.ingestContextMessage(event)
+        if (event) {
+          try {
+            chatContext.ingestContextMessage(event)
+          }
+          catch (error) {
+            console.error('[Context Bridge] [store-ingest-rejected] Failed to ingest broadcast context message:', errorMessageFrom(error), { event })
+          }
+        }
       })
       disposeHookFns.value.push(stop)
 
       disposeHookFns.value.push(serverChannelStore.onContextUpdate((event) => {
-        const contextMessage: ContextMessage = {
-          ...event.data,
-          metadata: event.metadata,
-          createdAt: Date.now(),
+        try {
+          const contextMessage: ContextMessage = {
+            ...event.data,
+            metadata: event.metadata,
+            createdAt: Date.now(),
+          }
+          chatContext.ingestContextMessage(contextMessage)
+          broadcastContext(toRaw(contextMessage))
         }
-        chatContext.ingestContextMessage(contextMessage)
-        broadcastContext(toRaw(contextMessage))
+        catch (error) {
+          console.error('[Context Bridge] [store-ingest-rejected] Failed to ingest server channel context update:', errorMessageFrom(error), { event })
+        }
       }))
 
       disposeHookFns.value.push(serverChannelStore.onEvent('input:text', async (event) => {
@@ -124,11 +136,16 @@ export const useContextBridgeStore = defineStore('mods:api:context-bridge', () =
         if (normalizedContextUpdates?.length) {
           const createdAt = Date.now()
           for (const update of normalizedContextUpdates) {
-            chatContext.ingestContextMessage({
-              ...update,
-              metadata: event.metadata,
-              createdAt,
-            })
+            try {
+              chatContext.ingestContextMessage({
+                ...update,
+                metadata: event.metadata,
+                createdAt,
+              })
+            }
+            catch (error) {
+              console.error('[Context Bridge] [store-ingest-rejected] Failed to ingest normalized context update during input:text:', errorMessageFrom(error), { update })
+            }
           }
         }
 

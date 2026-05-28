@@ -2,36 +2,65 @@ import type { ContextMessage } from '../../types/chat'
 
 import { ContextUpdateStrategy } from '@proj-airi/server-sdk'
 import { defineStore } from 'pinia'
-import { ref, toRaw } from 'vue'
+import { readonly, ref, toRaw } from 'vue'
 
 import { getEventSourceKey } from '../../utils/event-source'
 
 export const useChatContextStore = defineStore('chat-context', () => {
-  const activeContexts = ref<Record<string, ContextMessage[]>>({})
+  let currentActiveContexts = new Map<string, ContextMessage[]>()
+
+  const activeContextsMirror = ref<Record<string, ContextMessage[]>>({})
+  const activeContexts = readonly(activeContextsMirror)
+
+  function syncRegistrySnapshot() {
+    activeContextsMirror.value = Object.fromEntries(
+      Array.from(currentActiveContexts, ([sourceKey, messages]) => [
+        sourceKey,
+        structuredClone(messages),
+      ]),
+    )
+  }
 
   function ingestContextMessage(envelope: ContextMessage) {
-    const sourceKey = getEventSourceKey(envelope)
-    if (!activeContexts.value[sourceKey]) {
-      activeContexts.value[sourceKey] = []
-    }
+    try {
+      const sourceKey = getEventSourceKey(envelope)
+      const safeEnvelopeToStore = structuredClone(toRaw(envelope))
 
-    if (envelope.strategy === ContextUpdateStrategy.ReplaceSelf) {
-      activeContexts.value[sourceKey] = [envelope]
+      if (!currentActiveContexts.has(sourceKey)) {
+        currentActiveContexts.set(sourceKey, [])
+      }
+
+      if (envelope.strategy === ContextUpdateStrategy.ReplaceSelf) {
+        currentActiveContexts.set(sourceKey, [safeEnvelopeToStore])
+      }
+      else if (envelope.strategy === ContextUpdateStrategy.AppendSelf) {
+        currentActiveContexts.get(sourceKey)?.push(safeEnvelopeToStore)
+      }
+
+      syncRegistrySnapshot()
     }
-    else if (envelope.strategy === ContextUpdateStrategy.AppendSelf) {
-      activeContexts.value[sourceKey].push(envelope)
+    catch (error) {
+      console.error('[Context Store] Failed to ingest context message:', error)
+      throw error // Escapes to bridge error handler
     }
   }
 
   function resetContexts() {
-    activeContexts.value = {}
+    currentActiveContexts = new Map<string, ContextMessage[]>()
+    syncRegistrySnapshot()
   }
 
   function getContextsSnapshot() {
-    return toRaw(activeContexts.value)
+    return Object.fromEntries(
+      Array.from(currentActiveContexts, ([sourceKey, messages]) => [
+        sourceKey,
+        structuredClone(messages),
+      ]),
+    )
   }
 
   return {
+    activeContexts,
     ingestContextMessage,
     resetContexts,
     getContextsSnapshot,
