@@ -861,7 +861,7 @@ function getShortLabel(btnId: string): string {
       'shadow-2xl shadow-black/10 rounded-full',
       'transition-all duration-300 ease-out',
       isDragging ? 'scale-102 border-primary-500/30 shadow-primary-500/5' : '',
-      orientation === 'vertical' ? 'flex flex-col items-center py-3 px-2 gap-2.5 w-14' : 'flex flex-row items-center px-3 py-2 gap-2.5 h-14',
+      orientation === 'vertical' ? 'flex flex-col items-center py-2 px-1 gap-2 w-12' : 'flex flex-row items-center px-2 py-1 gap-2 h-12',
     ]"
     :style="containerStyle"
     @contextmenu="handleRightClick"
@@ -894,7 +894,7 @@ function getShortLabel(btnId: string): string {
     <div
       v-if="!collapsed"
       :class="[
-        orientation === 'vertical' ? 'flex flex-col items-center gap-2.5' : 'flex flex-row items-center gap-2.5',
+        orientation === 'vertical' ? 'flex flex-col items-center gap-2' : 'flex flex-row items-center gap-2',
       ]"
     >
       <button
