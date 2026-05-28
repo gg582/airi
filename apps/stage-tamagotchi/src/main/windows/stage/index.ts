@@ -79,7 +79,7 @@ export async function setupActorStageWindow(params: {
   window.setMovable(true)
   window.setResizable(true)
 
-  window.on('maximize', (e) => {
+  ;(window as any).on('maximize', (e: any) => {
     e.preventDefault()
     window.unmaximize()
   })

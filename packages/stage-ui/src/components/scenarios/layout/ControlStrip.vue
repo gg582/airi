@@ -440,10 +440,10 @@ const popoverPlacement = computed(() => {
 
 const stripLength = computed(() => {
   if (collapsed.value) {
-    return 60
+    return 52
   }
   const N = activeButtons.value.length
-  return N === 0 ? 60 : 60 + 46 * N
+  return N === 0 ? 52 : 52 + 44 * N
 })
 
 const containerStyle = computed(() => {
@@ -460,7 +460,7 @@ const containerStyle = computed(() => {
           styles.left = '0px'
         }
         else {
-          styles.left = '268px'
+          styles.left = '276px'
         }
       }
       else {
@@ -470,7 +470,7 @@ const containerStyle = computed(() => {
           styles.top = '0px'
         }
         else {
-          styles.top = '280px'
+          styles.top = '288px'
         }
       }
     }
@@ -689,7 +689,7 @@ function onDragging(e: MouseEvent | TouchEvent) {
     if (isDragging.value) {
       const deltaX = startMouseX - clientX
       const deltaY = startMouseY - clientY
-      position.value.x = Math.max(10, Math.min(window.innerWidth - 80, startPosX + deltaX))
+      position.value.x = Math.max(10, Math.min(window.innerWidth - 72, startPosX + deltaX))
       position.value.y = Math.max(10, Math.min(window.innerHeight - 300, startPosY + deltaY))
     }
   }
