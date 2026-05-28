@@ -20,7 +20,7 @@ import { useArtistryStore } from './artistry'
 import { useConsciousnessStore } from './consciousness'
 import { useSpeechStore } from './speech'
 
-function artistLog() {}
+function artistLog(..._args: any[]) {}
 
 export const useAutonomousArtistryStore = defineStore('artistry-autonomous', () => {
   const llmStore = useLLM()
