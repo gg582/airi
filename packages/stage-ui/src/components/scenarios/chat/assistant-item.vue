@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import type { ChatAssistantMessage, ChatHistoryItem, ChatSlices, ChatSlicesText } from '../../../types/chat'
 
+import { useBroadcastChannel } from '@vueuse/core'
 import { storeToRefs } from 'pinia'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { toast } from 'vue-sonner'
 
@@ -33,6 +34,38 @@ const emit = defineEmits<{
   (e: 'copy'): void
   (e: 'delete'): void
 }>()
+// Listen to caption overlay broadcast
+interface CaptionSegment { text: string, color: string, actorId: string, isActive?: boolean }
+type CaptionChannelEvent
+  = | { type: 'caption-speaker', text: string }
+    | { type: 'caption-assistant', segments: CaptionSegment[] }
+
+const { data: captionData } = useBroadcastChannel<CaptionChannelEvent, CaptionChannelEvent>({ name: 'airi-caption-overlay' })
+const { data: sessionUpdate } = useBroadcastChannel<any, any>({ name: 'airi-chat-stream' })
+
+const activeSpokenText = ref('')
+const activeSpokenColor = ref('')
+
+watch(captionData, (event) => {
+  if (event?.type === 'caption-assistant') {
+    const activeSegment = event.segments.find(s => s.isActive)
+    if (activeSegment) {
+      activeSpokenText.value = activeSegment.text
+      activeSpokenColor.value = activeSegment.color
+    }
+    else {
+      activeSpokenText.value = ''
+      activeSpokenColor.value = ''
+    }
+  }
+})
+
+watch(sessionUpdate, (event) => {
+  if (event?.type === 'session-updated' && event.message?.role === 'user') {
+    activeSpokenText.value = ''
+    activeSpokenColor.value = ''
+  }
+})
 
 function injectActorColors(content: string): string {
   if (!content)
@@ -256,6 +289,18 @@ async function handleForkAndSwitch() {
     }
   }
 }
+const isLatestAssistantMessage = computed(() => {
+  const activeSessionId = chatSession.activeSessionId
+  if (!activeSessionId)
+    return false
+  const messages = chatSession.getSessionMessages(activeSessionId)
+  for (let i = messages.length - 1; i >= 0; i--) {
+    if (messages[i].role === 'assistant') {
+      return messages[i].id === props.message.id
+    }
+  }
+  return false
+})
 
 // Visual FX state parsing (re-injected from main)
 const showLoader = computed(() => props.showPlaceholder)
@@ -591,7 +636,11 @@ const dynamicStyles = computed(() => {
                 />
                 <template v-else-if="slice.type === 'tool-call-result'" />
                 <template v-else-if="slice.type === 'text'">
-                  <MarkdownRenderer :content="getSegmentedText(slice.text)" />
+                  <MarkdownRenderer
+                    :content="getSegmentedText(slice.text)"
+                    :active-text="isLatestAssistantMessage ? activeSpokenText : undefined"
+                    :active-color="isLatestAssistantMessage ? activeSpokenColor : undefined"
+                  />
                 </template>
               </template>
             </div>

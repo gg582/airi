@@ -2,18 +2,21 @@
 import DOMPurify from 'dompurify'
 
 import { healMozibake } from '@proj-airi/stage-shared'
-import { onMounted, ref, watch } from 'vue'
+import { nextTick, onMounted, ref, watch } from 'vue'
 
 import { useMarkdown } from '../../composables/markdown'
 
 interface Props {
   content: string
   class?: string
+  activeText?: string
+  activeColor?: string
 }
 
 const props = defineProps<Props>()
 
 const processedContent = ref('')
+const containerRef = ref<HTMLElement | null>(null)
 const { process, processSync } = useMarkdown()
 
 function formatActorName(id: string): string {
@@ -137,16 +140,153 @@ function handleLinkClick(e: MouseEvent) {
   }
 }
 
+function clearHighlight(el: HTMLElement) {
+  const spans = el.querySelectorAll('.active-spoken-line')
+  spans.forEach((span) => {
+    const parent = span.parentNode
+    if (parent) {
+      while (span.firstChild) {
+        parent.insertBefore(span.firstChild, span)
+      }
+      parent.removeChild(span)
+    }
+  })
+  el.normalize()
+}
+
+function applyHighlight(el: HTMLElement, activeText: string, actorColor?: string) {
+  clearHighlight(el)
+  if (!activeText || !activeText.trim())
+    return
+
+  const searchText = activeText.trim().replace(/\s+/g, ' ').toLowerCase()
+  if (!searchText)
+    return
+
+  const textNodes: Text[] = []
+  let accumulatedText = ''
+  const offsets: { node: Text, start: number, end: number }[] = []
+
+  const walk = (node: Node) => {
+    if (node.nodeType === Node.TEXT_NODE) {
+      const text = node.nodeValue || ''
+      const start = accumulatedText.length
+      accumulatedText += text
+      const end = accumulatedText.length
+      textNodes.push(node as Text)
+      offsets.push({ node: node as Text, start, end })
+    }
+    else if (node.nodeType === Node.ELEMENT_NODE) {
+      const tagName = (node as Element).tagName.toLowerCase()
+      if (tagName !== 'script' && tagName !== 'style') {
+        for (let child = node.firstChild; child; child = child.nextSibling) {
+          walk(child)
+        }
+      }
+    }
+  }
+
+  walk(el)
+
+  const normalizedAccumulated = accumulatedText.toLowerCase()
+  let matchIndex = normalizedAccumulated.indexOf(searchText)
+  let matchedLength = searchText.length
+
+  if (matchIndex === -1) {
+    const cleanStr = (s: string) => s.replace(/[^a-z0-9]/gi, '').toLowerCase()
+    const cleanSearch = cleanStr(searchText)
+    if (cleanSearch) {
+      let cleanAccumulated = ''
+      const cleanToOrigMap: number[] = []
+      for (let i = 0; i < accumulatedText.length; i++) {
+        const char = accumulatedText[i]
+        if (/[a-z0-9]/i.test(char)) {
+          cleanAccumulated += char.toLowerCase()
+          cleanToOrigMap.push(i)
+        }
+      }
+
+      const cleanMatchIndex = cleanAccumulated.indexOf(cleanSearch)
+      if (cleanMatchIndex !== -1) {
+        matchIndex = cleanToOrigMap[cleanMatchIndex]
+        const cleanMatchEndIndex = cleanMatchIndex + cleanSearch.length - 1
+        const matchEndIndex = cleanToOrigMap[cleanMatchEndIndex] + 1
+        matchedLength = matchEndIndex - matchIndex
+      }
+    }
+  }
+
+  if (matchIndex === -1)
+    return
+
+  const matchEndIndex = matchIndex + matchedLength
+
+  let startNode: Text | null = null
+  let startOffset = 0
+  let endNode: Text | null = null
+  let endOffset = 0
+
+  for (const offset of offsets) {
+    if (matchIndex >= offset.start && matchIndex < offset.end) {
+      startNode = offset.node
+      startOffset = matchIndex - offset.start
+    }
+    if (matchEndIndex > offset.start && matchEndIndex <= offset.end) {
+      endNode = offset.node
+      endOffset = matchEndIndex - offset.start
+    }
+  }
+
+  if (!startNode || !endNode)
+    return
+
+  const range = document.createRange()
+  range.setStart(startNode, startOffset)
+  range.setEnd(endNode, endOffset)
+
+  const span = document.createElement('span')
+  span.className = 'active-spoken-line'
+  if (actorColor) {
+    span.style.setProperty('--active-color', actorColor)
+  }
+
+  try {
+    const fragment = range.extractContents()
+    span.appendChild(fragment)
+    range.insertNode(span)
+  }
+  catch (error) {
+    console.warn('[MarkdownRenderer] Highlight wrapping error, using surround fallback:', error)
+    try {
+      range.surroundContents(span)
+    }
+    catch (e) {
+      console.error('[MarkdownRenderer] Highlight failed completely:', e)
+    }
+  }
+}
+
+function updateHighlight() {
+  nextTick(() => {
+    if (containerRef.value) {
+      applyHighlight(containerRef.value, props.activeText || '', props.activeColor)
+    }
+  })
+}
+
 // Process content when it changes
 watch(() => props.content, processContent, { immediate: true })
+watch([processedContent, () => props.activeText, () => props.activeColor], updateHighlight)
 
 onMounted(() => {
   processContent()
+  updateHighlight()
 })
 </script>
 
 <template>
   <div
+    ref="containerRef"
     :class="props.class"
     class="markdown-content"
     @click="handleLinkClick"
@@ -261,5 +401,12 @@ onMounted(() => {
   vertical-align: middle;
   line-height: 1;
   user-select: none;
+}
+
+.markdown-content :deep(.active-spoken-line) {
+  color: var(--active-color, #38bdf8) !important;
+  font-weight: 700;
+  text-shadow: 0 0 8px var(--active-color, rgba(56, 189, 248, 0.4));
+  transition: all 0.25s ease-out;
 }
 </style>
