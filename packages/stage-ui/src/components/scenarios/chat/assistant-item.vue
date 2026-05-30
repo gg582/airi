@@ -164,7 +164,7 @@ async function handleRetry() {
 
     // Truncate history at index - 1 (remove user message and all after it!)
     const nextMessages = messages.slice(0, index - 1)
-    chatSession.setSessionMessages(activeSessionId, nextMessages)
+    await chatSession.setSessionMessages(activeSessionId, nextMessages)
 
     // Now ingest the user message content again!
     let textToIngest = ''
