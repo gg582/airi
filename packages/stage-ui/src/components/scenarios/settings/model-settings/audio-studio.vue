@@ -49,6 +49,7 @@ const form = ref<VoiceProfile>({
     mode: 'mute',
     customStripChars: '*_[]()<>""\'\'',
     stripEmojis: true,
+    stripSymbols: true,
     tildeReplacement: 'nyan',
   },
 })
@@ -133,6 +134,7 @@ function createNewProfile() {
       mode: 'mute',
       customStripChars: '*_[]()<>""\'\'',
       stripEmojis: true,
+      stripSymbols: true,
       tildeReplacement: 'nyan',
     },
   }
@@ -563,6 +565,13 @@ onUnmounted(() => {
               v-model="form.ust.stripEmojis"
               label="Strip Emojis"
               description="Wipes Unicode pictographs so TTS does not create pauses"
+              @update:model-value="saveProfile"
+            />
+
+            <FieldCheckbox
+              v-model="form.ust.stripSymbols"
+              label="Strip Symbols & Kaomoji"
+              description="Wipes non-alphanumeric symbols and kaomoji (Extreme Cleaning)"
               @update:model-value="saveProfile"
             />
 

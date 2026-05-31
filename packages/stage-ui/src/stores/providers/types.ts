@@ -162,6 +162,7 @@ export interface VoiceProfile {
     mode: 'mute' | 'flatten' | 'custom'
     customStripChars: string
     stripEmojis: boolean
+    stripSymbols: boolean
     tildeReplacement: string
   }
 }

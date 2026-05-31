@@ -42,13 +42,6 @@ export const useSpeechStore = defineStore('speech', () => {
   const selectedLanguage = useLocalStorageManualReset<string>('settings/speech/language', 'en-US')
   const modelSearchQuery = refManualReset<string>('')
 
-  // Universal Speech Transformer State
-  const transformerEnabled = useLocalStorageManualReset<boolean>('settings/speech/transformer-enabled', true)
-  const stripNarrative = useLocalStorageManualReset<boolean>('settings/speech/strip-narrative', true)
-  const stripEmojis = useLocalStorageManualReset<boolean>('settings/speech/strip-emojis', true)
-  const stripSymbols = useLocalStorageManualReset<boolean>('settings/speech/strip-symbols', true)
-  const tildeReplacement = useLocalStorageManualReset<string>('settings/speech/tilde-replacement', 'nyan')
-
   // Virtual Voice Profiles State
   const savedVoiceProfiles = useLocalStorageManualReset<VoiceProfile[]>('settings/speech/voice-profiles', [])
 
@@ -247,22 +240,22 @@ export const useSpeechStore = defineStore('speech', () => {
     const isVirtual = providerId === 'virtual-audio-studio'
     const profile = isVirtual ? savedVoiceProfiles.value.find(p => p.id === activeSpeechVoiceId.value) : null
 
-    const enabled = profile ? profile.ust.enabled : transformerEnabled.value
+    const enabled = profile?.ust.enabled ?? false
     if (!enabled) {
       return text
     }
 
     let transformed = text
 
-    const stripNarrVal = profile ? (profile.ust.mode === 'mute' || profile.ust.mode === 'flatten') : stripNarrative.value
-    const stripCustomVal = profile ? (profile.ust.mode === 'custom') : false
-    const stripEmojisVal = profile ? profile.ust.stripEmojis : stripEmojis.value
-    const stripSymbolsVal = profile ? false : stripSymbols.value
-    const tildeVal = profile ? profile.ust.tildeReplacement : tildeReplacement.value
+    const stripNarrVal = profile.ust.mode === 'mute' || profile.ust.mode === 'flatten'
+    const stripCustomVal = profile.ust.mode === 'custom'
+    const stripEmojisVal = profile.ust.stripEmojis
+    const stripSymbolsVal = profile.ust.stripSymbols
+    const tildeVal = profile.ust.tildeReplacement
 
     // 1. Strip Narrative
     if (stripNarrVal) {
-      if (profile && profile.ust.mode === 'flatten') {
+      if (profile.ust.mode === 'flatten') {
         transformed = transformed.replace(/[*[\]()<>\\]/g, '')
       }
       else {
@@ -272,7 +265,7 @@ export const useSpeechStore = defineStore('speech', () => {
     }
 
     // 1.1 Custom Stripping Characters
-    if (stripCustomVal && profile?.ust.customStripChars) {
+    if (stripCustomVal && profile.ust.customStripChars) {
       const escapedChars = profile.ust.customStripChars.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
       if (escapedChars) {
         const regex = new RegExp(`[${escapedChars}]`, 'g')
@@ -417,11 +410,6 @@ export const useSpeechStore = defineStore('speech', () => {
     selectedLanguage.reset()
     modelSearchQuery.reset()
 
-    transformerEnabled.reset()
-    stripNarrative.reset()
-    stripEmojis.reset()
-    stripSymbols.reset()
-    tildeReplacement.reset()
     availableVoices.reset()
     speechProviderError.reset()
     isLoadingSpeechProviderVoices.reset()
@@ -467,12 +455,6 @@ export const useSpeechStore = defineStore('speech', () => {
     availableVoices,
     modelSearchQuery,
 
-    // Transformer state
-    transformerEnabled,
-    stripNarrative,
-    stripEmojis,
-    stripSymbols,
-    tildeReplacement,
     savedVoiceProfiles,
 
     // Computed
