@@ -512,13 +512,41 @@ To prevent broken UI controls on sandboxed platforms, tools are strictly gated b
 | **Custom Stdio MCP** | Full Stdio Subprocess (`mcp.json`)| **Hidden / Unsupported** | **Hidden / Unsupported** |
 | **`text_journal` / `image_journal`** | IndexedDB + LocalForage | IndexedDB + LocalForage | IndexedDB + Capacitor SQLite |
 
-* **UI Gating Invariant:** In `CardCreationTabTools.vue` and `MessagingDiscord.vue`, options requiring Node.js stdio subprocesses or local filesystem dialogs are conditionally rendered using `v-if="isElectron"`. Web and mobile users are never presented with non-functional desktop options.
+#### 3. Capability Packs Architecture (Progressive Disclosure Tool Bundles)
+To solve the dual UX pitfalls identified during community testing—avoiding both the opaque *"Single Mega-Switch"* (which dumps 25 unneeded tools into prompt context) and the *"Hundred Toggles from Hell"* (which causes configuration fatigue)—AIRI organizes all conversational and external tools into **Curated Capability Packs**:
+
+```
+┌──────────────────────────────────────────────────────────────────────────┐
+│                   AiriCard Tools: Capability Packs                       │
+├───────────────────────────────┬──────────────────────────────────────────┤
+│ Pack Name                     │ Included Tools & Native Functions        │
+├───────────────────────────────┼──────────────────────────────────────────┤
+│ 🌐 Web & Research Pack        │ • fetch_url (instant Markdown/text RAG) │
+│                               │ • web_search (live duckduckgo search)    │
+├───────────────────────────────┼──────────────────────────────────────────┤
+│ 📁 Local Workspace Pack       │ • @modelcontextprotocol/server-filesystem│
+│    (Desktop Electron Only)    │ • Turnkey Native Folder Picker           │
+├───────────────────────────────┼──────────────────────────────────────────┤
+│ 🎨 Visual Artistry Pack       │ • image_journal (scene & selfie art)     │
+│                               │ • generate_motion (kinetic avatar cues)  │
+├───────────────────────────────┼──────────────────────────────────────────┤
+│ 🧠 Sacred Memory Pack         │ • text_journal (immutable LTMM entries)  │
+├───────────────────────────────┼──────────────────────────────────────────┤
+│ ⚙️ Custom Developer MCP        │ • mcp.json raw stdio server manager      │
+│    (Collapsible / Advanced)   │ • Third-party database & API bridges     │
+└───────────────────────────────┴──────────────────────────────────────────┘
+```
+
+* **Progressive Disclosure UX:**
+  * **Top-Level:** Each pack has a single clean master card with an active toggle (`[X] Enabled`) and a concise 1-line description.
+  * **Expandable Drawer:** Clicking the card's chevron discloses sub-tool granular toggles (e.g. enabling `fetch_url` while disabling `web_search`) and tool-specific prompt instructions for power users.
+  * **Horizontal Scalability:** As new tools are authored, they are added inside existing packs rather than growing the main tools tab vertically.
 
 ---
 
 ## 6. UI Specification: "Group Dynamics & Ambient Tuning" Tab
 
-In `packages/stage-ui/src/components/modules/MessagingDiscord.vue`, a new dedicated tab **`'group'`** is added alongside `'bot'`, `'relay'`, and `'acl'`. It grounds itself in AIRI's existing `/chatmode` engine, character profile cadence settings, and first-party tool toggles:
+In `packages/stage-ui/src/components/modules/MessagingDiscord.vue`, a new dedicated tab **`'group'`** is added alongside `'bot'`, `'relay'`, and `'acl'`. It grounds itself in AIRI's existing `/chatmode` engine, character profile cadence settings, and first-party tool capability packs:
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────┐
@@ -548,9 +576,11 @@ In `packages/stage-ui/src/components/modules/MessagingDiscord.vue`, a new dedica
 │    (●) Natural Conversationalist: Participates smoothly in room banter   │
 │    ( ) Hyper-Enthusiastic (Sarah Mode): Quips on micro-messages & banter │
 │                                                                          │
-│ 4. First-Party Conversational Tools                                      │
-│    [X] Native URL Scraper (fetch_url - Instant link & doc ingestion)     │
-│    [X] Live Web Search (web_search)                                      │
+│ 4. Active Capability Packs                                               │
+│    [X] 🌐 Web & Research Pack (fetch_url + web_search)            [ ▼ ]   │
+│    [X] 📁 Local Workspace Pack (Filesystem MCP + Folder Picker)   [ ▼ ]   │
+│    [X] 🎨 Visual Artistry Pack (image_journal + generate_motion)  [ ▼ ]   │
+│    [X] 🧠 Sacred Memory Pack (text_journal LTMM)                  [ ▼ ]   │
 └──────────────────────────────────────────────────────────────────────────┘
 ```
 
