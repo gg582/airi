@@ -213,7 +213,7 @@ defineInvokeHandler(context, attentionGuardProcessEvent, async ({ dataUrl, inter
     if (state.prevHash === null) {
       // First tick: seed the baseline work centroid v0.
       const t1 = performance.now()
-      const embedding = await getVisionEmbedding(dataUrl, state.device)
+      const embedding = await getVisionEmbedding(rawImage, state.device)
       stageMs.stage1Ms = performance.now() - t1
       state.centroid = embedding
       state.accepted = [embedding]
@@ -254,7 +254,7 @@ defineInvokeHandler(context, attentionGuardProcessEvent, async ({ dataUrl, inter
 
     // -- Stage 1: CLIP embedding + novelty vs rolling centroid ----------------
     const t1 = performance.now()
-    const embedding = await getVisionEmbedding(dataUrl, state.device)
+    const embedding = await getVisionEmbedding(rawImage, state.device)
     const novelty = calculateCosineDistance(embedding, state.centroid!)
     stageMs.stage1Ms = performance.now() - t1
 
@@ -302,7 +302,7 @@ defineInvokeHandler(context, attentionGuardProcessEvent, async ({ dataUrl, inter
       const theme = themeFromGray(gray32)
 
       if (state.enableVlm) {
-        const captionResult = await generateCaption(dataUrl, state.device)
+        const captionResult = await generateCaption(rawImage, state.device)
         if (captionResult) {
           caption = captionResult.caption
           vlmStatus = 'ok'
@@ -326,6 +326,9 @@ defineInvokeHandler(context, attentionGuardProcessEvent, async ({ dataUrl, inter
     }
     else {
       state.accepted.push(embedding)
+      if (state.accepted.length > 50) {
+        state.accepted.shift()
+      }
       state.centroid = centroidOf(state.accepted)
     }
 

@@ -136,3 +136,8 @@ apps/stage-pocket/ios/buildServer.json
 !.obsidian/core-plugins.json
 !.obsidian/graph.json
 apps/stage-mate/bin/
+
+# Scratch & recovery dumps
+recovery_artifacts/
+recovery/
+personal_airi/

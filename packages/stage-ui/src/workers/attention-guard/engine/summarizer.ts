@@ -13,6 +13,8 @@ import type { SalienceLabel } from './vision'
 
 import { AutoProcessor, AutoTokenizer, Moondream1ForConditionalGeneration, RawImage } from '@huggingface/transformers'
 
+import { disposeTensors } from './vision'
+
 export const VLM_MODEL_ID = 'Xenova/moondream2'
 
 const WINDOW_LABELS: Record<SalienceLabel, string> = {
@@ -40,27 +42,39 @@ async function loadCaptioner(device: InferenceDevice, progressCallback?: (progre
  * Best-effort semantic caption. Returns null on any failure (model degrades
  *  to the deterministic summary — proposal §11).
  */
-export async function generateCaption(dataUrl: string, device: InferenceDevice): Promise<{ caption: string, ms: number } | null> {
+export async function generateCaption(
+  imageInput: RawImage | string,
+  device: InferenceDevice,
+): Promise<{ caption: string, ms: number } | null> {
+  let image: RawImage | null = null
+  let visionInputs: any = null
+  let textInputs: any = null
+  let feat: any = null
+  let output: any = null
+
   try {
     if (!captionModelPromise)
       captionModelPromise = loadCaptioner(device)
     const { model, processor, tokenizer } = await captionModelPromise
 
-    const image = await RawImage.fromURL(dataUrl)
-    const visionInputs = await processor(image)
+    image = typeof imageInput === 'string'
+      ? await RawImage.fromURL(imageInput)
+      : imageInput
+
+    visionInputs = await processor(image)
 
     const imageTokens: number = numImageTokens ?? await (async () => {
-      const feat = await model.sessions.vision_encoder.run({ pixel_values: visionInputs.pixel_values })
+      feat = await model.sessions.vision_encoder.run({ pixel_values: visionInputs.pixel_values })
       const count = feat.image_features.dims[1] as number
       numImageTokens = count
       return count
     })()
 
     const prompt = `${'<image>'.repeat(imageTokens)}\n\nQuestion: Describe what is happening in this screenshot in one short sentence.\n\nAnswer:`
-    const textInputs = await tokenizer(prompt)
+    textInputs = await tokenizer(prompt)
 
     const started = performance.now()
-    const output = await model.generate({ ...visionInputs, ...textInputs, max_new_tokens: 48, do_sample: false })
+    output = await model.generate({ ...visionInputs, ...textInputs, max_new_tokens: 48, do_sample: false })
     const decoded = tokenizer.batch_decode(output, { skip_special_tokens: false }) as string[]
     const raw = decoded[0] ?? ''
     const answerIdx = raw.lastIndexOf('Answer:')
@@ -74,6 +88,9 @@ export async function generateCaption(dataUrl: string, device: InferenceDevice):
   catch (err: any) {
     console.warn(`[attention-guard] VLM caption failed (${err.message || String(err)}) — deterministic summary used`)
     return null
+  }
+  finally {
+    disposeTensors(visionInputs, textInputs, feat, output)
   }
 }
 

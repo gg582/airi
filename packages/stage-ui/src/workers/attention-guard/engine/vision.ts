@@ -65,6 +65,31 @@ export function normalizeVector(vec: Float32Array): Float32Array {
   return out
 }
 
+/** Safely disposes WebGPU/WASM tensors and dictionary outputs to prevent VRAM leaks. */
+export function disposeTensors(...items: any[]): void {
+  for (const item of items) {
+    if (!item)
+      continue
+    if (typeof item.dispose === 'function') {
+      try {
+        item.dispose()
+      }
+      catch {}
+    }
+    else if (typeof item === 'object') {
+      for (const key of Object.keys(item)) {
+        const val = item[key]
+        if (val && typeof val.dispose === 'function') {
+          try {
+            val.dispose()
+          }
+          catch {}
+        }
+      }
+    }
+  }
+}
+
 async function getVisionEncoder(device: InferenceDevice): Promise<[any, any]> {
   if (!visionProcessorPromise)
     visionProcessorPromise = AutoProcessor.from_pretrained(CLIP_MODEL_ID)
@@ -73,13 +98,23 @@ async function getVisionEncoder(device: InferenceDevice): Promise<[any, any]> {
   return Promise.all([visionProcessorPromise, visionModelPromise])
 }
 
-/** Encodes a capture data URL into a unit-norm 512-dim CLIP vision embedding. */
-export async function getVisionEmbedding(dataUrl: string, device: InferenceDevice): Promise<Float32Array> {
+/** Encodes a capture (RawImage or data URL) into a unit-norm 512-dim CLIP vision embedding. */
+export async function getVisionEmbedding(imageInput: RawImage | string, device: InferenceDevice): Promise<Float32Array> {
   const [processor, model] = await getVisionEncoder(device)
-  const image = await RawImage.fromURL(dataUrl)
-  const { pixel_values } = await processor(image)
-  const { image_embeds } = await model({ pixel_values })
-  return normalizeVector(image_embeds.data as Float32Array)
+  const image = typeof imageInput === 'string'
+    ? await RawImage.fromURL(imageInput)
+    : imageInput
+
+  let visionInputs: any = null
+  let outputs: any = null
+  try {
+    visionInputs = await processor(image)
+    outputs = await model(visionInputs)
+    return normalizeVector(outputs.image_embeds.data as Float32Array)
+  }
+  finally {
+    disposeTensors(visionInputs, outputs)
+  }
 }
 
 export function calculateCosineSimilarity(vecA: Float32Array, vecB: Float32Array): number {
@@ -127,9 +162,16 @@ async function getTextEmbedding(prompt: string, device: InferenceDevice): Promis
   if (!textModelPromise)
     textModelPromise = CLIPTextModelWithProjection.from_pretrained(CLIP_MODEL_ID, { device })
   const [tokenizer, textModel] = await Promise.all([tokenizerPromise, textModelPromise])
-  const inputs = await tokenizer(prompt)
-  const { text_embeds } = await textModel(inputs)
-  return normalizeVector(text_embeds.data as Float32Array)
+  let inputs: any = null
+  let outputs: any = null
+  try {
+    inputs = await tokenizer(prompt)
+    outputs = await textModel(inputs)
+    return normalizeVector(outputs.text_embeds.data as Float32Array)
+  }
+  finally {
+    disposeTensors(inputs, outputs)
+  }
 }
 
 /** Zero-shot classification of a frame embedding against the salience labels. */
