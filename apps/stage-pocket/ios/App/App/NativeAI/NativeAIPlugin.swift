@@ -3,6 +3,8 @@ import Capacitor
 import Metal
 import MachO
 import CoreML
+import LLMCore
+import CoreMLBackend
 
 @objc(NativeAIPlugin)
 public class NativeAIPlugin: CAPPlugin, CAPBridgedPlugin {
@@ -23,27 +25,14 @@ public class NativeAIPlugin: CAPPlugin, CAPBridgedPlugin {
     ]
 
     private var activeTasks: [String: Task<Void, Never>] = [:]
-    private var residentModel: MLModel?
+    private var coreMLEngine = CoreMLEngine()
     private var residentModelId: String?
-    private var tokenizerCache: [String: GemmaTokenizer] = [:]
 
     private var modelsBaseDirectory: URL {
         let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
         let dir = docs.appendingPathComponent("CoreAI/models", isDirectory: true)
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         return dir
-    }
-
-    private func getOrLoadTokenizer(for modelId: String) -> GemmaTokenizer {
-        if let existing = tokenizerCache[modelId] {
-            return existing
-        }
-        let sanitized = modelId.replacingOccurrences(of: "/", with: "_")
-        let modelDir = modelsBaseDirectory.appendingPathComponent(sanitized, isDirectory: true)
-        let tokenizerJsonUrl = modelDir.appendingPathComponent("tokenizer.json")
-        let tokenizer = GemmaTokenizer(jsonUrl: tokenizerJsonUrl)
-        tokenizerCache[modelId] = tokenizer
-        return tokenizer
     }
 
     // MARK: - Hardware Telemetry
@@ -162,7 +151,7 @@ public class NativeAIPlugin: CAPPlugin, CAPBridgedPlugin {
         call.resolve(result)
     }
 
-    // MARK: - Model Downloader (Hugging Face with Auth & Directory Support)
+    // MARK: - Model Downloader (Hugging Face with Recursive Tree Support)
 
     private struct HFTreeItem: Decodable {
         let type: String
@@ -177,7 +166,7 @@ public class NativeAIPlugin: CAPPlugin, CAPBridgedPlugin {
             return
         }
 
-        let filename = call.getString("filename") ?? "model.mlmodelc"
+        let filename = call.getString("filename")
         let hfToken = call.getString("hfToken")
 
         let sanitizedId = modelId.replacingOccurrences(of: "/", with: "_")
@@ -200,11 +189,10 @@ public class NativeAIPlugin: CAPPlugin, CAPBridgedPlugin {
             }
 
             do {
-                // 1. Determine files to download (single file vs folder/tree)
                 var filesToDownload: [(relativePath: String, downloadUrl: URL, expectedSize: Int64)] = []
 
-                // Check if filename is a directory or we should check the tree API
-                let treeUrlString = "https://huggingface.co/api/models/\(repo)/tree/main/\(filename)?recursive=true"
+                // Fetch recursive repo tree
+                let treeUrlString = "https://huggingface.co/api/models/\(repo)/tree/main?recursive=true"
                 var isTree = false
 
                 if let treeUrl = URL(string: treeUrlString) {
@@ -215,28 +203,26 @@ public class NativeAIPlugin: CAPPlugin, CAPBridgedPlugin {
                        let http = response as? HTTPURLResponse, http.statusCode == 200,
                        let treeItems = try? JSONDecoder().decode([HFTreeItem].self, from: data), !treeItems.isEmpty {
                         isTree = true
+                        let skipPrefixes = [".git", "README", "chat_template", "audio_fp16", "vision_fp16"]
                         for item in treeItems where item.type == "file" {
-                            let fileUrlString = "https://huggingface.co/\(repo)/resolve/main/\(item.path)"
-                            if let fileUrl = URL(string: fileUrlString) {
-                                filesToDownload.append((relativePath: item.path, downloadUrl: fileUrl, expectedSize: item.size ?? 0))
+                            let shouldSkip = skipPrefixes.contains { item.path.hasPrefix($0) }
+                            if !shouldSkip {
+                                let fileUrlString = "https://huggingface.co/\(repo)/resolve/main/\(item.path)"
+                                if let fileUrl = URL(string: fileUrlString) {
+                                    filesToDownload.append((relativePath: item.path, downloadUrl: fileUrl, expectedSize: item.size ?? 0))
+                                }
                             }
                         }
                     }
                 }
 
-                // Also download tokenizer.json if available in root
-                let tokenizerUrlString = "https://huggingface.co/\(repo)/resolve/main/tokenizer.json"
-                if let tokenizerUrl = URL(string: tokenizerUrlString) {
-                    filesToDownload.append((relativePath: "tokenizer.json", downloadUrl: tokenizerUrl, expectedSize: 32_169_626))
-                }
-
-                // If not a tree, download direct file
-                if !isTree {
-                    let directUrlString = "https://huggingface.co/\(repo)/resolve/main/\(filename)"
+                // If not a tree or single file specified
+                if !isTree, let targetFile = filename {
+                    let directUrlString = "https://huggingface.co/\(repo)/resolve/main/\(targetFile)"
                     guard let directUrl = URL(string: directUrlString) else {
                         throw NSError(domain: "NativeAI", code: 400, userInfo: [NSLocalizedDescriptionKey: "Invalid Hugging Face URL: \(directUrlString)"])
                     }
-                    filesToDownload.append((relativePath: filename, downloadUrl: directUrl, expectedSize: 0))
+                    filesToDownload.append((relativePath: targetFile, downloadUrl: directUrl, expectedSize: 0))
                 }
 
                 var totalExpectedBytes: Int64 = filesToDownload.reduce(0) { $0 + $1.expectedSize }
@@ -260,7 +246,7 @@ public class NativeAIPlugin: CAPPlugin, CAPBridgedPlugin {
                     }
 
                     guard (200...299).contains(httpResponse.statusCode) else {
-                        throw NSError(domain: "NativeAI", code: httpResponse.statusCode, userInfo: [NSLocalizedDescriptionKey: "Hugging Face returned HTTP \(httpResponse.statusCode) for \(fileItem.relativePath) (Entry not found or unauthorized)"])
+                        throw NSError(domain: "NativeAI", code: httpResponse.statusCode, userInfo: [NSLocalizedDescriptionKey: "Hugging Face returned HTTP \(httpResponse.statusCode) for \(fileItem.relativePath)"])
                     }
 
                     let fileExpectedLength = httpResponse.expectedContentLength > 0 ? httpResponse.expectedContentLength : fileItem.expectedSize
@@ -268,14 +254,13 @@ public class NativeAIPlugin: CAPPlugin, CAPBridgedPlugin {
                         totalExpectedBytes = fileExpectedLength
                     }
 
-                    // Write stream chunk by chunk directly to file
                     FileManager.default.createFile(atPath: destinationUrl.path, contents: nil)
                     guard let fileHandle = try? FileHandle(forWritingTo: destinationUrl) else {
                         throw NSError(domain: "NativeAI", code: 500, userInfo: [NSLocalizedDescriptionKey: "Cannot open file handle at \(destinationUrl.path)"])
                     }
 
                     var buffer = Data()
-                    buffer.reserveCapacity(65536) // 64KB chunk buffer
+                    buffer.reserveCapacity(65536)
 
                     for try await byte in asyncBytes {
                         buffer.append(byte)
@@ -335,7 +320,6 @@ public class NativeAIPlugin: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
-
     // MARK: - Model Lifecycle & Memory Residency
 
     @objc public func loadModel(_ call: CAPPluginCall) {
@@ -345,106 +329,51 @@ public class NativeAIPlugin: CAPPlugin, CAPBridgedPlugin {
         }
 
         let startTime = Date()
-
-        // Release previous model from RAM if different
-        if self.residentModelId != modelId {
-            self.residentModel = nil
-            self.residentModelId = nil
-        }
+        let sanitized = modelId.replacingOccurrences(of: "/", with: "_")
+        let modelDir = modelsBaseDirectory.appendingPathComponent(sanitized, isDirectory: true)
 
         Task.detached(priority: .userInitiated) { [weak self] in
             guard let self = self else { return }
 
             do {
-                let resolved = try self.getOrLoadResidentModel(modelId: modelId)
-                let loadTimeMs = Int(Date().timeIntervalSince(startTime) * 1000)
-
+                let bundle = try ModelBundle(contentsOf: modelDir)
                 #if targetEnvironment(simulator)
+                let cuPref: ComputeUnitPreference = .cpuAndGPU
                 let computeStr = "CPU + Metal GPU (Simulator)"
                 #else
+                let cuPref: ComputeUnitPreference = .all
                 let computeStr = "Apple Neural Engine + Metal GPU"
                 #endif
 
-                print("[NativeAI] Model loaded successfully: \(resolved.1) with \(computeStr)")
+                await self.coreMLEngine.unload()
+                try await self.coreMLEngine.load(bundle, options: LoadOptions(computeUnits: cuPref, preloadSpeculation: true))
+                self.residentModelId = modelId
+
+                let loadTimeMs = Int(Date().timeIntervalSince(startTime) * 1000)
+                let residentBytes = self.directorySize(url: modelDir)
+                print("[NativeAI] Model loaded successfully: \(modelId) with \(computeStr) in \(loadTimeMs)ms")
 
                 call.resolve([
-                    "modelId": resolved.1,
+                    "modelId": modelId,
                     "isLoaded": true,
                     "loadTimeMs": max(10, loadTimeMs),
                     "computeUnitsUsed": computeStr,
-                    "residentMemoryBytes": 403_704_760
+                    "residentMemoryBytes": residentBytes
                 ])
             } catch {
+                print("[NativeAI] Load error: \(error.localizedDescription)")
                 call.reject("Failed to load model: \(error.localizedDescription)")
             }
         }
     }
 
-    private func getOrLoadResidentModel(modelId: String? = nil) throws -> (MLModel, String) {
-        let targetId = modelId ?? self.residentModelId ?? "okayuji/Gemma-4-E2B-it-coreml-speculative"
-
-        if let model = self.residentModel, self.residentModelId == targetId {
-            return (model, targetId)
-        }
-
-        let sanitized = targetId.replacingOccurrences(of: "/", with: "_")
-        let modelDir = modelsBaseDirectory.appendingPathComponent(sanitized, isDirectory: true)
-
-        var compiledUrl: URL?
-        if modelDir.pathExtension == "mlmodelc" {
-            compiledUrl = modelDir
-        } else if FileManager.default.fileExists(atPath: modelDir.appendingPathComponent("lmhead.mlmodelc").path) {
-            compiledUrl = modelDir.appendingPathComponent("lmhead.mlmodelc")
-        } else if FileManager.default.fileExists(atPath: modelDir.appendingPathComponent("model.mlmodelc").path) {
-            compiledUrl = modelDir.appendingPathComponent("model.mlmodelc")
-        } else if FileManager.default.fileExists(atPath: modelDir.appendingPathComponent("kokoro_21_5s.mlmodelc").path) {
-            compiledUrl = modelDir.appendingPathComponent("kokoro_21_5s.mlmodelc")
-        } else if let enumerator = FileManager.default.enumerator(at: modelDir, includingPropertiesForKeys: nil) {
-            for case let fileUrl as URL in enumerator {
-                if fileUrl.pathExtension == "mlmodelc" {
-                    compiledUrl = fileUrl
-                    break
-                }
-            }
-        }
-
-        guard let compiled = compiledUrl else {
-            throw NSError(domain: "NativeAI", code: 404, userInfo: [
-                NSLocalizedDescriptionKey: "No compiled CoreML model (.mlmodelc) found for '\(targetId)'. Please download it first."
-            ])
-        }
-
-        #if targetEnvironment(simulator)
-        let candidateUnits: [MLComputeUnits] = [.cpuAndGPU, .cpuOnly]
-        #else
-        let candidateUnits: [MLComputeUnits] = [.all, .cpuAndGPU, .cpuOnly]
-        #endif
-
-        var loadedModel: MLModel?
-        for unit in candidateUnits {
-            let config = MLModelConfiguration()
-            config.computeUnits = unit
-            if let model = try? MLModel(contentsOf: compiled, configuration: config) {
-                loadedModel = model
-                break
-            }
-        }
-
-        guard let model = loadedModel else {
-            throw NSError(domain: "NativeAI", code: 500, userInfo: [
-                NSLocalizedDescriptionKey: "Failed to initialize MLModel on device compute units."
-            ])
-        }
-
-        self.residentModel = model
-        self.residentModelId = targetId
-        return (model, targetId)
-    }
-
     @objc public func unloadModel(_ call: CAPPluginCall) {
-        self.residentModel = nil
-        self.residentModelId = nil
-        call.resolve(["success": true])
+        Task.detached(priority: .userInitiated) { [weak self] in
+            guard let self = self else { return }
+            await self.coreMLEngine.unload()
+            self.residentModelId = nil
+            call.resolve(["success": true])
+        }
     }
 
     @objc public func listCachedModels(_ call: CAPPluginCall) {
@@ -459,11 +388,10 @@ public class NativeAIPlugin: CAPPlugin, CAPBridgedPlugin {
                 let folderSize = isDirectory ? directorySize(url: fileUrl) : Int64(resourceValues?.fileSize ?? 0)
                 totalBytes += folderSize
 
-                let isCompiled = fileUrl.pathExtension == "mlmodelc" || (isDirectory && (
-                    FileManager.default.fileExists(atPath: fileUrl.appendingPathComponent("lmhead.mlmodelc").path) ||
-                    FileManager.default.fileExists(atPath: fileUrl.appendingPathComponent("model.mlmodelc").path) ||
-                    FileManager.default.fileExists(atPath: fileUrl.appendingPathComponent("kokoro_21_5s.mlmodelc").path)
-                ))
+                let isCompiled = isDirectory && (
+                    FileManager.default.fileExists(atPath: fileUrl.appendingPathComponent("manifest.json").path) ||
+                    FileManager.default.fileExists(atPath: fileUrl.appendingPathComponent("convert_config.json").path)
+                )
 
                 models.append([
                     "modelId": folderName,
@@ -480,7 +408,6 @@ public class NativeAIPlugin: CAPPlugin, CAPBridgedPlugin {
         ])
     }
 
-
     @objc public func deleteCachedModel(_ call: CAPPluginCall) {
         guard let modelId = call.getString("modelId") else {
             call.reject("Missing modelId")
@@ -490,16 +417,19 @@ public class NativeAIPlugin: CAPPlugin, CAPBridgedPlugin {
         let sanitizedId = modelId.replacingOccurrences(of: "/", with: "_")
         let modelDir = modelsBaseDirectory.appendingPathComponent(sanitizedId, isDirectory: true)
 
-        if self.residentModelId == modelId {
-            self.residentModel = nil
-            self.residentModelId = nil
-        }
+        Task.detached(priority: .userInitiated) { [weak self] in
+            guard let self = self else { return }
+            if self.residentModelId == modelId {
+                await self.coreMLEngine.unload()
+                self.residentModelId = nil
+            }
 
-        do {
-            try FileManager.default.removeItem(at: modelDir)
-            call.resolve(["success": true])
-        } catch {
-            call.reject("Failed to delete model: \(error.localizedDescription)")
+            do {
+                try FileManager.default.removeItem(at: modelDir)
+                call.resolve(["success": true])
+            } catch {
+                call.reject("Failed to delete model: \(error.localizedDescription)")
+            }
         }
     }
 
@@ -519,100 +449,96 @@ public class NativeAIPlugin: CAPPlugin, CAPBridgedPlugin {
             guard let self = self else { return }
             let startTime = Date()
 
-            // 1. Get or auto-load resident model
-            let model: MLModel
-            let activeModelId: String
-            do {
-                let resolved = try self.getOrLoadResidentModel(modelId: requestedModelId)
-                model = resolved.0
-                activeModelId = resolved.1
-            } catch {
-                self.notifyListeners("token", data: [
-                    "requestId": requestId,
-                    "token": "Error: \(error.localizedDescription)",
-                    "isFinished": true,
-                    "finishReason": "error"
-                ])
-                return
-            }
-
-            // 2. Tokenize prompt with GemmaTokenizer
-            let tokenizer = self.getOrLoadTokenizer(for: activeModelId)
-            var currentTokens = tokenizer.encode(prompt)
-            if currentTokens.isEmpty {
-                currentTokens = [tokenizer.bosTokenId]
-            }
-
-            var generatedCount = 0
-
-            for _ in 0..<maxTokens {
-                if Task.isCancelled {
-                    self.notifyListeners("token", data: [
-                        "requestId": requestId,
-                        "token": "",
-                        "isFinished": true,
-                        "finishReason": "cancelled"
-                    ])
-                    return
-                }
-
+            // 1. Auto-load if needed
+            if self.residentModelId == nil || (requestedModelId != nil && self.residentModelId != requestedModelId) {
+                let targetId = requestedModelId ?? "okayuji/Gemma-4-E2B-it-coreml-speculative"
+                let sanitized = targetId.replacingOccurrences(of: "/", with: "_")
+                let modelDir = self.modelsBaseDirectory.appendingPathComponent(sanitized, isDirectory: true)
                 do {
-                    // 3. Execute real CoreML tensor prediction on Neural Engine / GPU
-                    let logits = try self.executeModelForwardPass(model: model, tokens: currentTokens)
-
-                    // 4. Sample next token ID with temperature & top-p
-                    let nextTokenId = self.sampleNextToken(from: logits, temperature: temperature, topP: topP, step: generatedCount)
-
-                    // Check for End of Sequence (only after generating at least 2 tokens)
-                    if generatedCount >= 2 && tokenizer.isEos(tokenId: nextTokenId) {
-                        break
-                    }
-
-                    // 5. Decode token ID to text string
-                    var tokenText = tokenizer.decode([nextTokenId])
-                    if tokenText.isEmpty && !tokenizer.isEos(tokenId: nextTokenId) {
-                        tokenText = " "
-                    }
-
-                    currentTokens.append(nextTokenId)
-                    generatedCount += 1
-
-                    let elapsedMs = Date().timeIntervalSince(startTime) * 1000
-                    let tps = Double(generatedCount) / max(0.001, (elapsedMs / 1000.0))
-
-                    // 6. Stream real generated token chunk
-                    self.notifyListeners("token", data: [
-                        "requestId": requestId,
-                        "token": tokenText,
-                        "isFinished": false,
-                        "completionTokens": generatedCount,
-                        "elapsedMs": Int(elapsedMs),
-                        "tokensPerSecond": Double(round(tps * 10) / 10)
-                    ])
+                    let bundle = try ModelBundle(contentsOf: modelDir)
+                    #if targetEnvironment(simulator)
+                    let cuPref: ComputeUnitPreference = .cpuAndGPU
+                    #else
+                    let cuPref: ComputeUnitPreference = .all
+                    #endif
+                    await self.coreMLEngine.unload()
+                    try await self.coreMLEngine.load(bundle, options: LoadOptions(computeUnits: cuPref, preloadSpeculation: true))
+                    self.residentModelId = targetId
                 } catch {
-                    print("[NativeAI] Inference prediction error: \(error.localizedDescription)")
                     self.notifyListeners("token", data: [
                         "requestId": requestId,
-                        "token": "\n[Inference Error: \(error.localizedDescription)]",
+                        "token": "Error loading model: \(error.localizedDescription)",
                         "isFinished": true,
                         "finishReason": "error"
                     ])
-                    break
+                    return
                 }
             }
 
-            let totalElapsedMs = Date().timeIntervalSince(startTime) * 1000
-            let finalTps = Double(generatedCount) / max(0.001, (totalElapsedMs / 1000.0))
+            let genConfig = GenerationConfig(
+                maxNewTokens: maxTokens,
+                temperature: temperature,
+                topP: topP,
+                multiTokenPrediction: true
+            )
+            let request = GenerationRequest(
+                prompt: prompt,
+                config: genConfig,
+                history: []
+            )
 
-            self.notifyListeners("token", data: [
-                "requestId": requestId,
-                "token": "",
-                "isFinished": true,
-                "finishReason": "stop",
-                "completionTokens": generatedCount,
-                "elapsedMs": Int(totalElapsedMs),
-                "tokensPerSecond": Double(round(finalTps * 10) / 10)
-            ])
+            var tokenCount = 0
+            do {
+                let stream = self.coreMLEngine.generate(request)
+                for try await event in stream {
+                    if Task.isCancelled {
+                        self.notifyListeners("token", data: [
+                            "requestId": requestId,
+                            "token": "",
+                            "isFinished": true,
+                            "finishReason": "cancelled"
+                        ])
+                        return
+                    }
+
+                    switch event {
+                    case .token(let chunk):
+                        tokenCount += 1
+                        let elapsedMs = Date().timeIntervalSince(startTime) * 1000
+                        self.notifyListeners("token", data: [
+                            "requestId": requestId,
+                            "token": chunk.text,
+                            "completionTokens": tokenCount,
+                            "elapsedMs": Int(elapsedMs),
+                            "tokensPerSecond": Double(round(chunk.tokensPerSecond * 10) / 10),
+                            "isFinished": false
+                        ])
+                    case .finished(let metrics):
+                        let elapsedMs = Date().timeIntervalSince(startTime) * 1000
+                        let ttftMs = Double(metrics.timeToFirstToken.components.seconds) * 1000.0 + Double(metrics.timeToFirstToken.components.attoseconds) / 1_000_000_000_000_000.0
+                        self.notifyListeners("token", data: [
+                            "requestId": requestId,
+                            "token": "",
+                            "completionTokens": metrics.generatedTokens,
+                            "elapsedMs": Int(elapsedMs),
+                            "ttftMs": Int(ttftMs),
+                            "tokensPerSecond": Double(round(metrics.decodeTokensPerSecond * 10) / 10),
+                            "finishReason": metrics.finishReason?.rawValue ?? "stop",
+                            "isFinished": true
+                        ])
+                    default:
+                        break
+                    }
+                }
+            } catch {
+                print("[NativeAI] Inference execution error: \(error.localizedDescription)")
+                self.notifyListeners("token", data: [
+                    "requestId": requestId,
+                    "token": "\n[Inference Error: \(error.localizedDescription)]",
+                    "isFinished": true,
+                    "finishReason": "error"
+                ])
+            }
 
             self.activeTasks.removeValue(forKey: requestId)
         }
@@ -628,181 +554,6 @@ public class NativeAIPlugin: CAPPlugin, CAPBridgedPlugin {
         } else {
             call.resolve(["cancelled": false])
         }
-    }
-
-    // MARK: - CoreML Tensor Execution & Sampling
-
-    private func executeModelForwardPass(model: MLModel, tokens: [Int32]) throws -> MLMultiArray {
-        let inputDescriptions = model.modelDescription.inputDescriptionsByName
-        var featureDict: [String: Any] = [:]
-
-        for (featureName, desc) in inputDescriptions {
-            guard let constraint = desc.multiArrayConstraint else { continue }
-            let shape = constraint.shape.map { $0.intValue }
-            let dataType = constraint.dataType
-
-            // Check if feature is 'hidden' representation (e.g. 1536 hidden_size)
-            if shape.contains(1536) || featureName.lowercased().contains("hidden") {
-                let hiddenShape: [NSNumber] = shape.isEmpty ? [1536] : shape.map { NSNumber(value: $0) }
-                let hiddenArray = try MLMultiArray(shape: hiddenShape, dataType: dataType)
-
-                // Compute Gemma embedding projection vector for the current token context
-                // Gemma hidden vector scaled by sqrt(1536) ≈ 39.19
-                let lastToken = tokens.last ?? 2
-                let seed = Double(lastToken)
-                let sqrtDim: Float = 39.1918
-
-                var didWrite = false
-                if #available(iOS 16.0, *) {
-                    if dataType == .float16 {
-                        let ptr = hiddenArray.dataPointer.bindMemory(to: Float16.self, capacity: hiddenArray.count)
-                        for i in 0..<hiddenArray.count {
-                            let phase = (Double(i) * 0.05) + (seed * 0.01)
-                            ptr[i] = Float16(Float(sin(phase) * 0.5 + cos(phase * 1.3) * 0.5) * sqrtDim / Float(sqrt(Double(hiddenArray.count))))
-                        }
-                        didWrite = true
-                    }
-                }
-                if !didWrite {
-                    let ptr = hiddenArray.dataPointer.bindMemory(to: Float.self, capacity: hiddenArray.count)
-                    for i in 0..<hiddenArray.count {
-                        let phase = (Double(i) * 0.05) + (seed * 0.01)
-                        ptr[i] = Float(sin(phase) * 0.5 + cos(phase * 1.3) * 0.5) * sqrtDim / Float(sqrt(Double(hiddenArray.count)))
-                    }
-                }
-                featureDict[featureName] = hiddenArray
-            } else if dataType == .int32 {
-                // Integer sequence tensor (input_ids, attention_mask, etc.)
-                let tensorShape: [NSNumber] = shape.count == 2 ? [1, NSNumber(value: tokens.count)] : [NSNumber(value: tokens.count)]
-                let intArray = try MLMultiArray(shape: tensorShape, dataType: .int32)
-                for (i, t) in tokens.enumerated() {
-                    let val = featureName.lowercased().contains("mask") ? 1 : t
-                    if tensorShape.count == 2 {
-                        intArray[[0, NSNumber(value: i)] as [NSNumber]] = NSNumber(value: val)
-                    } else {
-                        intArray[[NSNumber(value: i)] as [NSNumber]] = NSNumber(value: val)
-                    }
-                }
-                featureDict[featureName] = intArray
-            }
-        }
-
-        // Execute prediction
-        let featureProvider = try MLDictionaryFeatureProvider(dictionary: featureDict)
-        let prediction = try model.prediction(from: featureProvider)
-
-        // Find logits feature
-        let outputDescriptions = model.modelDescription.outputDescriptionsByName
-        let logitsKey = outputDescriptions.keys.first(where: {
-            let k = $0.lowercased()
-            return k.contains("logit") || k.contains("prob") || k.contains("output")
-        }) ?? outputDescriptions.keys.first ?? "logits"
-
-        guard let logits = prediction.featureValue(for: logitsKey)?.multiArrayValue else {
-            throw NSError(domain: "NativeAI", code: 500, userInfo: [
-                NSLocalizedDescriptionKey: "No logits found in output (available features: \(prediction.featureNames))"
-            ])
-        }
-
-        return logits
-    }
-
-    private func sampleNextToken(from logits: MLMultiArray, temperature: Double, topP: Double, step: Int) -> Int32 {
-        let shape = logits.shape.map { $0.intValue }
-        let vocabSize: Int
-        let offset: Int
-
-        if shape.count == 3 {
-            let seqLen = shape[1]
-            vocabSize = shape[2]
-            offset = max(0, (seqLen - 1)) * vocabSize
-        } else if shape.count == 2 {
-            let seqLen = shape[0]
-            vocabSize = shape[1]
-            offset = max(0, (seqLen - 1)) * vocabSize
-        } else {
-            vocabSize = shape[0]
-            offset = 0
-        }
-
-        guard logits.count > 0, vocabSize > 0 else { return 106 }
-
-        var topCandidates: [(id: Int, logit: Float)] = []
-        topCandidates.reserveCapacity(40)
-
-        func addCandidate(id: Int, val: Float) {
-            // Suppress pad (0), bos (2), unk (3)
-            if id == 0 || id == 2 || id == 3 { return }
-            // Suppress immediate EOS on steps 0 and 1
-            if step < 2 && (id == 1 || id == 106) { return }
-
-            if topCandidates.count < 30 {
-                topCandidates.append((id: id, logit: val))
-                if topCandidates.count == 30 {
-                    topCandidates.sort { $0.logit > $1.logit }
-                }
-            } else if val > (topCandidates.last?.logit ?? -Float.greatestFiniteMagnitude) {
-                topCandidates.removeLast()
-                topCandidates.append((id: id, logit: val))
-                topCandidates.sort { $0.logit > $1.logit }
-            }
-        }
-
-        let checkLimit = min(vocabSize, 256000)
-
-        if #available(iOS 16.0, *) {
-            if logits.dataType == .float16 {
-                let ptr = logits.dataPointer.bindMemory(to: Float16.self, capacity: logits.count)
-                for i in 0..<checkLimit {
-                    let idx = min(offset + i, logits.count - 1)
-                    addCandidate(id: i, val: Float(ptr[idx]))
-                }
-            } else {
-                let ptr = logits.dataPointer.bindMemory(to: Float.self, capacity: logits.count)
-                for i in 0..<checkLimit {
-                    let idx = min(offset + i, logits.count - 1)
-                    addCandidate(id: i, val: ptr[idx])
-                }
-            }
-        } else {
-            let ptr = logits.dataPointer.bindMemory(to: Float.self, capacity: logits.count)
-            for i in 0..<checkLimit {
-                let idx = min(offset + i, logits.count - 1)
-                addCandidate(id: i, val: ptr[idx])
-            }
-        }
-
-        guard !topCandidates.isEmpty else {
-            return Int32(100 + (step % 200)) // Safe fallback token
-        }
-
-        // Softmax with temperature
-        let temp = max(0.1, Float(temperature))
-        let maxL = topCandidates[0].logit
-        var expSum: Float = 0.0
-        var probs: [Float] = []
-        for c in topCandidates {
-            let p = exp(min(20.0, (c.logit - maxL) / temp))
-            probs.append(p)
-            expSum += p
-        }
-
-        if expSum > 0 {
-            for i in 0..<probs.count {
-                probs[i] /= expSum
-            }
-        }
-
-        let roll = Float.random(in: 0.0..<1.0)
-        var cumulative: Float = 0.0
-        for (i, c) in topCandidates.enumerated() {
-            cumulative += probs[i]
-            if roll <= cumulative {
-                return Int32(c.id)
-            }
-        }
-
-        return Int32(topCandidates[0].id)
     }
 
     private func directorySize(url: URL) -> Int64 {

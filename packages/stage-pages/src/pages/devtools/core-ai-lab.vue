@@ -32,8 +32,7 @@ const curatedModels: CuratedModel[] = [
     id: 'okayuji/Gemma-4-E2B-it-coreml-speculative',
     name: 'Gemma 4 E2B IT (Speculative CoreML)',
     repo: 'okayuji/Gemma-4-E2B-it-coreml-speculative',
-    filename: 'lmhead.mlmodelc',
-    size: '403 MB',
+    size: '1.7 GB',
     category: 'LLM',
     computeUnit: 'ANE + Metal GPU',
     description: 'Ultra-fast on-device dialogue with speculative draft verification on Apple Neural Engine (~50+ tok/s).',
@@ -101,7 +100,7 @@ const isNativeEnvironment = computed(() => NativeAI.isNative())
 
 const isSelectedModelCached = computed(() => {
   const sanitized = selectedModel.value.id.replace(/\//g, '_')
-  return cachedModels.value.some(m => m.modelId === sanitized || m.modelId === selectedModel.value.id)
+  return cachedModels.value.some(m => (m.modelId === sanitized || m.modelId === selectedModel.value.id) && m.isCompiled)
 })
 
 async function fetchTelemetry() {
@@ -213,6 +212,11 @@ async function handleLoadModel() {
   }
 }
 
+const hasAnyModelFolder = computed(() => {
+  const sanitized = selectedModel.value.id.replace(/\//g, '_')
+  return cachedModels.value.some(m => m.modelId === sanitized || m.modelId === selectedModel.value.id)
+})
+
 async function handleUnloadModel() {
   try {
     await NativeAI.unloadModel()
@@ -221,6 +225,18 @@ async function handleUnloadModel() {
   }
   catch (err) {
     console.error('[CoreAILab] Failed to unload model:', err)
+  }
+}
+
+async function handleDeleteModel() {
+  try {
+    await NativeAI.deleteCachedModel({ modelId: selectedModel.value.id })
+    isModelResident.value = false
+    loadedModelInfo.value = null
+    await refreshCachedModels()
+  }
+  catch (err) {
+    console.error('[CoreAILab] Failed to delete model:', err)
   }
 }
 
@@ -494,10 +510,21 @@ onUnmounted(() => {
               class="flex items-center gap-1.5 border border-neutral-200 rounded-lg bg-neutral-50 px-3.5 py-2 text-xs text-neutral-700 font-semibold transition active:scale-98 dark:border-neutral-700 dark:bg-neutral-800 hover:bg-neutral-100 dark:text-neutral-200"
               @click="handleUnloadModel"
             >
-              <div class="i-solar:trash-bin-minimalistic-linear text-xs" />
+              <div class="i-solar:power-bold text-xs" />
               <span>Unload from RAM</span>
             </button>
           </template>
+
+          <!-- Delete / Purge Local Cache Button -->
+          <button
+            v-if="hasAnyModelFolder"
+            class="flex items-center gap-1 border border-red-200 rounded-lg bg-red-50/50 px-2.5 py-2 text-xs text-red-600 font-medium transition active:scale-98 dark:border-red-900/40 dark:bg-red-950/20 hover:bg-red-100/60 dark:text-red-400"
+            title="Delete cached model files to free disk space or re-download"
+            @click="handleDeleteModel"
+          >
+            <div class="i-solar:trash-bin-trash-bold text-xs" />
+            <span>Delete</span>
+          </button>
         </div>
 
         <div v-if="loadedModelInfo" class="flex items-center gap-2 text-xs text-neutral-500">

@@ -35,7 +35,7 @@ const cachedModelInfo = computed(() => {
 })
 
 const isCached = computed(() => {
-  return !!cachedModelInfo.value
+  return !!cachedModelInfo.value && !!cachedModelInfo.value.isCompiled
 })
 
 async function fetchTelemetry() {
@@ -80,7 +80,6 @@ async function handleDownloadModel() {
       {
         modelId: targetModelId,
         repo: targetModelId,
-        filename: 'lmhead.mlmodelc',
       },
       (event: DownloadProgressEvent) => {
         downloadProgress.value = event
