@@ -27,10 +27,6 @@ Two days ago, we introduced [Capacitor](https://capacitorjs.com/) to build mobil
 
 We got iOS working and added notification capabilities to it. This means that if she wants to, she can proactively remind you to spend time with her through notifications.
 
-<p style="display: flex; justify-content: center;">
-    <video src="./assets/airi-notification-capability.mp4" alt="AIRI Pocket Notification" controls width="230" height="500"></video>
-</p>
-
 Don't worry too much about that default Capacitor icon—we'll replace it later.
 
 In the video, I removed AIRI from the background app list, and shortly after, AIRI popped up a notification. This kind of background notification is hard to achieve in PWAs, but it's a breeze on native iOS apps.
@@ -85,11 +81,9 @@ Note the `#if DEBUG` macro—this is to enable it during development, and it wil
 
 ## Memory Layer Experiments in FlowChat
 
-Let me show you the results of LemonNeko's memory layer experiments in FlowChat:
+Here are the results of LemonNeko's memory layer experiments in FlowChat.
 
-<video src="./assets/flow-chat-basic-memory.mp4" alt="FlowChat Basic Memory" controls></video>
-
-In the video, I asked the LLM to remember my name. After it generated its reply, I could see in the settings interface that it remembered, and even when I started a new conversation, it could still recall it.
+In the demo, I asked the LLM to remember my name. After it generated its reply, I could see in the settings interface that it remembered, and even when I started a new conversation, it could still recall it.
 
 How is this achieved? The current implementation is quite simple:
 

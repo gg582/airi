@@ -52,10 +52,6 @@ import RollingText from '../../../en/blog/DevLog-2025.08.01/RollingText.vue'
 
 Project AIRI では、パートナーの [@nekomeowww](https://github.com/nekomeowww) も滑らかなチャットバブルコンポーネントを作成しました：
 
-<video controls muted autoplay loop max-w="500px" w-full mx-auto>
-  <source src="/en/blog/DevLog-2025.08.01/assets/animated-chat-bubble.mp4">
-</video>
-
 <div text-sm text-center>
 
 [私たちの UI storybook](https://airi.moeru.ai/ui/#/story/src-components-gadgets-chatbubbleminimalism-story-vue?variantId=chat) に遊びに来てください

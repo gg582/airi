@@ -50,11 +50,7 @@ Recently, [Anime.js](https://animejs.com/) released its new [text utilities](htt
 
 Text animations are especially useful for making messages appear in a fancy way in the UI. Typically, messages are received fully formed, so we only need to split the received text into characters and animate them.
 
-In Project AIRI, [@nekomeowww](https://github.com/nekomeowww) also built an animated chat bubble component with motion effects:
-
-<video controls muted autoplay loop max-w="500px" w-full mx-auto>
-  <source src="./assets/animated-chat-bubble.mp4">
-</video>
+In Project AIRI, [@nekomeowww](https://github.com/nekomeowww) also built an animated chat bubble component with motion effects.
 
 <div text-sm text-center>
 

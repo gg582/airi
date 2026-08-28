@@ -90,8 +90,6 @@ https://www.youtube.com/watch?v=_AIgv0EsOE4
 [yui540](https://github.com/yui540) の[リポジトリ](https://github.com/yui540/css-animations)にある
 多くのアニメーション・トランジション効果を [https://proj-airi-packages-ui-transitions.netlify.app/#/](https://proj-airi-packages-ui-transitions.netlify.app/#/) に移植しました。
 
-移植後の効果はかなり良い感じです：
-
-![](/en/blog/DevLog-2025.03.05/assets/animation-transitions.gif)
+移植後の効果はかなり良い感じです（Netlify でデモをご覧いただけます）。
 
 今日の DevLog はここまでです。DevStream に参加し、最後まで付き合ってくれた皆さんに感謝します。また明日お会いしましょう。

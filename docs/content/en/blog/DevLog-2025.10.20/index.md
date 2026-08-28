@@ -38,7 +38,7 @@ This model was honorably improved through collaboration with an artist who's wor
 
 (whispering) Maybe if we get more sponsors, I'll be willing... (x
 
-<video src="./assets/airi.mp4" alt="airi.mp4" controls></video>
+![New Live2D Model](./assets/project-airi.png)
 
 ## Three.js MMD Support
 

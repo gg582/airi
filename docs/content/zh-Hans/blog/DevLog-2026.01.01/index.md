@@ -23,10 +23,6 @@ preview-cover:
 
 目前我们把 iOS 的部分点亮了，同时为它加入了通知能力，也就是说，如果她想，她可以主动通过通知来提醒你去陪她了。
 
-<p style="display: flex; justify-content: center;">
-    <video src="./assets/airi-notification-capability.mp4" alt="AIRI Pocket Notification" controls width="230" height="500"></video>
-</p>
-
 别太在意那个 Capacitor 默认图标，之后会换的。
 
 在视频中，我把 AIRI 从后台列表移除了，不久后 AIRI 就弹出了一条通知，这种后台通知在 PWA 中很难做到，在 iOS 原生应用上就轻而易举了。
@@ -81,11 +77,7 @@ extension DevBridgeViewController: WKNavigationDelegate {
 
 ## 在 FlowChat 中实验的记忆层
 
-先给大家看一下柠猫在 FlowChat 中实验的记忆层的效果：
-
-<video src="./assets/flow-chat-basic-memory.mp4" alt="FlowChat Basic Memory" controls></video>
-
-在视频中，我要求 LLM 记住我的名字，它生成完回复之后，在设置界面就看到它记住了，即使开了新的对话，它也能想得起来。
+在测试中，要求 LLM 记住用户的名字，它生成完回复之后，在设置界面就看到它记住了，即使开了新的对话，它也能想得起来。
 
 这是怎么做到的呢？目前的实现相当简易：
 

@@ -52,10 +52,6 @@ import RollingText from '../../../en/blog/DevLog-2025.08.01/RollingText.vue'
 
 在 Project AIRI 里，我们的伙伴 [@nekomeowww](https://github.com/nekomeowww) 也做了一个丝滑的聊天气泡组件：
 
-<video controls muted autoplay loop max-w="500px" w-full mx-auto>
-  <source src="../../../en/blog/DevLog-2025.08.01/assets/animated-chat-bubble.mp4">
-</video>
-
 <div text-sm text-center>
 
 欢迎来[我们的 UI storybook](https://airi.moeru.ai/ui/#/story/src-components-gadgets-chatbubbleminimalism-story-vue?variantId=chat) 看看

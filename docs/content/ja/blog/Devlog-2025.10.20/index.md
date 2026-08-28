@@ -36,7 +36,7 @@ Control Island
 
 （小声）スポンサーが増えれば、喜んで公開するかもしれません（x
 
-<video src="/en/blog/DevLog-2025.10.20/assets/airi.mp4" alt="airi.mp4" controls></video>
+![New Live2D Model](/en/blog/DevLog-2025.10.20/assets/project-airi.png)
 
 ## Three.js MMD サポート
 

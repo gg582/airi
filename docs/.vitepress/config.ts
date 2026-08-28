@@ -46,6 +46,25 @@ function withBase(url: string) {
     : url
 }
 
+function fallbackMediaPlugin() {
+  return {
+    name: 'vite-plugin-fallback-media',
+    enforce: 'pre' as const,
+    resolveId(id: string) {
+      if (/\.(mp4|gif)$/i.test(id) || id.startsWith('/showcase/') || id.startsWith('/assets/tutorial-')) {
+        return `\0virtual-media:${id}`
+      }
+      return null
+    },
+    load(id: string) {
+      if (id.startsWith('\0virtual-media:')) {
+        return `export default ""`
+      }
+      return null
+    },
+  }
+}
+
 // https://vitepress.dev/reference/site-config
 export default defineConfig({
   cleanUrls: true,
@@ -89,6 +108,17 @@ export default defineConfig({
     `],
   ],
   base: env.BASE_URL || '/',
+  vue: {
+    template: {
+      transformAssetUrls: {
+        video: false,
+        source: false,
+        audio: false,
+        ThemedVideo: false,
+        ThemedImage: false,
+      },
+    },
+  },
   lastUpdated: true,
   sitemap: {
     hostname: ogUrl,
@@ -560,6 +590,7 @@ export default defineConfig({
       i18n({ runtimeOnly: true, compositionOnly: true, fullInstall: true, ssr: true }),
       unocss(),
       yaml(),
+      fallbackMediaPlugin(),
       frontmatterAssets(),
     ],
     css: {

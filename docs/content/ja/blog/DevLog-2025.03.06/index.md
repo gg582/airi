@@ -17,8 +17,6 @@ date: 2025-03-06
 最終的な移植結果はかなり良く、以下にデプロイされています：
 [https://proj-airi-packages-ui-transitions.netlify.app/#/](https://proj-airi-packages-ui-transitions.netlify.app/#/)。
 
-![](/en/blog/DevLog-2025.03.06/assets/animation-transitions.gif)
-
 > また、これからは各パッケージのすべてのプレイグラウンドが
 > "proj-airi" + "${subDirectory}" + "${packageName}" というパターンで Netlify に
 > デプロイされるようになります。
