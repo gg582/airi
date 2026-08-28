@@ -11,6 +11,7 @@
   "license": "MIT",
   "scripts": {
     "build": "vite build",
+    "build:pages": "BASE_URL=/airi/web-stage/ vite build",
     "dev": "vite --host",
     "lint": "eslint .",
     "preview": "vite preview",

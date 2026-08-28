@@ -84,10 +84,16 @@ Capacitor app (config `capacitor.config.ts`: appId `ai.moeru.airi-pocket`, appNa
 ### Mobile version discipline
 `stage-pocket` has its own semver in `package.json` (`0.9.1-stable.<date>`) but Android `versionCode` and iOS build numbers are managed separately — bump both whenever distributing a new build to the same channel.
 
-## 5. Web / Docker / Docs / Edge
+## 5. Web / Docker / Docs / GitHub Pages / Edge
 
 - **Docker:** `release-docker.yaml` → on any tag push or manual dispatch, builds `ghcr.io/<repo>` from `apps/stage-web/Dockerfile` for `linux/amd64,linux/arm64,linux/arm64/v8` with GHA cache. Tag scheme: semver from `v*` tags (`latest`, `X.Y.Z`, `X.Y`, `X` when not `v0.*`).
-- **Docs:** `deploy-docs.yml` → on push to `main` touching `docs/**`, VitePress build (`BASE_URL=/airi/`) → GitHub Pages artifact deploy.
+- **Docs & Web Stage on GitHub Pages:** `.github/workflows/deploy-docs.yml` → on push to `main` touching `docs/**`, `apps/stage-web/**`, or `packages/**` (or manual `workflow_dispatch`):
+  - Builds Docs with `BASE_URL=/airi/` → `docs/.vitepress/dist`
+  - Builds Web Stage with `BASE_URL=/airi/web-stage/` → `apps/stage-web/dist`
+  - Bundles Web Stage into docs output (`docs/.vitepress/dist/web-stage`)
+  - Deploys static bundle to GitHub Pages: Docs at `https://<user>.github.io/airi/` and Web Stage at `https://<user>.github.io/airi/web-stage/`.
+  - Local verification script: `pnpm run build:pages` (full bundle) or `pnpm run build:web:pages` (`stage-web` only).
+  - Architecture & details in `docs/design-web-stage-pages-deployment.md`.
 - **Edge relay:** `apps/stage-edge` is NOT centrally deployed — each user provisions their own Cloudflare Worker + KV + R2 via OAuth PKCE during onboarding (CloudflareStageDeployer). See the `airi-cloud-relay-infrastructure` skill for maintainer-side flows.
 
 ## 6. Common Pitfalls

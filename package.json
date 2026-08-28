@@ -30,6 +30,8 @@
     "dev:packages": "pnpm -rF=\"./packages/*\" --parallel run dev",
     "build": "node scripts/prune-turbo-cache.js && turbo run build -F=\"./packages/*\" -F=\"./apps/*\"",
     "build:web": "node scripts/prune-turbo-cache.js && turbo run build -F @proj-airi/stage-web",
+    "build:web:pages": "BASE_URL=/airi/web-stage/ pnpm -F @proj-airi/stage-web run build",
+    "build:pages": "node scripts/prune-turbo-cache.js && pnpm run build:packages && BASE_URL=/airi/ pnpm -F @proj-airi/docs run build && BASE_URL=/airi/web-stage/ pnpm -F @proj-airi/stage-web run build && cp -r apps/stage-web/dist docs/.vitepress/dist/web-stage",
     "build:tamagotchi": "node scripts/prune-turbo-cache.js && pnpm -rF @proj-airi/stage-tamagotchi run app:build",
     "build:apps": "node scripts/prune-turbo-cache.js && turbo run build -F=\"./apps/*\"",
     "build:packages": "node scripts/prune-turbo-cache.js && turbo run build -F=\"./packages/*\" -F @proj-airi/stage-edge",
