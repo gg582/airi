@@ -9,6 +9,12 @@ const settings = useSettings()
 
 const menu = computed(() => [
   {
+    title: 'Orbital Navigation Playground',
+    description: 'Data-driven settings topology renderer & motion playground (Eiki spec)',
+    icon: 'i-solar:planet-bold-duotone',
+    to: '/devtools/orbital-navigation',
+  },
+  {
     title: 'Audio Record',
     description: 'Test Audio related composables',
     icon: 'i-solar:sledgehammer-bold-duotone',

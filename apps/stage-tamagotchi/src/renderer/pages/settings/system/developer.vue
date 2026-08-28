@@ -14,6 +14,12 @@ const router = useRouter()
 
 const menu = computed(() => [
   {
+    title: 'Orbital Navigation Playground',
+    description: 'Data-driven settings topology renderer & motion playground (Eiki spec)',
+    icon: 'i-solar:planet-bold-duotone',
+    to: '/devtools/orbital-navigation',
+  },
+  {
     title: t('settings.pages.system.sections.section.developer.sections.section.use-magic-keys.title'),
     description: t('settings.pages.system.sections.section.developer.sections.section.use-magic-keys.description'),
     icon: 'i-solar:sledgehammer-bold-duotone',
