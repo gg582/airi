@@ -1,10 +1,13 @@
 import type { ProviderMetadata } from '../types'
 
+import { isStageCapacitor, isStageTamagotchi } from '@proj-airi/stage-shared'
 import { isWebGPUSupported } from '@proj-airi/stage-shared/webgpu'
 import { computed } from 'vue'
 
 import { createLocalVisionAdapter, DEFAULT_LOCAL_VISION_MODEL, LOCAL_VISION_MODELS } from '../../../libs/inference'
 import { DEFAULT_WEB_LLM_MODEL, DEFAULT_WEB_RWKV_MODEL, WEB_LLM_MODELS, WEB_RWKV_MODELS } from '../../../libs/inference/constants'
+import { NativeAI } from '../../../libs/native-ai'
+import { createAppleCoreAIChatProvider, DEFAULT_APPLE_CORE_AI_MODEL } from '../apple-core-ai'
 import { createWebLlmChatProvider } from '../web-llm'
 import { createWebRwkvChatProvider } from '../web-rwkv'
 
@@ -200,6 +203,50 @@ export const localEngineMetadata: Record<string, ProviderMetadata> = {
         const url = (config.model as string) || DEFAULT_LOCAL_VISION_MODEL
         if (!url) {
           return { errors: [new Error('No model configured')], reason: 'A model is required.', valid: false }
+        }
+        return { errors: [], reason: '', valid: true }
+      },
+    },
+  },
+  'apple-core-ai': {
+    id: 'apple-core-ai',
+    category: 'chat',
+    tasks: ['text-generation'],
+    nameKey: 'settings.pages.providers.provider.apple-core-ai.title',
+    name: 'Apple Core AI (On-Device)',
+    descriptionKey: 'settings.pages.providers.provider.apple-core-ai.description',
+    description: 'Hardware-accelerated on-device neural intelligence via Apple Neural Engine (ANE) and Metal GPU.',
+    icon: 'i-solar:cpu-bolt-bold-duotone',
+    pricing: 'free',
+    deployment: 'local',
+    beginnerRecommended: true,
+    requiresCredentials: false,
+    isAvailableBy: () => isStageCapacitor() || (!isStageTamagotchi() && typeof window !== 'undefined' && ((window as any).Capacitor?.isNativePlatform?.() || NativeAI.isNative)),
+    defaultOptions: () => ({
+      model: DEFAULT_APPLE_CORE_AI_MODEL,
+    }),
+    createProvider: async config => createAppleCoreAIChatProvider({
+      model: (config.model as string) || undefined,
+      computeUnits: (config.computeUnits as any) || undefined,
+    }),
+    capabilities: {
+      listModels: async () => {
+        return [{
+          id: 'okayuji/Gemma-4-E2B-it-coreml-speculative',
+          name: 'Gemma 4 E2B IT (Speculative CoreML)',
+          provider: 'apple-core-ai',
+          description: 'High-speed speculative instruction dialogue on Apple Neural Engine (~45+ tok/s).',
+          contextLength: 4096,
+          deprecated: false,
+        }]
+      },
+    },
+    validators: {
+      chatPingCheckAvailable: false,
+      validateProviderConfig: (config) => {
+        const model = (config.model as string) || DEFAULT_APPLE_CORE_AI_MODEL
+        if (!model) {
+          return { errors: [new Error('No model configured')], reason: 'A Core AI model is required.', valid: false }
         }
         return { errors: [], reason: '', valid: true }
       },

@@ -1,4 +1,5 @@
 import { cacheKeyForModel } from '../../workers/web-rwkv/cache'
+import { NativeAI } from '../native-ai'
 
 // The cache name used by transformers.js / ONNX runtime
 const TRANSFORMERS_CACHE_NAME = 'transformers-cache'
@@ -163,15 +164,19 @@ async function isOpfsModelCached(modelUrl: string): Promise<boolean> {
 }
 
 /**
- * Get the total size of cached model files in bytes.
- * Returns 0 if the Cache API is unavailable or the cache is empty.
+ * Get the total size of cached model files in bytes across web and native backends.
+ * Returns 0 if no caches exist or all are empty.
  */
 export async function getModelCacheSize(): Promise<number> {
-  const transformersSize = await getTransformersCacheSize()
-  const opfsSize = await getOpfsCacheSize()
-  const mossSize = await getMossOpfsCacheSize()
-  const webLlmSize = await getWebLlmCacheSize()
-  return transformersSize + opfsSize + mossSize + webLlmSize
+  const [transformersSize, opfsSize, mossSize, webLlmSize, nativeSize] = await Promise.all([
+    getTransformersCacheSize(),
+    getOpfsCacheSize(),
+    getMossOpfsCacheSize(),
+    getWebLlmCacheSize(),
+    NativeAI.listCachedModels().then(res => res.totalSizeBytes).catch(() => 0),
+  ])
+
+  return transformersSize + opfsSize + mossSize + webLlmSize + nativeSize
 }
 
 async function getTransformersCacheSize(): Promise<number> {
@@ -207,19 +212,30 @@ async function getTransformersCacheSize(): Promise<number> {
 }
 
 /**
- * Clear all cached model files.
+ * Clear all cached model files across web and native backends.
  */
 export async function clearModelCache(): Promise<void> {
-  await clearTransformersCache()
-  await clearOpfsCache()
-  await clearMossOpfsCache()
-  await clearWebLlmCache()
+  await Promise.all([
+    clearTransformersCache(),
+    clearOpfsCache(),
+    clearMossOpfsCache(),
+    clearWebLlmCache(),
+    NativeAI.listCachedModels().then(async (res) => {
+      for (const m of res.models) {
+        await NativeAI.deleteCachedModel({ modelId: m.modelId }).catch(() => {})
+      }
+    }).catch(() => {}),
+  ])
 }
 
 /**
  * Clear a specific model from cache by ID.
  */
 export async function clearSingleModelCache(modelId: string): Promise<void> {
+  if (modelId.includes('coreml') || modelId.includes('Gemma-4-E2B') || modelId.includes('okayuji') || modelId.includes('aoiandroid')) {
+    await NativeAI.deleteCachedModel({ modelId }).catch(() => {})
+    return
+  }
   if (modelId === 'moss-tts-nano') {
     await clearMossOpfsCache()
     return
@@ -419,6 +435,11 @@ export async function isWebLlmModelCached(modelId?: string): Promise<boolean> {
  * Matches by looking for cache entries whose URL contains the model ID.
  */
 export async function isModelCached(modelId: string): Promise<boolean> {
+  if (modelId.includes('coreml') || modelId.includes('Gemma-4-E2B') || modelId.includes('okayuji') || modelId.includes('aoiandroid')) {
+    const res = await NativeAI.listCachedModels().catch(() => ({ models: [] }))
+    const sanitized = modelId.replace(/\//g, '_')
+    return res.models.some(m => m.modelId.includes(sanitized) || m.modelId.includes(modelId) || m.filePath.includes(sanitized))
+  }
   if (modelId === 'moss-tts-nano') {
     return isMossModelCached()
   }

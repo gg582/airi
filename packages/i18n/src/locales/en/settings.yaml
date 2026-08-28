@@ -1334,6 +1334,15 @@ pages:
             description: Enable this provider to select it for character cards.
           activate: Activate
           deactivate: Deactivate
+      apple-core-ai:
+        title: Apple Core AI (On-Device)
+        description: Hardware-accelerated on-device neural intelligence via Apple Neural
+          Engine (ANE) and Metal GPU.
+        alert:
+          title: Apple Silicon Native Neural Inference
+          content: Apple Core AI runs models locally via the native Swift plugin,
+            offloading matrix computations to the Apple Neural Engine and Metal
+            GPU with near-zero WebKit memory overhead.
     title: Providers
   connection:
     description: Configure server connection and external download tokens (e.g.
