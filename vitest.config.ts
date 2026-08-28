@@ -6,6 +6,7 @@ export default defineConfig({
       'apps/server',
       'apps/stage-tamagotchi',
       'packages/stage-ui',
+      'packages/stage-pages',
       'packages/stage-shared',
       'packages/plugin-sdk',
       'packages/cap-vite',

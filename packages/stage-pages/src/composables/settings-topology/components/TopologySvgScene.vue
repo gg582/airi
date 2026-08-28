@@ -22,9 +22,9 @@ const emit = defineEmits<{
     :viewBox="scene.viewBox"
     :width="scene.width"
     :height="scene.height"
-    class="block h-auto w-full overflow-visible"
+    class="block h-auto w-full select-none overflow-visible"
   >
-    <!-- 1. Track Guides (Circles / Lines) - Thin Hairlines -->
+    <!-- 1. Track Guides (Circles / Lines / Ticks) - Thin Hairlines -->
     <g v-if="showGuides">
       <path
         v-for="t in scene.tracks"
@@ -56,20 +56,20 @@ const emit = defineEmits<{
       />
     </g>
 
-    <!-- 3. Node Markers (Diamonds) -->
+    <!-- 3. Node Markers (Diamonds) - Pure Mechanical Click, Zero Jitter -->
     <g>
       <g
         v-for="marker in scene.markers"
         :key="marker.nodeId"
         :transform="`translate(${marker.x}, ${marker.y})`"
-        class="cursor-pointer transition-transform duration-200 hover:scale-125"
+        class="group/marker cursor-pointer"
         @click="emit('select', marker.nodeId)"
       >
         <!-- Decorative Empty Slot Dot -->
         <circle
           v-if="marker.isDecorative"
-          r="2"
-          class="fill-neutral-300 dark:fill-neutral-700"
+          r="1.5"
+          class="fill-neutral-300 transition-colors dark:fill-neutral-700 group-hover/marker:fill-neutral-600 dark:group-hover/marker:fill-neutral-400"
         />
 
         <!-- Standard Topology Diamond Marker -->
@@ -77,13 +77,13 @@ const emit = defineEmits<{
           <!-- Active Node: Solid Black/Charcoal Diamond with subtle double echo -->
           <template v-if="marker.isActive">
             <polygon
-              points="0,-9 9,0 0,9 -9,0"
+              points="0,-8 8,0 0,8 -8,0"
               fill="none"
               stroke="currentColor"
               class="stroke-0.8 text-neutral-400 dark:text-neutral-500"
             />
             <polygon
-              points="0,-6.5 6.5,0 0,6.5 -6.5,0"
+              points="0,-5.5 5.5,0 0,5.5 -5.5,0"
               fill="currentColor"
               class="text-neutral-900 dark:text-neutral-100"
             />
@@ -92,21 +92,21 @@ const emit = defineEmits<{
           <!-- Ancestor Node: Solid Charcoal Diamond -->
           <polygon
             v-else-if="marker.isAncestor"
-            points="0,-5.5 5.5,0 0,5.5 -5.5,0"
+            points="0,-5 5,0 0,5 -5,0"
             fill="currentColor"
-            class="text-neutral-700 transition-colors dark:text-neutral-300"
+            class="text-neutral-600 transition-colors dark:text-neutral-400 group-hover/marker:text-neutral-900 dark:group-hover/marker:text-neutral-100"
           />
 
-          <!-- Child / Sibling Nodes: Hollow Gray Diamond -->
+          <!-- Child / Sibling Nodes: Hollow Gray Diamond (Brightens on hover, zero scale jump) -->
           <polygon
             v-else
-            points="0,-5.5 5.5,0 0,5.5 -5.5,0"
+            points="0,-4.5 4.5,0 0,4.5 -4.5,0"
             fill="transparent"
             stroke="currentColor"
-            class="stroke-1 text-neutral-400 transition-colors dark:text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-200"
+            class="stroke-1 text-neutral-400 transition-colors group-hover/marker:stroke-1.5 dark:text-neutral-500 group-hover/marker:text-neutral-900 dark:group-hover/marker:text-neutral-100"
           />
 
-          <!-- Marker Label -->
+          <!-- Marker Label (Only shown if showLabels is true) -->
           <text
             v-if="showLabels"
             :y="compact ? 13 : 16"
@@ -117,7 +117,7 @@ const emit = defineEmits<{
                 ? 'fill-neutral-900 dark:fill-neutral-100 font-bold'
                 : marker.isAncestor
                   ? 'fill-neutral-600 dark:fill-neutral-400'
-                  : 'fill-neutral-400 hover:fill-neutral-800 dark:fill-neutral-500 dark:hover:fill-neutral-300',
+                  : 'fill-neutral-400 group-hover/marker:fill-neutral-900 dark:fill-neutral-500 dark:group-hover/marker:fill-neutral-200',
             ]"
           >
             {{ marker.shortLabel }}

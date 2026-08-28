@@ -1,12 +1,9 @@
 <script setup lang="ts">
-import type { SettingsTopology, SettingsTopologyNode } from '../types'
+import type { SettingsTopology } from '../types'
 
 import { computed } from 'vue'
 
-import TopologySvgScene from './TopologySvgScene.vue'
-
-import { createOrbitalScene } from '../layouts/orbital-instrument'
-import { getSiblingPosition } from '../path-resolver'
+import KineticOrbitalMechanism from './KineticOrbitalMechanism.vue'
 
 const props = defineProps<{
   topology: SettingsTopology
@@ -20,12 +17,7 @@ const emit = defineEmits<{
 }>()
 
 const activeId = computed(() => props.activePath[props.activePath.length - 1] || props.topology.rootId)
-const activeNode = computed<SettingsTopologyNode | undefined>(() => props.topology.nodesById[activeId.value])
 const isRoot = computed(() => activeId.value === props.topology.rootId)
-
-// Sibling telemetry
-const siblingPos = computed(() => getSiblingPosition(props.topology, activeId.value))
-const isTerminal = computed(() => !activeNode.value?.children || activeNode.value.children.length === 0)
 
 // Ancestor stack for stepped lines
 const ancestorList = computed(() => {
@@ -40,17 +32,6 @@ const ancestorList = computed(() => {
       isCurrent,
       depth: index,
     }
-  })
-})
-
-// Generate SVG Orbital scene for the right-side widget
-const orbitalScene = computed(() => {
-  return createOrbitalScene(props.topology, props.activePath, {
-    width: 200,
-    height: 150,
-    showLabels: true,
-    showInactiveSiblings: true,
-    showDecorativeSlots: false,
   })
 })
 </script>
@@ -135,29 +116,13 @@ const orbitalScene = computed(() => {
         </div>
       </div>
 
-      <!-- ── Right: Square Orbital Instrument Widget (Clean Borderless Surface) ── -->
+      <!-- ── Right: Kinetic Non-Interactive Escapement Mechanism (Pure Interface Machinery) ── -->
       <div class="relative flex shrink-0 items-center justify-center">
-        <TopologySvgScene
-          :scene="orbitalScene"
-          :show-guides="true"
-          :show-labels="true"
-          :compact="true"
-          @select="(id) => emit('navigate', id)"
+        <KineticOrbitalMechanism
+          :topology="topology"
+          :active-path="activePath"
+          :size="140"
         />
-      </div>
-    </div>
-
-    <!-- ── Bottom: Technical Status Line ── -->
-    <div class="mt-2 flex items-center justify-between border-t border-neutral-200/70 pt-1.5 text-[10px] text-neutral-400 tracking-wider font-mono dark:border-neutral-800/70 dark:text-neutral-500">
-      <div class="flex items-center gap-2">
-        <span>SIBLINGS AT LEVEL</span>
-        <span class="text-neutral-300 dark:text-neutral-700">·</span>
-        <span>POSITION {{ String(siblingPos.index + 1).padStart(2, '0') }}/{{ String(siblingPos.total).padStart(2, '0') }}</span>
-      </div>
-      <div class="flex items-center gap-2">
-        <span class="rounded bg-neutral-100 px-1.5 py-0.2 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400">
-          {{ isTerminal ? 'HATCH = TERMINAL' : 'HATCH = BRANCH' }}
-        </span>
       </div>
     </div>
   </header>

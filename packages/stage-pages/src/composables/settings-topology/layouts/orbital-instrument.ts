@@ -18,18 +18,21 @@ export interface OrbitalInstrumentOptions {
   maxOrbits?: number
 }
 
+/**
+ * Generates an authentic mechanical escapement / gear chronograph scene.
+ * Inspired by BMS precision motion graphics (Re:End of a Dream) and NieR automaton clockwork.
+ */
 export function createOrbitalScene(
   topology: SettingsTopology,
   activePath: string[],
   options: OrbitalInstrumentOptions = {},
 ): TopologyScene {
-  const width = options.width ?? 640
-  const height = options.height ?? 460
+  const width = options.width ?? 180
+  const height = options.height ?? 180
   const showInactiveSiblings = options.showInactiveSiblings ?? true
-  const showDecorativeSlots = options.showDecorativeSlots ?? false
 
   const cx = width / 2
-  const cy = height / 2 + 10
+  const cy = height / 2
 
   const activeId = activePath[activePath.length - 1] || topology.rootId
   const activeNode = topology.nodesById[activeId] || topology.nodesById[topology.rootId]
@@ -48,12 +51,53 @@ export function createOrbitalScene(
   const tracks: LayoutTrack[] = []
   const connectors: LayoutConnector[] = []
 
-  // Define orbit radii
-  const baseRadius = 60
-  const radiusStep = 65
   const activeDepth = activePath.length - 1
+  const siblings = getSiblings(topology, activeId)
+  const siblingTotal = siblings.length
+  const activeSiblingIndex = siblings.indexOf(activeId)
 
-  // 1. Center Hub / Root Marker (Depth 0)
+  // ── 1. Chronograph Outer Bezel & Caliper Ticks ──
+  const bezelRadius = Math.min(cx, cy) - 8
+  const bezelPath = `M ${cx - bezelRadius} ${cy} A ${bezelRadius} ${bezelRadius} 0 1 0 ${cx + bezelRadius} ${cy} A ${bezelRadius} ${bezelRadius} 0 1 0 ${cx - bezelRadius} ${cy}`
+
+  tracks.push({
+    id: 'bezel-outer-ring',
+    depth: 0,
+    pathD: bezelPath,
+    points: [],
+    isActiveDepth: false,
+  })
+
+  // 12 Escapement Tick Marks around bezel
+  for (let t = 0; t < 12; t++) {
+    const tickAngle = (t * 30 - 90) * (Math.PI / 180)
+    const isCardinal = t % 3 === 0
+    const tickLen = isCardinal ? 6 : 3
+    const x1 = cx + (bezelRadius - tickLen) * Math.cos(tickAngle)
+    const y1 = cy + (bezelRadius - tickLen) * Math.sin(tickAngle)
+    const x2 = cx + bezelRadius * Math.cos(tickAngle)
+    const y2 = cy + bezelRadius * Math.sin(tickAngle)
+
+    connectors.push({
+      fromNodeId: `tick-${t}-a`,
+      toNodeId: `tick-${t}-b`,
+      pathD: `M ${x1} ${y1} L ${x2} ${y2}`,
+      isActiveLink: isCardinal && t === 0, // 12 o'clock active apex
+    })
+  }
+
+  // ── 2. Center Axle Hub / Escapement Core ──
+  const coreRadius = 22
+  const corePath = `M ${cx - coreRadius} ${cy} A ${coreRadius} ${coreRadius} 0 1 0 ${cx + coreRadius} ${cy} A ${coreRadius} ${coreRadius} 0 1 0 ${cx - coreRadius} ${cy}`
+  tracks.push({
+    id: 'core-hub-ring',
+    depth: 0,
+    pathD: corePath,
+    points: [],
+    isActiveDepth: activeDepth === 0,
+  })
+
+  // Center Hub Root Node Marker
   const rootNode = topology.nodesById[topology.rootId]
   if (rootNode) {
     markers.push({
@@ -76,186 +120,108 @@ export function createOrbitalScene(
     })
   }
 
-  // 2. Determine visible depths to draw orbits for (up to activeDepth + 1 for children preview)
-  const maxVisibleDepth = Math.max(1, activeDepth + (activeNode?.children?.length ? 1 : 0))
+  // ── 3. Active Sibling Gear Ring ──
+  if (activeDepth > 0 || (activeNode && activeNode.children && activeNode.children.length > 0)) {
+    const gearRadius = 50
+    const gearPath = `M ${cx - gearRadius} ${cy} A ${gearRadius} ${gearRadius} 0 1 0 ${cx + gearRadius} ${cy} A ${gearRadius} ${gearRadius} 0 1 0 ${cx - gearRadius} ${cy}`
 
-  for (let d = 1; d <= maxVisibleDepth; d++) {
-    const radius = baseRadius + (d - 1) * radiusStep
-    const isCurrentActiveDepth = d === activeDepth
-
-    // Draw full circular orbital track
-    const circlePath = `M ${cx - radius} ${cy} A ${radius} ${radius} 0 1 0 ${cx + radius} ${cy} A ${radius} ${radius} 0 1 0 ${cx - radius} ${cy}`
     tracks.push({
-      id: `orbit-ring-${d}`,
-      depth: d,
-      pathD: circlePath,
+      id: 'active-gear-track',
+      depth: activeDepth,
+      pathD: gearPath,
       points: [],
-      isActiveDepth: isCurrentActiveDepth,
+      isActiveDepth: true,
     })
 
-    // If this is an ancestor depth (d < activeDepth), place the ancestor node marker on its orbit
-    if (d < activeDepth) {
-      const ancId = activePath[d]
-      const ancNode = topology.nodesById[ancId]
-      if (ancNode) {
-        // Position at top-left quadrant (-120 deg)
-        const angle = (-120 + d * 30) * (Math.PI / 180)
-        const ax = cx + radius * Math.cos(angle)
-        const ay = cy + radius * Math.sin(angle)
+    // Sibling detent teeth distribution
+    // Stepped angular interval: aligns active sibling at top apex (-Math.PI / 2)
+    const angleStep = (2 * Math.PI) / Math.max(1, siblingTotal)
+    const baseOffset = -Math.PI / 2 - (activeSiblingIndex >= 0 ? activeSiblingIndex * angleStep : 0)
 
+    for (let i = 0; i < siblingTotal; i++) {
+      const sibId = siblings[i]
+      const sibNode = topology.nodesById[sibId]
+      if (!sibNode)
+        continue
+
+      const isCurrentActive = sibId === activeId
+      const angle = baseOffset + i * angleStep
+      const sx = cx + gearRadius * Math.cos(angle)
+      const sy = cy + gearRadius * Math.sin(angle)
+
+      if (isCurrentActive || showInactiveSiblings) {
         markers.push({
-          nodeId: ancId,
-          label: ancNode.label,
-          shortLabel: ancNode.shortLabel || ancNode.label.slice(0, 4),
-          route: ancNode.route,
-          kind: ancNode.kind || 'page',
-          icon: ancNode.icon,
-          x: ax,
-          y: ay,
-          depth: d,
-          siblingIndex: 0,
-          siblingTotal: 1,
-          isActive: false,
-          isAncestor: true,
+          nodeId: sibId,
+          label: sibNode.label,
+          shortLabel: sibNode.shortLabel || sibNode.label.slice(0, 4),
+          route: sibNode.route,
+          kind: sibNode.kind || 'page',
+          icon: sibNode.icon,
+          x: sx,
+          y: sy,
+          depth: activeDepth,
+          siblingIndex: i,
+          siblingTotal,
+          isActive: isCurrentActive,
+          isAncestor: false,
           isChild: false,
-          isSibling: false,
-          isAnchor: true,
+          isSibling: !isCurrentActive,
+          isAnchor: isCurrentActive,
         })
+      }
 
-        // Draw radial connector from parent
-        const parentId = activePath[d - 1]
-        const parentMarker = markers.find(m => m.nodeId === parentId)
-        if (parentMarker) {
-          connectors.push({
-            fromNodeId: parentId,
-            toNodeId: ancId,
-            pathD: `M ${parentMarker.x} ${parentMarker.y} L ${ax} ${ay}`,
-            isActiveLink: true,
-          })
-        }
+      // Radial ray from axle hub to active apex
+      if (isCurrentActive) {
+        connectors.push({
+          fromNodeId: 'hub',
+          toNodeId: sibId,
+          pathD: `M ${cx} ${cy} L ${sx} ${sy}`,
+          isActiveLink: true,
+        })
       }
     }
 
-    // If this is the active depth (d === activeDepth), distribute the sibling markers along the orbit
-    if (d === activeDepth) {
-      const siblings = getSiblings(topology, activeId)
-      const siblingTotal = siblings.length
+    // ── 4. Unfolding Child Iris Ring (When active node has children) ──
+    if (activeNode && activeNode.children && activeNode.children.length > 0) {
+      const childRadius = 72
+      const childCount = activeNode.children.length
+      const childPath = `M ${cx - childRadius} ${cy} A ${childRadius} ${childRadius} 0 1 0 ${cx + childRadius} ${cy} A ${childRadius} ${childRadius} 0 1 0 ${cx - childRadius} ${cy}`
 
-      // Distribute evenly around the circle, centering active node at -90 deg (top) or spreading across an arc
-      const startAngle = siblingTotal > 1 ? -Math.PI / 2 : -Math.PI / 2
-      const angleSpan = siblingTotal <= 6 ? Math.PI * 1.2 : Math.PI * 1.85
-      const angleStep = siblingTotal > 1 ? angleSpan / (siblingTotal - 1) : 0
-      const initialOffset = siblingTotal > 1 ? startAngle - angleSpan / 2 : startAngle
+      tracks.push({
+        id: `child-iris-ring-${activeId}`,
+        depth: activeDepth + 1,
+        pathD: childPath,
+        points: [],
+        isActiveDepth: false,
+      })
 
-      for (let i = 0; i < siblingTotal; i++) {
-        const sibId = siblings[i]
-        const sibNode = topology.nodesById[sibId]
-        if (!sibNode)
-          continue
+      // Child markers positioned along the upper arc of the child iris
+      const childSpan = Math.min(Math.PI * 1.4, childCount * 0.36)
+      const childStart = -Math.PI / 2 - childSpan / 2
+      const childStep = childCount > 1 ? childSpan / (childCount - 1) : 0
 
-        const isCurrentActive = sibId === activeId
-        const angle = siblingTotal > 1 ? initialOffset + i * angleStep : -Math.PI / 2
-        const sx = cx + radius * Math.cos(angle)
-        const sy = cy + radius * Math.sin(angle)
-
-        if (isCurrentActive || showInactiveSiblings) {
-          markers.push({
-            nodeId: sibId,
-            label: sibNode.label,
-            shortLabel: sibNode.shortLabel || sibNode.label.slice(0, 4),
-            route: sibNode.route,
-            kind: sibNode.kind || 'page',
-            icon: sibNode.icon,
-            x: sx,
-            y: sy,
-            depth: d,
-            siblingIndex: i,
-            siblingTotal,
-            isActive: isCurrentActive,
-            isAncestor: false,
-            isChild: false,
-            isSibling: !isCurrentActive,
-            isAnchor: isCurrentActive,
-          })
-        }
-
-        // Draw radial connector from parent to active node
-        if (isCurrentActive) {
-          const parentId = activePath[d - 1]
-          const parentMarker = markers.find(m => m.nodeId === parentId)
-          if (parentMarker) {
-            connectors.push({
-              fromNodeId: parentId,
-              toNodeId: sibId,
-              pathD: `M ${parentMarker.x} ${parentMarker.y} L ${sx} ${sy}`,
-              isActiveLink: true,
-            })
-          }
-        }
-      }
-
-      // Optional: show decorative empty orbit ticks/dots if enabled
-      if (showDecorativeSlots && siblingTotal < 18) {
-        const extraSlots = 18 - siblingTotal
-        for (let k = 0; k < extraSlots; k++) {
-          const angle = initialOffset + (siblingTotal + k) * (angleSpan / 17)
-          const dx = cx + radius * Math.cos(angle)
-          const dy = cy + radius * Math.sin(angle)
-          markers.push({
-            nodeId: `decorative-slot-${k}`,
-            label: `Slot ${k + 1}`,
-            shortLabel: '·',
-            kind: 'page',
-            x: dx,
-            y: dy,
-            depth: d,
-            siblingIndex: siblingTotal + k,
-            siblingTotal: 18,
-            isActive: false,
-            isAncestor: false,
-            isChild: false,
-            isSibling: false,
-            isAnchor: false,
-            isDecorative: true,
-          })
-        }
-      }
-    }
-
-    // If this is the children depth (d === activeDepth + 1), distribute child preview markers
-    if (d === activeDepth + 1 && activeNode && activeNode.children && activeNode.children.length > 0) {
-      const children = activeNode.children
-      const childTotal = children.length
-      const activeMarker = markers.find(m => m.nodeId === activeId)
-
-      // Spread children along an arc radiating out from the active node's direction
-      const baseAngle = activeMarker ? Math.atan2(activeMarker.y - cy, activeMarker.x - cx) : -Math.PI / 2
-      const childArcSpan = Math.min(Math.PI * 1.2, childTotal * 0.28)
-      const childAngleStep = childTotal > 1 ? childArcSpan / (childTotal - 1) : 0
-      const childStartAngle = childTotal > 1 ? baseAngle - childArcSpan / 2 : baseAngle
-
-      for (let c = 0; c < childTotal; c++) {
-        const childId = children[c]
+      for (let c = 0; c < childCount; c++) {
+        const childId = activeNode.children[c]
         const childNode = topology.nodesById[childId]
         if (!childNode)
           continue
 
-        const angle = childTotal > 1 ? childStartAngle + c * childAngleStep : baseAngle
-        const chx = cx + radius * Math.cos(angle)
-        const chy = cy + radius * Math.sin(angle)
+        const cAngle = childCount > 1 ? childStart + c * childStep : -Math.PI / 2
+        const chx = cx + childRadius * Math.cos(cAngle)
+        const chy = cy + childRadius * Math.sin(cAngle)
 
         markers.push({
           nodeId: childId,
           label: childNode.label,
-          shortLabel: childNode.shortLabel || childNode.label.slice(0, 3),
+          shortLabel: childNode.shortLabel || childNode.label.slice(0, 4),
           route: childNode.route,
           kind: childNode.kind || 'page',
           icon: childNode.icon,
           x: chx,
           y: chy,
-          depth: d,
+          depth: activeDepth + 1,
           siblingIndex: c,
-          siblingTotal: childTotal,
+          siblingTotal: childCount,
           isActive: false,
           isAncestor: false,
           isChild: true,
@@ -263,12 +229,12 @@ export function createOrbitalScene(
           isAnchor: false,
         })
 
-        // Connector from active marker to child marker
-        if (activeMarker) {
+        // Escapement teeth linkage from active node to child ring
+        if (c === 0 || c === childCount - 1 || c === Math.floor(childCount / 2)) {
           connectors.push({
             fromNodeId: activeId,
             toNodeId: childId,
-            pathD: `M ${activeMarker.x} ${activeMarker.y} L ${chx} ${chy}`,
+            pathD: `M ${cx} ${cy - gearRadius} L ${chx} ${chy}`,
             isActiveLink: false,
           })
         }

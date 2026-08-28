@@ -1,5 +1,6 @@
 export * from './fixtures'
 export * from './layouts/header-track'
+export * from './layouts/kinetic-escapement'
 export * from './layouts/orbital-instrument'
 export * from './live-adapter'
 export * from './path-resolver'

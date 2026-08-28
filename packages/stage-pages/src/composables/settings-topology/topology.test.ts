@@ -4,6 +4,7 @@ import {
   buildLiveSettingsTopology,
   buildSettingsCatalogTopology,
   classifyTransition,
+  computeEscapementPose,
   createBalanced3x3Fixture,
   createDeepChainFixture,
   createEikiReferenceFixture,
@@ -15,6 +16,8 @@ import {
   createRootOnlyFixture,
   createSingleChildFixture,
   createWideSiblingsFixture,
+  DEFAULT_ESCAPEMENT_TIMING,
+  getSiblingAngle,
   resolvePath,
   resolvePathFromRoute,
   validateTopology,
@@ -153,6 +156,50 @@ describe('path & Transition Resolvers', () => {
   })
 })
 
+describe('kinetic Escapement Engine & Motion Grammar', () => {
+  const catalog = buildSettingsCatalogTopology()
+  const prev = ['hub', 'area-modules', 'mod-01-consciousness']
+  const next = ['hub', 'area-modules', 'mod-06-speech']
+  const transition = classifyTransition(prev, next)
+
+  it('computes angular positions correctly anchored at -90 deg apex', () => {
+    expect(getSiblingAngle(0, 4)).toBe(-90)
+    expect(getSiblingAngle(1, 4)).toBe(0)
+    expect(getSiblingAngle(2, 4)).toBe(90)
+    expect(getSiblingAngle(3, 4)).toBe(180)
+  })
+
+  it('executes 4-phase motion grammar across beat timeline', () => {
+    // Phase 1: Release (0 to 100ms)
+    const poseRelease = computeEscapementPose(transition, catalog, prev, next, 50, DEFAULT_ESCAPEMENT_TIMING)
+    expect(poseRelease.phase).toBe('release')
+    expect(poseRelease.engagementOffset).toBeLessThan(0) // Withdrawn from detent
+
+    // Phase 2: Counter-Strike (100 to 200ms)
+    const poseCounter = computeEscapementPose(transition, catalog, prev, next, 150, DEFAULT_ESCAPEMENT_TIMING)
+    expect(poseCounter.phase).toBe('counter-strike')
+
+    // Phase 3: Traversal (200 to 400ms)
+    const poseTraversal = computeEscapementPose(transition, catalog, prev, next, 300, DEFAULT_ESCAPEMENT_TIMING)
+    expect(poseTraversal.phase).toBe('traversal')
+
+    // Phase 4: Settle & Recoil (400 to 500ms)
+    const poseSettle = computeEscapementPose(transition, catalog, prev, next, 450, DEFAULT_ESCAPEMENT_TIMING)
+    expect(poseSettle.phase).toBe('settle')
+
+    // Post-beat Settled
+    const poseSettled = computeEscapementPose(transition, catalog, prev, next, 550, DEFAULT_ESCAPEMENT_TIMING)
+    expect(poseSettled.phase).toBe('idle')
+    expect(poseSettled.engagementOffset).toBe(0)
+  })
+
+  it('instantly settles in reduced-motion mode without intermediate traversal', () => {
+    const poseReduced = computeEscapementPose(transition, catalog, prev, next, 100, DEFAULT_ESCAPEMENT_TIMING, true)
+    expect(poseReduced.phase).toBe('idle')
+    expect(poseReduced.engagementOffset).toBe(0)
+  })
+})
+
 describe('layout Scene Generators', () => {
   const eiki = createEikiReferenceFixture()
   const activePath = ['hub', 'area-modules', 'mod-01-consciousness']
@@ -166,7 +213,7 @@ describe('layout Scene Generators', () => {
   })
 
   it('generates valid Orbital scene with concentric tracks and markers', () => {
-    const scene = createOrbitalScene(eiki, activePath, { width: 640, height: 460 })
+    const scene = createOrbitalScene(eiki, activePath, { width: 180, height: 180 })
     expect(scene.markers.length).toBeGreaterThan(0)
     expect(scene.tracks.length).toBeGreaterThanOrEqual(2)
     expect(scene.activeMarker?.nodeId).toBe('mod-01-consciousness')

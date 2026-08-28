@@ -11,6 +11,7 @@ import { usePreferredReducedMotion } from '@vueuse/core'
 import { computed, ref, watch } from 'vue'
 
 import FullPageSettingsEngine from '../../composables/settings-topology/components/FullPageSettingsEngine.vue'
+import KineticOrbitalMechanism from '../../composables/settings-topology/components/KineticOrbitalMechanism.vue'
 
 import {
   buildLiveSettingsTopology,
@@ -57,6 +58,7 @@ const invalidType = ref<'cycle' | 'missing-parent' | 'unreachable'>('cycle')
 const layoutMode = ref<LayoutMode>('orbital')
 const speedMode = ref<SpeedMode>('normal')
 const widthPreset = ref<WidthPreset>('lg')
+const beatMs = computed(() => speedMode.value === 'slow' ? 1200 : speedMode.value === 'instant' ? 0 : 500)
 
 // Display toggles
 const showLabels = ref(true)
@@ -563,6 +565,16 @@ const transitionDurationClass = computed(() => {
             <span class="rounded-md bg-white/10 px-2 py-0.5 text-[10px] text-neutral-300 font-mono backdrop-blur-sm">
               LAYOUT: {{ layoutMode.toUpperCase() }} · SIBLINGS: {{ activeSiblingPos.index + 1 }}/{{ activeSiblingPos.total }}
             </span>
+          </div>
+
+          <!-- Escapement Kinetic Ornament Preview (When in orbital mode) -->
+          <div v-if="layoutMode === 'orbital'" class="absolute right-4 top-4">
+            <KineticOrbitalMechanism
+              :topology="currentTopology"
+              :active-path="activePath"
+              :beat-ms="beatMs"
+              :size="80"
+            />
           </div>
 
           <!-- SVG Visualizer -->
