@@ -6,8 +6,6 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { RouterView, useRoute, useRouter } from 'vue-router'
 
-import HeaderLink from '../components/Layouts/HeaderLink.vue'
-
 import { themeColorFromValue, useThemeColor } from '../composables/theme-color'
 
 const route = useRoute()
@@ -108,14 +106,6 @@ function handleBack() {
     }"
     h-full w-full
   >
-    <!-- Header -->
-    <div
-      class="px-0 py-1 sm:block md:px-3 md:py-3"
-      w-full gap-2
-      bg="$bg-color"
-    >
-      <HeaderLink />
-    </div>
     <!-- Content -->
     <div class="max-h-[calc(100%-40px)] px-3 py-0 sm:max-h-[calc(100%-56px)] 2xl:max-w-screen-2xl md:py-0 xl:px-4" flex="~ col" mx-auto h-full min-h-0>
       <PageHeader

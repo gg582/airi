@@ -1,4 +1,18 @@
-import type { HardwareTelemetry, NativeAIPluginInterface, PingResponse, TestStreamOptions, TokenStreamEvent } from './definitions'
+import type {
+  DeleteCachedModelOptions,
+  DownloadModelOptions,
+  DownloadProgressEvent,
+  GenerateStreamOptions,
+  HardwareTelemetry,
+  ListCachedModelsResult,
+  LoadModelOptions,
+  LoadModelResult,
+  NativeAIPluginInterface,
+  PingResponse,
+  TestStreamOptions,
+  TokenStreamEvent,
+  UnloadModelOptions,
+} from './definitions'
 
 import { Capacitor, registerPlugin } from '@capacitor/core'
 
@@ -140,6 +154,162 @@ export const NativeAI = {
         platform: 'error',
         engine: `Failed: ${String(err?.message || err)}`,
       }
+    }
+  },
+
+  async downloadModel(
+    options: DownloadModelOptions,
+    onProgress?: (event: DownloadProgressEvent) => void,
+  ): Promise<{ modelId: string, status: string }> {
+    if (!this.isNative()) {
+      // Browser mock download simulation
+      let bytes = 0
+      const totalBytes = 1.3 * 1024 * 1024 * 1024 // 1.3 GB
+      const stepBytes = 150 * 1024 * 1024 // 150 MB steps
+      const startTime = Date.now()
+
+      return new Promise((resolve) => {
+        const interval = setInterval(() => {
+          bytes = Math.min(totalBytes, bytes + stepBytes)
+          const percentage = Number(((bytes / totalBytes) * 100).toFixed(1))
+          const elapsedSec = (Date.now() - startTime) / 1000
+          const speedMBs = Number(((bytes / (1024 * 1024)) / Math.max(0.1, elapsedSec)).toFixed(1))
+          const isCompleted = bytes >= totalBytes
+
+          onProgress?.({
+            modelId: options.modelId,
+            bytesWritten: bytes,
+            totalBytes,
+            percentage,
+            speedMBs,
+            isCompleted,
+          })
+
+          if (isCompleted) {
+            clearInterval(interval)
+            resolve({ modelId: options.modelId, status: 'downloaded' })
+          }
+        }, 300)
+      })
+    }
+
+    let listenerHandle: { remove: () => Promise<void> } | null = null
+    if (onProgress) {
+      listenerHandle = await Plugin.addListener('downloadProgress', (event: DownloadProgressEvent) => {
+        if (event.modelId === options.modelId) {
+          onProgress(event)
+          if (event.isCompleted || event.error) {
+            listenerHandle?.remove().catch(() => {})
+          }
+        }
+      })
+    }
+
+    try {
+      return await Plugin.downloadModel(options)
+    }
+    catch (err) {
+      listenerHandle?.remove().catch(() => {})
+      throw err
+    }
+  },
+
+  async loadModel(options: LoadModelOptions): Promise<LoadModelResult> {
+    if (!this.isNative()) {
+      await new Promise(resolve => setTimeout(resolve, 600))
+      return {
+        modelId: options.modelId,
+        isLoaded: true,
+        loadTimeMs: 580,
+        computeUnitsUsed: 'Simulated Web Neural Engine',
+        residentMemoryBytes: 1.2 * 1024 * 1024 * 1024,
+      }
+    }
+
+    return await Plugin.loadModel(options)
+  },
+
+  async unloadModel(options?: UnloadModelOptions): Promise<{ success: boolean }> {
+    if (!this.isNative()) {
+      return { success: true }
+    }
+    return await Plugin.unloadModel(options)
+  },
+
+  async listCachedModels(): Promise<ListCachedModelsResult> {
+    if (!this.isNative()) {
+      return {
+        models: [
+          {
+            modelId: 'okayuji/Gemma-4-E2B-it-coreml-speculative',
+            filePath: '/simulated/documents/CoreAI/models/gemma-4-e2b.mlmodelc',
+            sizeBytes: 1.3 * 1024 * 1024 * 1024,
+            isCompiled: true,
+            createdAt: new Date().toISOString(),
+          },
+        ],
+        totalSizeBytes: 1.3 * 1024 * 1024 * 1024,
+      }
+    }
+    return await Plugin.listCachedModels()
+  },
+
+  async deleteCachedModel(options: DeleteCachedModelOptions): Promise<{ success: boolean }> {
+    if (!this.isNative()) {
+      return { success: true }
+    }
+    return await Plugin.deleteCachedModel(options)
+  },
+
+  async generateStream(
+    options: GenerateStreamOptions,
+    onToken: (event: TokenStreamEvent) => void,
+  ): Promise<{ stop: () => Promise<void> }> {
+    const requestId = options.requestId || `gen-${Date.now()}`
+
+    if (!this.isNative()) {
+      return this.testTokenStream({
+        requestId,
+        prompt: options.prompt || options.messages?.[options.messages.length - 1]?.content || 'Hello!',
+        tokenCount: options.maxTokens || 40,
+        speedTokSec: 45,
+      }, onToken)
+    }
+
+    try {
+      const listenerHandle = await Plugin.addListener('token', (event: TokenStreamEvent) => {
+        if (event.requestId === requestId) {
+          onToken(event)
+          if (event.isFinished) {
+            listenerHandle.remove().catch(() => {})
+          }
+        }
+      })
+
+      await Plugin.generateStream(options)
+
+      return {
+        stop: async () => {
+          try {
+            await Plugin.cancelGeneration({ requestId })
+            await listenerHandle.remove()
+          }
+          catch (e) {
+            console.warn('[NativeAI] Error cancelling generation:', e)
+          }
+        },
+      }
+    }
+    catch (err) {
+      console.error('[NativeAI] generateStream failed:', err)
+      onToken({
+        requestId,
+        token: '',
+        isFinished: true,
+        finishReason: 'error',
+        error: String(err),
+      })
+      return { stop: async () => {} }
     }
   },
 

@@ -11,6 +11,7 @@ interface SearchItem {
   description?: string
   to: string
   icon?: string
+  keywords?: string[]
 }
 
 const router = useRouter()
@@ -42,6 +43,80 @@ const staticIndex: SearchItem[] = [
   { id: 'page-system', title: 'System Settings', category: 'Primary Page', description: 'App system preferences & user identity', to: '/settings/system', icon: 'i-solar:filters-bold-duotone' },
   { id: 'page-data', title: 'Data Management', category: 'Primary Page', description: 'Backup, restore & storage tools', to: '/settings/data', icon: 'i-solar:database-bold-duotone' },
   { id: 'page-docs', title: 'Documentation', category: 'Primary Page', description: 'In-app user guides & reference', to: '/settings/docs', icon: 'i-solar:book-open-bold-duotone' },
+
+  // ── Developer Tools ──
+  {
+    id: 'dev-core-ai-lab',
+    title: 'Core AI Lab (Apple Silicon / CoreML)',
+    category: 'Developer Tools',
+    description: 'Apple Silicon telemetry, CoreML model hub, ANE specialization & token streaming',
+    to: '/devtools/core-ai-lab',
+    icon: 'i-solar:cpu-bold-duotone',
+    keywords: ['coreml', 'core-ai', 'apple silicon', 'ane', 'neural engine', 'gemma', 'hardware', 'telemetry', 'benchmark', 'speculative', 'inference', 'tokens'],
+  },
+  {
+    id: 'dev-beat-sync',
+    title: 'Beat Sync Live2D Lab',
+    category: 'Developer Tools',
+    description: 'Beat detection, spring physics & Live2D head bounce tuning',
+    to: '/devtools/beat-sync',
+    icon: 'i-solar:music-notes-bold-duotone',
+    keywords: ['beat sync', 'live2d', 'spring', 'physics', 'dance', 'motion', 'audio'],
+  },
+  {
+    id: 'dev-websocket-inspector',
+    title: 'WebSocket Traffic Inspector',
+    category: 'Developer Tools',
+    description: 'Real-time WebSocket event ledger, packets & channel traffic',
+    to: '/devtools/websocket-inspector',
+    icon: 'i-solar:transfer-horizontal-bold-duotone',
+    keywords: ['websocket', 'inspector', 'packets', 'events', 'network', 'gateway', 'channel'],
+  },
+  {
+    id: 'dev-context-flow',
+    title: 'Context Flow Visualizer',
+    category: 'Developer Tools',
+    description: 'Interactive memory layers, active context & prompt assembly pipeline',
+    to: '/devtools/context-flow',
+    icon: 'i-solar:layers-bold-duotone',
+    keywords: ['context', 'memory flow', 'prompt builder', 'stmm', 'ltmm', 'lifetime', 'tokens'],
+  },
+  {
+    id: 'dev-image-vlm',
+    title: 'Image Processing & VLM Lab',
+    category: 'Developer Tools',
+    description: 'VLM vision perception, image tag extraction & crop debugging',
+    to: '/devtools/image',
+    icon: 'i-solar:camera-bold-duotone',
+    keywords: ['image', 'vlm', 'vision', 'ocr', 'tags', 'blip', 'clip'],
+  },
+  {
+    id: 'dev-plugin-host',
+    title: 'Plugin Host DevTools',
+    category: 'Developer Tools',
+    description: 'Plugin runtime lifecycle & bridge inspector',
+    to: '/devtools/plugin-host',
+    icon: 'i-solar:widget-add-bold-duotone',
+    keywords: ['plugin', 'host', 'bridge', 'extensions'],
+  },
+  {
+    id: 'dev-markdown-stress',
+    title: 'Markdown Stress Testbed',
+    category: 'Developer Tools',
+    description: 'Markdown parser stress testing & syntax rendering benchmarks',
+    to: '/devtools/markdown-stress',
+    icon: 'i-solar:document-text-bold-duotone',
+    keywords: ['markdown', 'stress', 'benchmarks', 'parser', 'katex'],
+  },
+  {
+    id: 'dev-vibrant',
+    title: 'Vibrant Palette Extractor',
+    category: 'Developer Tools',
+    description: 'Color extraction & dynamic theme generation diagnostics',
+    to: '/devtools/vibrant',
+    icon: 'i-solar:pallete-2-bold-duotone',
+    keywords: ['vibrant', 'color', 'palette', 'theme'],
+  },
 
   // ── Memory Sub-Pages ──
   // Routes verified from memory/index.vue → memorySections[].route
@@ -145,10 +220,12 @@ const searchResults = computed(() => {
     return fullSearchIndex.value.slice(0, 8)
 
   return fullSearchIndex.value.filter((item) => {
+    const kwMatch = item.keywords?.some(k => k.toLowerCase().includes(query))
     return (
       item.title.toLowerCase().includes(query)
       || item.category.toLowerCase().includes(query)
       || (item.description && item.description.toLowerCase().includes(query))
+      || kwMatch
     )
   }).slice(0, 12)
 })
