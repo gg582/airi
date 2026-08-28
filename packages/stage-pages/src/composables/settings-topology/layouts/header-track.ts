@@ -23,11 +23,11 @@ export function createHeaderTrackScene(
   options: HeaderTrackOptions = {},
 ): TopologyScene {
   const width = options.width ?? 960
-  const height = options.height ?? 140
-  const showInactiveSiblings = options.showInactiveSiblings ?? true
-
   const activeId = activePath[activePath.length - 1] || topology.rootId
   const activeNode = topology.nodesById[activeId] || topology.nodesById[topology.rootId]
+  const hasChildTrack = !!(activeNode && activeNode.children && activeNode.children.length > 0)
+  const height = options.height ?? (hasChildTrack ? 94 : 52)
+  const showInactiveSiblings = options.showInactiveSiblings ?? true
 
   const breadcrumbs: TopologyBreadcrumb[] = activePath.map((id, depth) => {
     const node = topology.nodesById[id]
@@ -47,13 +47,13 @@ export function createHeaderTrackScene(
   const siblings = getSiblings(topology, activeId)
   const siblingTotal = siblings.length
 
-  // Track Y positions
-  const trackY = 45
-  const paddingX = 40
+  // Track Y positions (Compact: trackY = 22, childY = 62)
+  const trackY = 22
+  const paddingX = 36
   const availableWidth = width - paddingX * 2
 
   // 1. Ancestor track line (left-hand anchor rail)
-  const ancestorSpacing = Math.min(56, (availableWidth * 0.2) / Math.max(1, activeDepth))
+  const ancestorSpacing = Math.min(50, (availableWidth * 0.2) / Math.max(1, activeDepth))
   const ancestorStartX = paddingX
 
   for (let d = 0; d < activeDepth; d++) {
@@ -94,7 +94,7 @@ export function createHeaderTrackScene(
   }
 
   // 2. Active sibling track (spans the remaining width)
-  const siblingStartX = activeDepth > 0 ? ancestorStartX + activeDepth * ancestorSpacing + 30 : paddingX
+  const siblingStartX = activeDepth > 0 ? ancestorStartX + activeDepth * ancestorSpacing + 28 : paddingX
   const siblingAvailableWidth = width - siblingStartX - paddingX
   const siblingStep = siblingTotal > 1 ? siblingAvailableWidth / (siblingTotal - 1) : 0
 
@@ -145,10 +145,10 @@ export function createHeaderTrackScene(
   }
 
   // 3. Child preview track (if active node has children)
-  if (activeNode && activeNode.children && activeNode.children.length > 0) {
+  if (hasChildTrack && activeNode) {
     const activeMarker = markers.find(m => m.nodeId === activeId)
     if (activeMarker) {
-      const childY = trackY + 48
+      const childY = 62
       const childCount = activeNode.children.length
       const childWidth = Math.min(availableWidth, Math.max(availableWidth * 0.75, childCount * 48))
       const childStartX = Math.max(paddingX, Math.min(width - paddingX - childWidth, activeMarker.x - childWidth / 2))

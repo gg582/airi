@@ -16,6 +16,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'navigate', nodeId: string): void
   (e: 'back'): void
+  (e: 'recall'): void
 }>()
 
 const activeId = computed(() => props.activePath[props.activePath.length - 1] || props.topology.rootId)
@@ -46,7 +47,7 @@ const ancestorList = computed(() => {
 const orbitalScene = computed(() => {
   return createOrbitalScene(props.topology, props.activePath, {
     width: 200,
-    height: 160,
+    height: 150,
     showLabels: true,
     showInactiveSiblings: true,
     showDecorativeSlots: false,
@@ -55,11 +56,11 @@ const orbitalScene = computed(() => {
 </script>
 
 <template>
-  <header class="border-b border-neutral-200/80 pb-5 pt-2 dark:border-neutral-800/80">
-    <div class="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+  <header class="border-b border-neutral-200/80 pb-3 pt-1 space-y-2 dark:border-neutral-800/80">
+    <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
       <!-- ── Left: Stepped Ancestor Hierarchy ── -->
       <div class="min-w-0 flex-1 space-y-2">
-        <div class="space-y-3">
+        <div class="space-y-2">
           <div
             v-for="(item, idx) in ancestorList"
             :key="item.id"
@@ -70,7 +71,7 @@ const orbitalScene = computed(() => {
             <div
               v-if="idx > 0"
               class="absolute top--3.5 w-px bg-neutral-300 dark:bg-neutral-700"
-              :style="{ left: `${(idx - 1) * 24 + 5}px`, height: '28px' }"
+              :style="{ left: `${(idx - 1) * 24 + 5}px`, height: '26px' }"
             />
 
             <!-- Diamond Anchor -->
@@ -99,7 +100,7 @@ const orbitalScene = computed(() => {
             </div>
 
             <!-- Active Large Humanist Title -->
-            <div v-else class="flex items-center gap-3 pt-1">
+            <div v-else class="flex items-center gap-3 pt-0.5">
               <button
                 v-if="!isRoot"
                 type="button"
@@ -118,6 +119,17 @@ const orbitalScene = computed(() => {
               >
                 {{ item.glyph }}
               </span>
+
+              <button
+                type="button"
+                class="dark:bg-neutral-850 ml-2 flex items-center gap-1.5 border border-neutral-300 rounded-lg bg-neutral-50 px-2.5 py-1 text-xs text-neutral-600 font-mono transition-all active:scale-95 dark:border-neutral-700 hover:border-neutral-400 hover:bg-neutral-100 dark:text-neutral-300 hover:text-neutral-900 dark:hover:border-neutral-600 dark:hover:bg-neutral-800 dark:hover:text-neutral-100"
+                title="Recall destination (⌘K)"
+                @click="emit('recall')"
+              >
+                <div class="i-solar:magnifer-linear text-xs" />
+                <span>Recall</span>
+                <span class="rounded bg-neutral-200/80 px-1 py-0.2 text-[9px] text-neutral-500 font-sans dark:bg-neutral-800 dark:text-neutral-400">⌘K</span>
+              </button>
             </div>
           </div>
         </div>
@@ -136,7 +148,7 @@ const orbitalScene = computed(() => {
     </div>
 
     <!-- ── Bottom: Technical Status Line ── -->
-    <div class="mt-4 flex items-center justify-between border-t border-neutral-200/70 pt-2 text-[10px] text-neutral-400 tracking-wider font-mono dark:border-neutral-800/70 dark:text-neutral-500">
+    <div class="mt-2 flex items-center justify-between border-t border-neutral-200/70 pt-1.5 text-[10px] text-neutral-400 tracking-wider font-mono dark:border-neutral-800/70 dark:text-neutral-500">
       <div class="flex items-center gap-2">
         <span>SIBLINGS AT LEVEL</span>
         <span class="text-neutral-300 dark:text-neutral-700">·</span>
