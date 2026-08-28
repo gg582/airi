@@ -7,8 +7,10 @@ class DevBridgeViewController: CAPBridgeViewController {
 
     override func capacitorDidLoad() {
         super.capacitorDidLoad()
+        bridge?.registerPluginType(NativeAIPlugin.self)
         webView?.allowsBackForwardNavigationGestures = true
     }
+
 
     override func viewDidLoad() {
         super.viewDidLoad()

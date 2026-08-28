@@ -9,7 +9,14 @@ const settings = useSettings()
 
 const menu = computed(() => [
   {
+    title: 'Core AI Lab',
+    description: 'Apple Silicon hardware telemetry & native inference lab',
+    icon: 'i-solar:cpu-bold-duotone',
+    to: '/devtools/core-ai-lab',
+  },
+  {
     title: 'Audio Record',
+
     description: 'Test Audio related composables',
     icon: 'i-solar:sledgehammer-bold-duotone',
     to: '/devtools/audio-record',

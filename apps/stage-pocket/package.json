@@ -19,7 +19,10 @@
     "lint:swift": "swiftlint ios",
     "preview": "vite preview",
     "open:ios": "cap open ios",
+    "ios:resolve": "xcodebuild -resolvePackageDependencies -project ios/App/App.xcodeproj",
+    "ios:build:simulator": "xcodebuild -project ios/App/App.xcodeproj -scheme App -destination 'generic/platform=iOS Simulator' build CODE_SIGNING_ALLOWED=NO",
     "typecheck": "NODE_OPTIONS=\"--max-old-space-size=8192\" vue-tsc --noEmit",
+
     "dev:web": "vite",
     "dev:ios": "cap-vite -- ios",
     "dev:android": "cap-vite -- android"
