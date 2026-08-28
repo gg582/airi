@@ -10,8 +10,11 @@ import type {
 import { usePreferredReducedMotion } from '@vueuse/core'
 import { computed, ref, watch } from 'vue'
 
+import FullPageSettingsEngine from '../../composables/settings-topology/components/FullPageSettingsEngine.vue'
+
 import {
   buildLiveSettingsTopology,
+  buildSettingsCatalogTopology,
   classifyTransition,
   createBalanced3x3Fixture,
   createDeepChainFixture,
@@ -32,6 +35,12 @@ import {
 } from '../../composables/settings-topology'
 
 const prefersReducedMotion = usePreferredReducedMotion()
+
+// ──────────────────────────────────────────────
+// Playground Main Mode & Tabs
+// ──────────────────────────────────────────────
+const activeMainTab = ref<'fullpage' | 'visualizer'>('fullpage')
+const catalogTopology = computed(() => buildSettingsCatalogTopology())
 
 // ──────────────────────────────────────────────
 // Playground State
@@ -255,8 +264,30 @@ const transitionDurationClass = computed(() => {
         </div>
       </div>
 
-      <!-- Interactive Breadcrumb Track -->
-      <div class="mt-2 flex flex-wrap items-center gap-1.5 text-xs">
+      <!-- Segmented Tab Switcher -->
+      <div class="mt-3 w-fit flex rounded-xl bg-neutral-200/80 p-1 dark:bg-neutral-800/80">
+        <button
+          type="button"
+          class="flex items-center gap-2 rounded-lg px-4 py-1.5 text-xs font-medium font-mono transition-all"
+          :class="activeMainTab === 'fullpage' ? 'bg-white text-blue-600 shadow-xs dark:bg-neutral-700 dark:text-blue-300 font-semibold' : 'text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100'"
+          @click="activeMainTab = 'fullpage'"
+        >
+          <span>📑</span>
+          <span>Full-Page Programmatic Settings</span>
+        </button>
+        <button
+          type="button"
+          class="flex items-center gap-2 rounded-lg px-4 py-1.5 text-xs font-medium font-mono transition-all"
+          :class="activeMainTab === 'visualizer' ? 'bg-white text-blue-600 shadow-xs dark:bg-neutral-700 dark:text-blue-300 font-semibold' : 'text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100'"
+          @click="activeMainTab = 'visualizer'"
+        >
+          <span>🪐</span>
+          <span>Topology & Orbit Lab</span>
+        </button>
+      </div>
+
+      <!-- Interactive Breadcrumb Track (for Visualizer mode) -->
+      <div v-if="activeMainTab === 'visualizer'" class="mt-2 flex flex-wrap items-center gap-1.5 text-xs">
         <span class="text-neutral-400">Active Path:</span>
         <div
           v-for="(crumb, idx) in scene.breadcrumbs"
@@ -275,8 +306,14 @@ const transitionDurationClass = computed(() => {
       </div>
     </div>
 
-    <!-- Main Playground Grid -->
-    <div class="grid grid-cols-1 gap-6 lg:grid-cols-12">
+    <!-- ── View 1: Full-Page Programmatic Settings View ── -->
+    <FullPageSettingsEngine
+      v-if="activeMainTab === 'fullpage'"
+      :topology="catalogTopology"
+    />
+
+    <!-- ── View 2: Topology & Orbit Lab Grid ── -->
+    <div v-else class="grid grid-cols-1 gap-6 lg:grid-cols-12">
       <!-- Left Column: Controls & Configuration -->
       <div class="flex flex-col gap-5 lg:col-span-4">
         <!-- Dataset Switcher -->

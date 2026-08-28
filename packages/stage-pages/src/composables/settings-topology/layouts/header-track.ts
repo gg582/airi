@@ -22,8 +22,8 @@ export function createHeaderTrackScene(
   activePath: string[],
   options: HeaderTrackOptions = {},
 ): TopologyScene {
-  const width = options.width ?? 640
-  const height = options.height ?? 110
+  const width = options.width ?? 960
+  const height = options.height ?? 140
   const showInactiveSiblings = options.showInactiveSiblings ?? true
 
   const activeId = activePath[activePath.length - 1] || topology.rootId
@@ -48,12 +48,12 @@ export function createHeaderTrackScene(
   const siblingTotal = siblings.length
 
   // Track Y positions
-  const trackY = 55
+  const trackY = 45
   const paddingX = 40
   const availableWidth = width - paddingX * 2
 
   // 1. Ancestor track line (left-hand anchor rail)
-  const ancestorSpacing = Math.min(48, (availableWidth * 0.25) / Math.max(1, activeDepth))
+  const ancestorSpacing = Math.min(56, (availableWidth * 0.2) / Math.max(1, activeDepth))
   const ancestorStartX = paddingX
 
   for (let d = 0; d < activeDepth; d++) {
@@ -126,7 +126,7 @@ export function createHeaderTrackScene(
       markers.push({
         nodeId: sibId,
         label: sibNode.label,
-        shortLabel: sibNode.shortLabel || sibNode.label.slice(0, 4),
+        shortLabel: sibNode.shortLabel || sibNode.label.slice(0, 5),
         route: sibNode.route,
         kind: sibNode.kind || 'page',
         icon: sibNode.icon,
@@ -148,17 +148,17 @@ export function createHeaderTrackScene(
   if (activeNode && activeNode.children && activeNode.children.length > 0) {
     const activeMarker = markers.find(m => m.nodeId === activeId)
     if (activeMarker) {
-      const childY = trackY + 36
+      const childY = trackY + 48
       const childCount = activeNode.children.length
-      const childWidth = Math.min(availableWidth * 0.7, childCount * 36)
-      const childStartX = Math.max(paddingX, activeMarker.x - childWidth / 2)
+      const childWidth = Math.min(availableWidth, Math.max(availableWidth * 0.75, childCount * 48))
+      const childStartX = Math.max(paddingX, Math.min(width - paddingX - childWidth, activeMarker.x - childWidth / 2))
       const childStep = childCount > 1 ? childWidth / (childCount - 1) : 0
 
       // Stem connector from active node to child rail
       connectors.push({
         fromNodeId: activeId,
         toNodeId: activeNode.children[0],
-        pathD: `M ${activeMarker.x} ${activeMarker.y + 6} L ${activeMarker.x} ${childY - 10} L ${childStartX} ${childY}`,
+        pathD: `M ${activeMarker.x} ${activeMarker.y + 6} L ${activeMarker.x} ${childY} L ${childStartX} ${childY}`,
         isActiveLink: false,
       })
 
@@ -184,7 +184,7 @@ export function createHeaderTrackScene(
         markers.push({
           nodeId: childId,
           label: childNode.label,
-          shortLabel: childNode.shortLabel || childNode.label.slice(0, 3),
+          shortLabel: childNode.shortLabel || childNode.label.slice(0, 4),
           route: childNode.route,
           kind: childNode.kind || 'page',
           icon: childNode.icon,

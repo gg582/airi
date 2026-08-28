@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   buildLiveSettingsTopology,
+  buildSettingsCatalogTopology,
   classifyTransition,
   createBalanced3x3Fixture,
   createDeepChainFixture,
@@ -30,6 +31,18 @@ describe('settings Topology Model & Validator', () => {
     expect(result.edgeCount).toBe(28) // 10 root-area + 14 module children + 4 system children
     expect(result.leafCount).toBe(26) // 8 leaf areas + 14 module leaves + 4 system leaves
     expect(result.maxDepth).toBe(2) // Height of 2
+  })
+
+  it('validates Canonical Settings Catalog topology with full semantic clusters and glyphs', () => {
+    const catalogTopology = buildSettingsCatalogTopology()
+    const result = validateTopology(catalogTopology)
+
+    expect(result.valid).toBe(true)
+    expect(result.errors).toEqual([])
+    expect(result.nodeCount).toBeGreaterThanOrEqual(45)
+    expect(result.maxDepth).toBe(3) // Hub -> Providers -> Speech -> Kokoro
+    expect(catalogTopology.nodesById['mod-01-consciousness']?.glyph).toBe('意識')
+    expect(catalogTopology.nodesById['mod-01-consciousness']?.metadata?.clusterGroup).toBe('MIND 心')
   })
 
   it('validates Live Settings topology projected from search index and alias map', () => {
