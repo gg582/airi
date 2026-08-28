@@ -453,11 +453,72 @@ async function dispatchSseStreamingResponse(
 }
 ```
 
+### 5.5. Micro-Responses & Low-Energy Emoji Reaction Pathway
+
+Conversational bots in fast-paced group environments often fail because they treat every single input as a full-effort generation turn (*"typing out a paragraph feels like doing homework for no reason"*). To support natural casual engagement, the engine introduces a **Micro-Response & Reaction Pathway**:
+
+* **Discord Message Reactions:**
+  * When a user turn warrants an acknowledgment, nod, or eye-roll without cluttering chat history with new message entries, the model can emit reaction tags:
+    ```xml
+    <react to="101" emoji="👀" />
+    ```
+  * The Discord gateway translates this directly to a Discord API reaction (`message.react(emoji)`) without dispatching a new text bubble.
+* **Emoji-Only Minimal Turns:**
+  * The prompt contract allows 1-emoji or micro-token replies (e.g. `✨`, `👀`, `bruh`) when responding to low-salience banter, preserving natural conversation flow without essay-writing fatigue.
+
+---
+
+### 5.6. Global Character-Profile Level Cadence (The Desktop Chatbox Paradigm)
+
+Rather than treating response density and multi-bubble pacing purely as a Discord-specific plugin, AIRI elevates this into a **First-Class Character Profile Contract** grounded in the Desktop Chatbox architecture (`apps/stage-tamagotchi/src/renderer/pages/chat.vue`):
+
+* **The Paired Constraint & Compliance Model:**
+  * In `chat.vue`'s top header toolbar (*Limits & Context Popover*), token limits are dynamically coupled with **Compliance Instruction Prose** (`popoverCustomProse`).
+  * In the AiriCard specification (`CardCreationTabGeneration.vue`), character density is configured as a dual-layer setting:
+    1. **Physical Execution Bounds:** `generation.known.maxTokens`, `maxBubblesPerTurn`, `maxLinesPerTarget`.
+    2. **Prompt Compliance Directive:** Automatically compiled system instructions that teach the model *how* to chunk thoughts, when to emit afterthoughts, and how to avoid performative/scripted timing.
+
+---
+
+### 5.7. First-Party Native Tools & Turnkey Filesystem MCP (Platform-Gated)
+
+As observed with Nanori's instant markdown link ingestion, everyday conversational tools perform best when built natively into the engine, while mature external tools (like local filesystem access) should be turnkey presets:
+
+#### 1. Turnkey Filesystem MCP Preset (`@modelcontextprotocol/server-filesystem`)
+* The official `@modelcontextprotocol/server-filesystem` is a mature, high-star MCP package requiring only a target root directory.
+* **1-Click Turnkey Configuration in `CardCreationTabTools.vue`:**
+  * Rather than forcing users to manually author JSON blocks in `mcp.json`, the UI presents a simple checkbox: `[X] Enable Local File System Access` paired with a **Native Folder Picker** button.
+  * When a folder is selected via Electron's `dialog.showOpenDialog`, the main process automatically registers the server into `mcp.json`:
+    ```json
+    {
+      "mcpServers": {
+        "filesystem": {
+          "command": "npx",
+          "args": ["-y", "@modelcontextprotocol/server-filesystem", "/Users/username/Projects"],
+          "enabled": true
+        }
+      }
+    }
+    ```
+
+#### 2. Tri-Platform Tool Gating Matrix (`stage-tamagotchi` vs `stage-web` vs `stage-pocket`)
+To prevent broken UI controls on sandboxed platforms, tools are strictly gated by runtime capabilities:
+
+| Tool / Capability | Desktop Electron (`stage-tamagotchi`) | Web Browser (`stage-web`) | Mobile Companion (`stage-pocket`) |
+| :--- | :--- | :--- | :--- |
+| **`fetch_url` / `read_url`** | Full Native HTTP / Cheerio | CORS Reverse-Proxy Worker (`apps/stage-edge`) | Native Capacitor HTTP Plugin |
+| **`web_search`** | Full API / DuckDuckGo Provider | Edge Worker Relay Provider | Edge Worker Relay Provider |
+| **`filesystem` MCP** | Full Stdio Subprocess (`npx`) | **Hidden / Unsupported** (Sandbox) | **Hidden / Unsupported** (Sandbox) |
+| **Custom Stdio MCP** | Full Stdio Subprocess (`mcp.json`)| **Hidden / Unsupported** | **Hidden / Unsupported** |
+| **`text_journal` / `image_journal`** | IndexedDB + LocalForage | IndexedDB + LocalForage | IndexedDB + Capacitor SQLite |
+
+* **UI Gating Invariant:** In `CardCreationTabTools.vue` and `MessagingDiscord.vue`, options requiring Node.js stdio subprocesses or local filesystem dialogs are conditionally rendered using `v-if="isElectron"`. Web and mobile users are never presented with non-functional desktop options.
+
 ---
 
 ## 6. UI Specification: "Group Dynamics & Ambient Tuning" Tab
 
-In `packages/stage-ui/src/components/modules/MessagingDiscord.vue`, a new dedicated tab **`'group'`** is added alongside `'bot'`, `'relay'`, and `'acl'`. It grounds itself in AIRI's existing `/chatmode` engine and offers selectable delivery paradigms:
+In `packages/stage-ui/src/components/modules/MessagingDiscord.vue`, a new dedicated tab **`'group'`** is added alongside `'bot'`, `'relay'`, and `'acl'`. It grounds itself in AIRI's existing `/chatmode` engine, character profile cadence settings, and first-party tool toggles:
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────┐
@@ -476,6 +537,7 @@ In `packages/stage-ui/src/components/modules/MessagingDiscord.vue`, a new dedica
 │        • Target Delivery Style: (●) Native Discord Reply   ( ) @Mention  │
 │        • Max Bubbles per Ingestion Turn: [ 3 ]  |  Max Lines: [ 2 ]      │
 │        • Typing Cadence: 40 ms/char  |  Pause Between Bubbles: 1,500 ms  │
+│        • Discord Reactions: [X] Allow <react> emoji reactions on messages│
 │                                                                          │
 │    ( ) Real-Time SSE Streaming (Nanori Style)                            │
 │        • Live Message Edit Throttle Floor: [────●────────] 2,500 ms      │
@@ -485,6 +547,10 @@ In `packages/stage-ui/src/components/modules/MessagingDiscord.vue`, a new dedica
 │    ( ) Reserved: Speaks only when explicitly addressed or directly asked │
 │    (●) Natural Conversationalist: Participates smoothly in room banter   │
 │    ( ) Hyper-Enthusiastic (Sarah Mode): Quips on micro-messages & banter │
+│                                                                          │
+│ 4. First-Party Conversational Tools                                      │
+│    [X] Native URL Scraper (fetch_url - Instant link & doc ingestion)     │
+│    [X] Live Web Search (web_search)                                      │
 └──────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -497,17 +563,18 @@ In `packages/stage-ui/src/components/modules/MessagingDiscord.vue`, a new dedica
 2. [ ] Replace the hardcoded `5000ms` in `packages/stage-ui/src/stores/modules/discord.ts:730` with reactive `collectDebounceMs` and `maxBatchWaitMs`.
 
 ### Phase 2: Multi-Target Output Parser & Stagger Dispatch
-3. [ ] Implement `<reply to="...">` and `<ambient>` block parser in the Discord response pipeline.
-4. [ ] Wire `message.reply(messageId)` routing in the Discord service gateway (`apps/stage-tamagotchi/src/main/services/airi/discord/index.ts`).
+3. [ ] Implement `<reply to="...">`, `<ambient>`, and `<react to="..." emoji="..."/>` block parser in the Discord response pipeline.
+4. [ ] Wire `message.reply(messageId)` and `message.react(emoji)` routing in the Discord service gateway (`apps/stage-tamagotchi/src/main/services/airi/discord/index.ts`).
 5. [ ] Implement human-like staggered typing cadence with `sendTypingIndicator()` and `maxBubbles` / `maxLines` clamps.
 
 ### Phase 3: Real-Time SSE Streaming & Rate-Limit Floor
 6. [ ] Implement `dispatchSseStreamingResponse()` with a configurable 2,500ms safety edit floor in the Discord gateway.
-7. [ ] Add URL link tool-call scraper for automatic markdown document parsing on incoming raw URLs.
+7. [ ] Add `fetch_url` builtin tool in `apps/stage-tamagotchi/src/renderer/stores/tools/builtin/` and expose in `CardCreationTabTools.vue`.
 
-### Phase 4: Conversational Appetite Prompt Compilation
-8. [ ] Inject conversational appetite rules into the Discord prompt builder (`packages/stage-ui/src/stores/modules/airi-card.ts`).
+### Phase 4: Character Profile Cadence & Prompt Compilation
+8. [ ] Inject conversational appetite and density compliance rules into the Discord prompt builder (`packages/stage-ui/src/stores/modules/airi-card.ts`).
 9. [ ] Persist settings under `local:settings/discord/group-dynamics`.
+
 
 
 
