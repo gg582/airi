@@ -2,9 +2,13 @@ import { VRMLoaderPlugin } from '@pixiv/three-vrm'
 import { VRMAnimationLoaderPlugin } from '@pixiv/three-vrm-animation'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 
-let loader: GLTFLoader
+let loader: GLTFLoader | undefined
 
-export function useVRMLoader() {
+export function resetVRMLoader(): void {
+  loader = undefined
+}
+
+export function useVRMLoader(): GLTFLoader {
   if (loader) {
     return loader
   }

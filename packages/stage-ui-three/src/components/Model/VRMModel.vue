@@ -819,13 +819,17 @@ async function loadModel() {
       })
       modelLoaded.value = true
     }
-    catch (err) {
-      console.error(err)
+    catch (err: any) {
+      console.error('[VRMModel] Failed to load VRM model:', err?.message || err)
+      componentCleanUp()
+      modelLoaded.value = false
       emit('error', err)
     }
   }
-  catch (err) {
-    console.error(err)
+  catch (err: any) {
+    console.error('[VRMModel] Outer error in loadModel:', err?.message || err)
+    componentCleanUp()
+    modelLoaded.value = false
     emit('error', err)
   }
 }

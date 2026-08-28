@@ -1,8 +1,8 @@
 import localforage from 'localforage'
 
-import { useLocalStorage } from '@vueuse/core'
+import { useIntervalFn, useLocalStorage } from '@vueuse/core'
 import { nanoid } from 'nanoid'
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, ref } from 'vue'
 
 import * as Pinia from 'pinia'
 
@@ -209,24 +209,15 @@ export const useStickersStore = Pinia.defineStore('stickers', () => {
   // --- Internals ---
 
   // Automatic cleanup of expired stickers
-  let cleanupInterval: ReturnType<typeof setInterval> | undefined
+  useIntervalFn(() => {
+    const now = Date.now()
+    const initialCount = activePlacements.value.length
+    activePlacements.value = activePlacements.value.filter(p => !p.expiresAt || p.expiresAt > now)
 
-  onMounted(() => {
-    cleanupInterval = setInterval(() => {
-      const now = Date.now()
-      const initialCount = activePlacements.value.length
-      activePlacements.value = activePlacements.value.filter(p => !p.expiresAt || p.expiresAt > now)
-
-      if (import.meta.env.DEV && activePlacements.value.length !== initialCount) {
-        console.log(`[StickersStore] Purged ${initialCount - activePlacements.value.length} expired stickers.`)
-      }
-    }, 2000) // Check every 2 seconds for snappy removal
-  })
-
-  onUnmounted(() => {
-    if (cleanupInterval)
-      clearInterval(cleanupInterval)
-  })
+    if (import.meta.env.DEV && activePlacements.value.length !== initialCount) {
+      console.log(`[StickersStore] Purged ${initialCount - activePlacements.value.length} expired stickers.`)
+    }
+  }, 2000)
 
   return {
     libraryMetadata,

@@ -764,9 +764,6 @@ onMounted(async () => {
 
   chatStore.setToolsResolver(builtinTools)
   tools.value = await builtinTools()
-  initVAD().catch((err) => {
-    console.error('[Main Page] VAD initialization failed:', err)
-  })
 
   // Initialize orientation from main process config
   const mainConfig = await getMainWindowConfig()

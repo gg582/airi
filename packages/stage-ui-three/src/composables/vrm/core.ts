@@ -5,7 +5,7 @@ import { VRMExpression, VRMExpressionMorphTargetBind } from '@pixiv/three-vrm'
 import { VRMLookAtQuaternionProxy } from '@pixiv/three-vrm-animation'
 import { Box3, Group, Quaternion, Vector3 } from 'three'
 
-import { useVRMLoader } from './loader'
+import { resetVRMLoader, useVRMLoader } from './loader'
 
 interface GLTFUserdata extends Record<string, any> {
   vrmCore?: VRMCore
@@ -25,7 +25,15 @@ export async function loadVrm(model: string, options?: {
   unmappedExpressions: string[]
 } | undefined> {
   const loader = useVRMLoader()
-  const gltf = await loader.loadAsync(model, progress => options?.onProgress?.(progress))
+  let gltf: any
+  try {
+    gltf = await loader.loadAsync(model, progress => options?.onProgress?.(progress))
+  }
+  catch (err: any) {
+    // Reset singleton GLTFLoader on fatal parser / memory errors (e.g. ArrayBuffer allocation failed)
+    resetVRMLoader()
+    throw err
+  }
 
   const userData = gltf.userData as GLTFUserdata
   if (!userData.vrm) {
