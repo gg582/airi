@@ -124,9 +124,9 @@ export async function loginWithCloudflareOAuth(): Promise<OAuthTokens> {
                 <p style="font-size: 1rem; color: #94a3b8; line-height: 1.5; margin: 0 0 24px 0;">
                   Return to AIRI and click <strong style="color: #f8fafc;">Deploy Character to Cloudflare Edge</strong> to continue with the next step.
                 </p>
-                <div style="display: inline-block; padding: 8px 16px; background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 8px; font-size: 0.875rem; color: #38bdf8; font-weight: 600;">
+                <button onclick="window.close()" style="cursor: pointer; display: inline-block; padding: 8px 16px; background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 8px; font-size: 0.875rem; color: #38bdf8; font-weight: 600; outline: none; transition: background 0.2s;" onmouseover="this.style.background='rgba(56, 189, 248, 0.2)'" onmouseout="this.style.background='rgba(56, 189, 248, 0.1)'">
                   You may now close this browser tab
-                </div>
+                </button>
               </div>
             </body>
           </html>

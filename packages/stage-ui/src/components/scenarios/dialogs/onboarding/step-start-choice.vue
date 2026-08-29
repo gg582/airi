@@ -19,8 +19,11 @@ const { cfOAuthTokens, cfAccountId, cfApiToken, isAuthenticating, isAuthenticate
 
 const selectedPath = ref<'new' | 'returning'>(isAuthenticated.value ? 'returning' : 'new')
 
-// Auth method tabs ('token' is default for maximum cross-platform reliability)
-const authMethod = ref<'token' | 'oauth'>('token')
+// Platform detection: Electron desktop (isTamagotchi) supports native 1-click localhost PKCE server
+const isElectron = typeof window !== 'undefined' && Boolean((window as any).electron)
+
+// Auth method tabs ('auto' is default for Electron; 'token' for Web/Mobile)
+const authMethod = ref<'auto' | 'token' | 'oauth'>(isElectron ? 'auto' : 'token')
 const tokenInput = ref('')
 const isValidatingToken = ref(false)
 const manualCodeInput = ref('')
@@ -276,6 +279,14 @@ watch(selectedPath, (path) => {
               <!-- Method Selector Tabs -->
               <div class="mb-3 flex rounded-lg bg-neutral-100 p-0.5 dark:bg-neutral-800">
                 <button
+                  v-if="isElectron"
+                  class="flex-1 rounded-md py-1 text-center text-[11px] font-medium transition-all"
+                  :class="authMethod === 'auto' ? 'bg-white text-neutral-900 shadow-sm dark:bg-neutral-700 dark:text-white' : 'text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white'"
+                  @click.stop="authMethod = 'auto'"
+                >
+                  Auto Sign-in
+                </button>
+                <button
                   class="flex-1 rounded-md py-1 text-center text-[11px] font-medium transition-all"
                   :class="authMethod === 'token' ? 'bg-white text-neutral-900 shadow-sm dark:bg-neutral-700 dark:text-white' : 'text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white'"
                   @click.stop="authMethod = 'token'"
@@ -287,12 +298,28 @@ watch(selectedPath, (path) => {
                   :class="authMethod === 'oauth' ? 'bg-white text-neutral-900 shadow-sm dark:bg-neutral-700 dark:text-white' : 'text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white'"
                   @click.stop="authMethod = 'oauth'"
                 >
-                  Browser OAuth
+                  {{ isElectron ? 'Manual OAuth' : 'Browser OAuth' }}
                 </button>
               </div>
 
+              <!-- Tab 0: Auto Sign-in (Electron Desktop Native PKCE Local Server) -->
+              <div v-if="authMethod === 'auto'" class="flex flex-col gap-2" @click.stop>
+                <button
+                  class="w-full flex items-center justify-center gap-2 rounded-xl bg-primary-500 py-2.5 text-xs text-white font-medium shadow-sm transition-all active:scale-95 disabled:cursor-not-allowed hover:bg-primary-600 disabled:opacity-50"
+                  :disabled="isAuthenticating"
+                  @click="handleStartOAuth"
+                >
+                  <div v-if="isAuthenticating" class="i-solar:refresh-line-duotone h-4 w-4 animate-spin" />
+                  <div v-else class="i-solar:login-2-linear h-4 w-4" />
+                  <span>{{ isAuthenticating ? 'Waiting for Browser Authorization...' : 'Sign in with Cloudflare' }}</span>
+                </button>
+                <p class="text-center text-[10px] text-neutral-400 leading-tight dark:text-neutral-500">
+                  Opens browser for 1-click authorization & auto-syncs your Edge Key Vault.
+                </p>
+              </div>
+
               <!-- Tab 1: API Token -->
-              <div v-if="authMethod === 'token'" class="flex flex-col gap-2" @click.stop>
+              <div v-else-if="authMethod === 'token'" class="flex flex-col gap-2" @click.stop>
                 <div class="relative flex items-center border border-neutral-300 rounded-xl bg-white px-2.5 py-1.5 dark:border-neutral-700 dark:bg-neutral-800/90">
                   <input
                     v-model="tokenInput"
@@ -331,7 +358,7 @@ watch(selectedPath, (path) => {
               </div>
 
               <!-- Tab 2: Browser OAuth PKCE -->
-              <div v-else class="flex flex-col gap-2.5" @click.stop>
+              <div v-else-if="authMethod === 'oauth'" class="flex flex-col gap-2.5" @click.stop>
                 <button
                   class="w-full flex items-center justify-center gap-2 rounded-xl bg-primary-500 py-2 text-xs text-white font-medium shadow-sm transition-all active:scale-95 disabled:cursor-not-allowed hover:bg-primary-600 disabled:opacity-50"
                   :disabled="isAuthenticating"
