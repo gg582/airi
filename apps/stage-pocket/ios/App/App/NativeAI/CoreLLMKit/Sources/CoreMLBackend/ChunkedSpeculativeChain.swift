@@ -301,63 +301,21 @@ final class ChunkedSpeculativeChain {
             throw LLMEngineError.generationFailed(
                 reason: "prefill invoked on a decode-only (restore) chain; restore replaces prefill so the wide prefill functions are never loaded")
         }
-        let offsetNs = config.prefillNs.filter { $0 != config.plainN }.sorted(by: >)
-        var idx = 0
-        var last = 0
-        while idx < ids.count {
+
+        for i in 0..<(ids.count - 1) {
             try Task.checkCancellation()
-            let remaining = ids.count - idx
-            if position == 0 && idx == 0 && remaining >= config.plainN {
-                let block = Array(ids[idx..<(idx + config.plainN)])
-                let hidden = try runPrefillPlain(
-                    block, N: config.plainN, softRows: softSlice(rowRefs, idx, idx + config.plainN))
-                last = try lmheadRow(hidden, row: config.plainN - 1)
-                idx += config.plainN
-            } else if let N = offsetNs.first(where: { remaining >= $0 && position + $0 <= CTX }) {
-                let block = Array(ids[idx..<(idx + N)])
-                let hidden = try runPrefillOffset(
-                    block, p: position, N: N, softRows: softSlice(rowRefs, idx, idx + N))
-                last = try lmheadRow(hidden, row: N - 1)
-                idx += N
-            } else {
-                for i in idx..<ids.count {
-                    try Task.checkCancellation()
-                    try runDecodeChunks(tokenID: ids[i], softRow: rowRefs[i])
-                    last = try lmhead(hiddenBuffer)
-                }
-                idx = ids.count
-            }
+            try runDecodeChunks(tokenID: ids[i], softRow: rowRefs[i])
         }
-        return last
+        try Task.checkCancellation()
+        try runDecodeChunks(tokenID: ids[ids.count - 1], softRow: rowRefs[ids.count - 1])
+        return try lmhead(hiddenBuffer)
     }
 
     func plannedPrefillWidths(promptLength: Int, from startPosition: Int = 0) -> [Int] {
-        let offsetNs = config.prefillNs.filter { $0 != config.plainN }.sorted(by: >)
-        var widths: Set<Int> = []
-        var pos = startPosition
-        var idx = 0
-        while idx < promptLength {
-            let remaining = promptLength - idx
-            if pos == 0 && idx == 0 && remaining >= config.plainN {
-                widths.insert(config.plainN)
-                idx += config.plainN
-                pos = config.plainN
-            } else if let N = offsetNs.first(where: { remaining >= $0 && pos + $0 <= CTX }) {
-                widths.insert(N)
-                idx += N
-                pos += N
-            } else {
-                break
-            }
-        }
-        return widths.sorted(by: >)
+        return []
     }
 
     func materializePrefill(widths: [Int]) throws {
-        for n in widths {
-            _ = try prefillChain(N: n)
-            _ = try prefillBuffers(N: n)
-        }
     }
 
     private func softSlice(_ rowRefs: [SoftRowRef?], _ lo: Int, _ hi: Int) -> [SoftRowRef?]? {

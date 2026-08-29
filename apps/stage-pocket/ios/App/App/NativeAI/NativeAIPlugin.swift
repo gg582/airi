@@ -335,18 +335,31 @@ public class NativeAIPlugin: CAPPlugin, CAPBridgedPlugin {
         Task.detached(priority: .userInitiated) { [weak self] in
             guard let self = self else { return }
 
+            #if targetEnvironment(simulator)
+            let cuPref: ComputeUnitPreference = .cpuAndGPU
+            let computeStr = "CPU + Metal GPU (Simulator)"
+            #else
+            let cuPref: ComputeUnitPreference = .all
+            let computeStr = "Apple Neural Engine + Metal GPU"
+            #endif
+
+            // Fast path: if model is already loaded and resident, return instantly in 0ms!
+            if self.residentModelId == modelId {
+                let residentBytes = self.directorySize(url: modelDir)
+                call.resolve([
+                    "modelId": modelId,
+                    "isLoaded": true,
+                    "loadTimeMs": 0,
+                    "computeUnitsUsed": computeStr,
+                    "residentMemoryBytes": residentBytes
+                ])
+                return
+            }
+
             do {
                 let bundle = try ModelBundle(contentsOf: modelDir)
-                #if targetEnvironment(simulator)
-                let cuPref: ComputeUnitPreference = .cpuAndGPU
-                let computeStr = "CPU + Metal GPU (Simulator)"
-                #else
-                let cuPref: ComputeUnitPreference = .all
-                let computeStr = "Apple Neural Engine + Metal GPU"
-                #endif
-
                 await self.coreMLEngine.unload()
-                try await self.coreMLEngine.load(bundle, options: LoadOptions(computeUnits: cuPref, preloadSpeculation: true))
+                try await self.coreMLEngine.load(bundle, options: LoadOptions(computeUnits: cuPref, preloadSpeculation: false))
                 self.residentModelId = modelId
 
                 let loadTimeMs = Int(Date().timeIntervalSince(startTime) * 1000)
@@ -462,7 +475,7 @@ public class NativeAIPlugin: CAPPlugin, CAPBridgedPlugin {
                     let cuPref: ComputeUnitPreference = .all
                     #endif
                     await self.coreMLEngine.unload()
-                    try await self.coreMLEngine.load(bundle, options: LoadOptions(computeUnits: cuPref, preloadSpeculation: true))
+                    try await self.coreMLEngine.load(bundle, options: LoadOptions(computeUnits: cuPref, preloadSpeculation: false))
                     self.residentModelId = targetId
                 } catch {
                     self.notifyListeners("token", data: [
@@ -479,7 +492,7 @@ public class NativeAIPlugin: CAPPlugin, CAPBridgedPlugin {
                 maxNewTokens: maxTokens,
                 temperature: temperature,
                 topP: topP,
-                multiTokenPrediction: true
+                multiTokenPrediction: false
             )
             let request = GenerationRequest(
                 prompt: prompt,
