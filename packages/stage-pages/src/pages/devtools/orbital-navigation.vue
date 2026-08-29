@@ -41,16 +41,22 @@ const activeMainTab = ref<'sketch' | 'escapement-lab' | 'geometry-showcase'>('ge
 const catalogTopology = computed(() => buildSettingsCatalogTopology())
 
 // ──────────────────────────────────────────────
+// Quantized Geometry Tab Mode (Clean Capture vs Diagnostic)
+// ──────────────────────────────────────────────
+const geometryViewMode = ref<'clean-capture' | 'diagnostic'>('clean-capture')
+
+// ──────────────────────────────────────────────
 // RAF Momentum Motion Strip State (Tab 1)
 // ──────────────────────────────────────────────
 const isStripPlaying = ref(true)
 const stripSpeedMultiplier = ref(1.0)
 const activeMomentumPose = ref<QuantizedMomentumPose>({
   angles: [-90, -90, -90],
+  velocities: [0, 0, 0],
   scales: [1.0, 0.65, 0.33],
   opacities: [0.35, 0.70, 1.0],
   dashFrequencies: [0, 4, 8],
-  recoil: 0,
+  recoils: [0, 0, 0],
   facets: [0, 0, 0],
   depth: 0,
   phase: 'rest',
@@ -285,168 +291,204 @@ function triggerBranchHop() {
       <!-- TAB 1 (NEW SHOWCASE): Quantized Geometry Key           -->
       <!-- ══════════════════════════════════════════════════════ -->
       <div v-if="activeMainTab === 'geometry-showcase'" class="space-y-6">
-        <!-- Showcase Editorial Header -->
-        <div class="border-b border-neutral-200/80 pb-4 text-center space-y-2 dark:border-neutral-800/80">
-          <div class="flex items-center justify-center gap-3 text-xs text-neutral-400 tracking-widest font-mono uppercase dark:text-neutral-500">
-            <span class="h-px w-16 bg-neutral-200/80 dark:bg-neutral-800/80" />
-            <span>幾何鍵 GEOMETRIC KEY SPEC</span>
-            <span class="h-px w-16 bg-neutral-200/80 dark:bg-neutral-800/80" />
-          </div>
-          <h2 class="text-2xl text-neutral-900 font-medium tracking-tight font-serif dark:text-neutral-100">
-            3-Level Nested Quantized Geometry Showcase
-          </h2>
-          <p class="mx-auto max-w-2xl text-xs text-neutral-500 font-mono dark:text-neutral-400">
-            At most three visible hierarchy levels are represented as the same finite cardinal square/diamond relation repeated at different scales. Line weight conveys relative spatial depth, while dash interval frequency encodes hierarchy quantization.
-          </p>
-        </div>
-
-        <!-- 2x2 Showcase Matrix -->
-        <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
-          <!-- Frame 01: Root Origin (Depth 0) -->
-          <div class="flex flex-col items-center justify-between border border-neutral-200/80 rounded-3xl bg-white p-8 shadow-sm transition-all dark:border-neutral-800/80 hover:border-neutral-400 dark:bg-neutral-900/80">
-            <div class="mb-4 w-full flex items-center justify-between text-xs text-neutral-400 font-mono uppercase">
-              <span>01 / SPECIMEN</span>
-              <span>DEPTH: 0 (SOLID)</span>
+        <!-- Sub-View Switcher (Clean Capture vs Diagnostic Workbench) -->
+        <div class="flex items-center justify-between border-b border-neutral-200/80 pb-4 dark:border-neutral-800/80">
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="rounded bg-neutral-900 px-2 py-0.5 text-xs text-white font-bold font-mono dark:bg-neutral-100 dark:text-neutral-900">3-BEAT MECHANISM</span>
+              <h2 class="text-lg text-neutral-900 font-bold font-serif dark:text-neutral-100">
+                Quantized Inward Momentum Transfer Showcase
+              </h2>
             </div>
-            <QuantizedGeometryKey
-              :size="210"
-              :facets="[0, 0, 0]"
-              :active-depth="0"
-              label="STATE 01 · ROOT ORIGIN"
-              state-code="D0 // NORTH-0"
-              description="Continuous solid outer frame. Active key locked at North facet with dormant inner core."
-            />
+            <p class="text-xs text-neutral-500 font-mono dark:text-neutral-400">
+              Causal piecewise velocity transfer (Outer → Middle → Core) with 4→8→16 interval fracturing and delayed outward recoil wave.
+            </p>
           </div>
 
-          <!-- Frame 02: Cardinal Branch (Depth 1) -->
-          <div class="flex flex-col items-center justify-between border border-neutral-200/80 rounded-3xl bg-white p-8 shadow-sm transition-all dark:border-neutral-800/80 hover:border-neutral-400 dark:bg-neutral-900/80">
-            <div class="mb-4 w-full flex items-center justify-between text-xs text-neutral-400 font-mono uppercase">
-              <span>02 / SPECIMEN</span>
-              <span>DEPTH: 1 (4 INTERVALS)</span>
-            </div>
-            <QuantizedGeometryKey
-              :size="210"
-              :facets="[1, 2, 0]"
-              :active-depth="1"
-              label="STATE 02 · CARDINAL BRANCH"
-              state-code="D1 // EAST-1 → SOUTH-2"
-              description="4-interval outer frame. Direct mechanical latch links to middle parent diamond at South."
-            />
-          </div>
-
-          <!-- Frame 03: 3-Tier Key Lock (Depth 2) -->
-          <div class="flex flex-col items-center justify-between border border-neutral-200/80 rounded-3xl bg-white p-8 shadow-sm transition-all dark:border-neutral-800/80 hover:border-neutral-400 dark:bg-neutral-900/80">
-            <div class="mb-4 w-full flex items-center justify-between text-xs text-neutral-400 font-mono uppercase">
-              <span>03 / SPECIMEN</span>
-              <span>DEPTH: 2 (8 INTERVALS)</span>
-            </div>
-            <QuantizedGeometryKey
-              :size="210"
-              :facets="[3, 0, 1]"
-              :active-depth="2"
-              label="STATE 03 · 3-TIER KEY LOCK"
-              state-code="D2 // WEST-3 → NORTH-0 → EAST-1"
-              description="Full 3-layer hierarchy. 8-interval middle parent links cleanly to 16-interval bold inner core."
-            />
-          </div>
-
-          <!-- Frame 04: Rolling Window (Depth 3+) -->
-          <div class="flex flex-col items-center justify-between border border-neutral-200/80 rounded-3xl bg-white p-8 shadow-sm transition-all dark:border-neutral-800/80 hover:border-neutral-400 dark:bg-neutral-900/80">
-            <div class="mb-4 w-full flex items-center justify-between text-xs text-neutral-400 font-mono uppercase">
-              <span>04 / SPECIMEN</span>
-              <span>DEPTH: 3+ (ROLLING 16)</span>
-            </div>
-            <QuantizedGeometryKey
-              :size="210"
-              :facets="[2, 3, 2]"
-              :active-depth="3"
-              label="STATE 04 · ROLLING QUANTIZATION"
-              state-code="D3+ // SOUTH-2 → WEST-3 → SOUTH-2"
-              description="Sliding window transfer. Oldest level recedes as the 3-tier window rolls forward [L-2, L-1, L]."
-            />
+          <div class="dark:bg-neutral-850 flex items-center gap-1 rounded-xl bg-neutral-200/60 p-1 text-xs font-mono backdrop-blur-sm">
+            <button
+              type="button"
+              class="rounded-lg px-3 py-1.5 transition-all"
+              :class="geometryViewMode === 'clean-capture' ? 'bg-white text-neutral-900 font-bold shadow-sm dark:bg-neutral-700 dark:text-white' : 'text-neutral-600 hover:text-neutral-900 dark:text-neutral-400'"
+              @click="geometryViewMode = 'clean-capture'"
+            >
+              Clean Presentation
+            </button>
+            <button
+              type="button"
+              class="rounded-lg px-3 py-1.5 transition-all"
+              :class="geometryViewMode === 'diagnostic' ? 'bg-white text-neutral-900 font-bold shadow-sm dark:bg-neutral-700 dark:text-white' : 'text-neutral-600 hover:text-neutral-900 dark:text-neutral-400'"
+              @click="geometryViewMode = 'diagnostic'"
+            >
+              Diagnostic Bench
+            </button>
           </div>
         </div>
 
-        <!-- ── Live Autonomous Mechanical Transfer Strip (RAF 3-Beat Momentum Engine) ── -->
-        <div class="border border-neutral-200/80 rounded-3xl bg-white p-8 shadow-sm dark:border-neutral-800/80 dark:bg-neutral-900/80">
-          <div class="mb-6 flex flex-col gap-3 border-b border-neutral-200/80 pb-4 sm:flex-row sm:items-center sm:justify-between dark:border-neutral-800/80">
-            <div>
-              <div class="flex items-center gap-2">
-                <span class="rounded bg-neutral-900 px-2 py-0.5 text-xs text-white font-bold font-mono dark:bg-neutral-100 dark:text-neutral-900">MOMENTUM ENGINE</span>
-                <h3 class="text-base text-neutral-900 font-bold font-serif dark:text-white">
-                  3-Beat Inward Momentum Transfer Cascade
-                </h3>
+        <!-- ── Clean Capture Mode (Enlarged, Pristine, Zero Distraction) ── -->
+        <div v-if="geometryViewMode === 'clean-capture'" class="flex flex-col items-center justify-center border border-neutral-200/80 rounded-3xl bg-white p-12 shadow-sm dark:border-neutral-800/80 dark:bg-neutral-900/80">
+          <QuantizedMomentumMechanism
+            :size="380"
+            :is-playing="true"
+            :speed-multiplier="1.0"
+            :clean-mode="true"
+          />
+        </div>
+
+        <!-- ── Diagnostic Workbench Mode (Specimens + Controls + Telemetry) ── -->
+        <div v-else class="space-y-6">
+          <!-- 2x2 Showcase Matrix -->
+          <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
+            <!-- Frame 01: Root Origin (Depth 0) -->
+            <div class="flex flex-col items-center justify-between border border-neutral-200/80 rounded-3xl bg-white p-8 shadow-sm transition-all dark:border-neutral-800/80 hover:border-neutral-400 dark:bg-neutral-900/80">
+              <div class="mb-4 w-full flex items-center justify-between text-xs text-neutral-400 font-mono uppercase">
+                <span>01 / SPECIMEN</span>
+                <span>DEPTH: 0 (SOLID)</span>
               </div>
-              <p class="text-xs text-neutral-500 font-mono dark:text-neutral-400">
-                Outer gathers tension → strikes middle ratchet (4→8 intervals) → strikes inner core with decisive snap and micro-recoil.
-              </p>
+              <QuantizedGeometryKey
+                :size="210"
+                :facets="[0, 0, 0]"
+                :active-depth="0"
+                label="STATE 01 · ROOT ORIGIN"
+                state-code="D0 // NORTH-0"
+                description="Continuous solid outer frame. Active key locked at North facet with dormant inner core."
+              />
             </div>
 
-            <!-- Transport & Telemetry Controls -->
-            <div class="flex items-center gap-2 text-xs font-mono">
-              <span
-                class="rounded px-2 py-0.5 text-xs font-bold uppercase transition-colors"
-                :class="[
-                  activeMomentumPose.phase === 'initiation'
-                    ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400'
-                    : activeMomentumPose.phase === 'transfer'
-                      ? 'bg-blue-500/15 text-blue-600 dark:text-blue-400'
-                      : activeMomentumPose.phase === 'snap-lock'
-                        ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
-                        : activeMomentumPose.phase === 'recoil'
-                          ? 'bg-red-500/15 text-red-600 dark:text-red-400'
-                          : 'bg-neutral-200 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400',
-                ]"
-              >
-                PHASE: {{ activeMomentumPose.phase }}
-              </span>
+            <!-- Frame 02: Cardinal Branch (Depth 1) -->
+            <div class="flex flex-col items-center justify-between border border-neutral-200/80 rounded-3xl bg-white p-8 shadow-sm transition-all dark:border-neutral-800/80 hover:border-neutral-400 dark:bg-neutral-900/80">
+              <div class="mb-4 w-full flex items-center justify-between text-xs text-neutral-400 font-mono uppercase">
+                <span>02 / SPECIMEN</span>
+                <span>DEPTH: 1 (4 INTERVALS)</span>
+              </div>
+              <QuantizedGeometryKey
+                :size="210"
+                :facets="[1, 2, 0]"
+                :active-depth="1"
+                label="STATE 02 · CARDINAL BRANCH"
+                state-code="D1 // EAST-1 → SOUTH-2"
+                description="4-interval outer frame. Direct mechanical latch links to middle parent diamond at South."
+              />
+            </div>
 
-              <button
-                type="button"
-                class="dark:bg-neutral-850 flex items-center gap-1.5 border border-neutral-300 rounded-lg bg-neutral-50 px-3 py-1.5 transition-all active:scale-95 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800"
-                @click="toggleStripPlay"
-              >
-                <div :class="isStripPlaying ? 'i-solar:pause-bold' : 'i-solar:play-bold'" class="size-3.5" />
-                <span>{{ isStripPlaying ? 'Pause' : 'Play' }}</span>
-              </button>
+            <!-- Frame 03: 3-Tier Key Lock (Depth 2) -->
+            <div class="flex flex-col items-center justify-between border border-neutral-200/80 rounded-3xl bg-white p-8 shadow-sm transition-all dark:border-neutral-800/80 hover:border-neutral-400 dark:bg-neutral-900/80">
+              <div class="mb-4 w-full flex items-center justify-between text-xs text-neutral-400 font-mono uppercase">
+                <span>03 / SPECIMEN</span>
+                <span>DEPTH: 2 (8 INTERVALS)</span>
+              </div>
+              <QuantizedGeometryKey
+                :size="210"
+                :facets="[3, 0, 1]"
+                :active-depth="2"
+                label="STATE 03 · 3-TIER KEY LOCK"
+                state-code="D2 // WEST-3 → NORTH-0 → EAST-1"
+                description="Full 3-layer hierarchy. 8-interval middle parent links cleanly to 16-interval bold inner core."
+              />
+            </div>
 
-              <button
-                type="button"
-                class="dark:bg-neutral-850 border border-neutral-300 rounded-lg bg-neutral-50 px-2.5 py-1.5 transition-all active:scale-95 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800"
-                :class="stripSpeedMultiplier < 1.0 ? 'font-bold text-neutral-900 dark:text-white bg-neutral-200 dark:bg-neutral-700' : ''"
-                @click="toggleSlowMo"
-              >
-                <span>{{ stripSpeedMultiplier < 1.0 ? 'Slow-Mo (0.45x)' : '1.0x Speed' }}</span>
-              </button>
+            <!-- Frame 04: Rolling Window (Depth 3+) -->
+            <div class="flex flex-col items-center justify-between border border-neutral-200/80 rounded-3xl bg-white p-8 shadow-sm transition-all dark:border-neutral-800/80 hover:border-neutral-400 dark:bg-neutral-900/80">
+              <div class="mb-4 w-full flex items-center justify-between text-xs text-neutral-400 font-mono uppercase">
+                <span>04 / SPECIMEN</span>
+                <span>DEPTH: 3+ (ROLLING 16)</span>
+              </div>
+              <QuantizedGeometryKey
+                :size="210"
+                :facets="[2, 3, 2]"
+                :active-depth="3"
+                label="STATE 04 · ROLLING QUANTIZATION"
+                state-code="D3+ // SOUTH-2 → WEST-3 → SOUTH-2"
+                description="Sliding window transfer. Oldest level recedes as the 3-tier window rolls forward [L-2, L-1, L]."
+              />
             </div>
           </div>
 
-          <!-- Central RAF-Driven Momentum Mechanism -->
-          <div class="flex flex-col items-center justify-center py-4">
-            <QuantizedMomentumMechanism
-              :size="260"
-              :is-playing="isStripPlaying"
-              :speed-multiplier="stripSpeedMultiplier"
-              @pose-change="handleMomentumPose"
-            />
+          <!-- ── Live Autonomous Mechanical Transfer Strip (RAF 3-Beat Momentum Engine) ── -->
+          <div class="border border-neutral-200/80 rounded-3xl bg-white p-8 shadow-sm dark:border-neutral-800/80 dark:bg-neutral-900/80">
+            <div class="mb-6 flex flex-col gap-3 border-b border-neutral-200/80 pb-4 sm:flex-row sm:items-center sm:justify-between dark:border-neutral-800/80">
+              <div>
+                <div class="flex items-center gap-2">
+                  <span class="rounded bg-neutral-900 px-2 py-0.5 text-xs text-white font-bold font-mono dark:bg-neutral-100 dark:text-neutral-900">MOMENTUM ENGINE</span>
+                  <h3 class="text-base text-neutral-900 font-bold font-serif dark:text-white">
+                    3-Beat Inward Momentum Transfer Cascade
+                  </h3>
+                </div>
+                <p class="text-xs text-neutral-500 font-mono dark:text-neutral-400">
+                  Outer gathers tension → strikes middle ratchet (4→8 intervals) → strikes inner core with decisive snap and delayed outward recoil wave.
+                </p>
+              </div>
 
-            <!-- Real-Time Momentum Telemetry Readouts -->
-            <div class="grid grid-cols-2 mt-6 max-w-2xl w-full gap-2 text-xs font-mono sm:grid-cols-4">
-              <div class="dark:bg-neutral-850 border border-neutral-200 rounded-xl bg-neutral-50 p-2 text-center dark:border-neutral-800">
-                <span class="block text-[10px] text-neutral-400 uppercase">Outer (θ1)</span>
-                <strong class="text-neutral-900 dark:text-neutral-100">{{ activeMomentumPose.angles[0].toFixed(1) }}°</strong>
+              <!-- Transport & Telemetry Controls -->
+              <div class="flex items-center gap-2 text-xs font-mono">
+                <span
+                  class="rounded px-2 py-0.5 text-xs font-bold uppercase transition-colors"
+                  :class="[
+                    activeMomentumPose.phase === 'initiation'
+                      ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400'
+                      : activeMomentumPose.phase === 'transfer'
+                        ? 'bg-blue-500/15 text-blue-600 dark:text-blue-400'
+                        : activeMomentumPose.phase === 'snap-lock'
+                          ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
+                          : activeMomentumPose.phase === 'recoil'
+                            ? 'bg-red-500/15 text-red-600 dark:text-red-400'
+                            : 'bg-neutral-200 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400',
+                  ]"
+                >
+                  PHASE: {{ activeMomentumPose.phase }}
+                </span>
+
+                <button
+                  type="button"
+                  class="dark:bg-neutral-850 flex items-center gap-1.5 border border-neutral-300 rounded-lg bg-neutral-50 px-3 py-1.5 transition-all active:scale-95 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                  @click="toggleStripPlay"
+                >
+                  <div :class="isStripPlaying ? 'i-solar:pause-bold' : 'i-solar:play-bold'" class="size-3.5" />
+                  <span>{{ isStripPlaying ? 'Pause' : 'Play' }}</span>
+                </button>
+
+                <button
+                  type="button"
+                  class="dark:bg-neutral-850 border border-neutral-300 rounded-lg bg-neutral-50 px-2.5 py-1.5 transition-all active:scale-95 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                  :class="stripSpeedMultiplier < 1.0 ? 'font-bold text-neutral-900 dark:text-white bg-neutral-200 dark:bg-neutral-700' : ''"
+                  @click="toggleSlowMo"
+                >
+                  <span>{{ stripSpeedMultiplier < 1.0 ? 'Slow-Mo (0.45x)' : '1.0x Speed' }}</span>
+                </button>
               </div>
-              <div class="dark:bg-neutral-850 border border-neutral-200 rounded-xl bg-neutral-50 p-2 text-center dark:border-neutral-800">
-                <span class="block text-[10px] text-neutral-400 uppercase">Middle (θ2)</span>
-                <strong class="text-neutral-900 dark:text-neutral-100">{{ activeMomentumPose.angles[1].toFixed(1) }}°</strong>
-              </div>
-              <div class="dark:bg-neutral-850 border border-neutral-200 rounded-xl bg-neutral-50 p-2 text-center dark:border-neutral-800">
-                <span class="block text-[10px] text-neutral-400 uppercase">Core (θ3)</span>
-                <strong class="text-neutral-900 dark:text-neutral-100">{{ activeMomentumPose.angles[2].toFixed(1) }}°</strong>
-              </div>
-              <div class="dark:bg-neutral-850 border border-neutral-200 rounded-xl bg-neutral-50 p-2 text-center dark:border-neutral-800">
-                <span class="block text-[10px] text-neutral-400 uppercase">Recoil (δ)</span>
-                <strong class="text-neutral-900 dark:text-neutral-100">{{ activeMomentumPose.recoil.toFixed(2) }}°</strong>
+            </div>
+
+            <!-- Central RAF-Driven Momentum Mechanism -->
+            <div class="flex flex-col items-center justify-center py-4">
+              <QuantizedMomentumMechanism
+                :size="260"
+                :is-playing="isStripPlaying"
+                :speed-multiplier="stripSpeedMultiplier"
+                @pose-change="handleMomentumPose"
+              />
+
+              <!-- Real-Time Momentum Telemetry Readouts -->
+              <div class="grid grid-cols-2 mt-6 max-w-2xl w-full gap-2 text-xs font-mono sm:grid-cols-4">
+                <div class="dark:bg-neutral-850 border border-neutral-200 rounded-xl bg-neutral-50 p-2 text-center dark:border-neutral-800">
+                  <span class="block text-[10px] text-neutral-400 uppercase">Outer (θ1)</span>
+                  <strong class="text-neutral-900 dark:text-neutral-100">{{ activeMomentumPose.angles[0].toFixed(1) }}°</strong>
+                  <span class="block text-[9px] text-neutral-400">{{ activeMomentumPose.velocities[0].toFixed(0) }}°/s</span>
+                </div>
+                <div class="dark:bg-neutral-850 border border-neutral-200 rounded-xl bg-neutral-50 p-2 text-center dark:border-neutral-800">
+                  <span class="block text-[10px] text-neutral-400 uppercase">Middle (θ2)</span>
+                  <strong class="text-neutral-900 dark:text-neutral-100">{{ activeMomentumPose.angles[1].toFixed(1) }}°</strong>
+                  <span class="block text-[9px] text-neutral-400">{{ activeMomentumPose.velocities[1].toFixed(0) }}°/s</span>
+                </div>
+                <div class="dark:bg-neutral-850 border border-neutral-200 rounded-xl bg-neutral-50 p-2 text-center dark:border-neutral-800">
+                  <span class="block text-[10px] text-neutral-400 uppercase">Core (θ3)</span>
+                  <strong class="text-neutral-900 dark:text-neutral-100">{{ activeMomentumPose.angles[2].toFixed(1) }}°</strong>
+                  <span class="block text-[9px] text-neutral-400">{{ activeMomentumPose.velocities[2].toFixed(0) }}°/s</span>
+                </div>
+                <div class="dark:bg-neutral-850 border border-neutral-200 rounded-xl bg-neutral-50 p-2 text-center dark:border-neutral-800">
+                  <span class="block text-[10px] text-neutral-400 uppercase">Recoil Wave (δ)</span>
+                  <strong class="text-neutral-900 dark:text-neutral-100">{{ activeMomentumPose.recoils[2].toFixed(2) }}°</strong>
+                  <span class="block text-[9px] text-neutral-400">{{ activeMomentumPose.recoils[1].toFixed(2) }}° / {{ activeMomentumPose.recoils[0].toFixed(2) }}°</span>
+                </div>
               </div>
             </div>
           </div>

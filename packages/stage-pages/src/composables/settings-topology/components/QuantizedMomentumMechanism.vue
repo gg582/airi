@@ -3,16 +3,20 @@ import type { QuantizedMomentumPose } from '../layouts/quantized-momentum-engine
 
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 
-import { computeQuantizedMomentumPose, DEFAULT_MOMENTUM_CONFIG } from '../layouts/quantized-momentum-engine'
+import { computeQuantizedMomentumPose, DEFAULT_MOMENTUM_TIMING } from '../layouts/quantized-momentum-engine'
 
 const props = withDefaults(defineProps<{
   size?: number
   isPlaying?: boolean
   speedMultiplier?: number
+  cleanMode?: boolean
+  forceReducedMotion?: boolean
 }>(), {
   size: 260,
   isPlaying: true,
   speedMultiplier: 1.0,
+  cleanMode: false,
+  forceReducedMotion: false,
 })
 
 const emit = defineEmits<{
@@ -40,7 +44,7 @@ const cycleStartTime = ref(0)
 const rafId = ref<number | null>(null)
 
 const livePose = ref<QuantizedMomentumPose>(
-  computeQuantizedMomentumPose([0, 0, 0], [1, 2, 0], 0, 1, 0, DEFAULT_MOMENTUM_CONFIG),
+  computeQuantizedMomentumPose([0, 0, 0], [1, 2, 0], 0, 1, 0, DEFAULT_MOMENTUM_TIMING, props.forceReducedMotion),
 )
 
 // Diamond Radii
@@ -78,7 +82,7 @@ function tick(timestamp: number) {
     cycleStartTime.value = timestamp
 
   const elapsed = (timestamp - cycleStartTime.value) * props.speedMultiplier
-  const duration = DEFAULT_MOMENTUM_CONFIG.cycleDurationMs
+  const duration = DEFAULT_MOMENTUM_TIMING.cycleDurationMs
 
   const fromStep = PHRASES[currentCycleIndex.value]
   const toStep = PHRASES[nextCycleIndex.value]
@@ -89,7 +93,8 @@ function tick(timestamp: number) {
     fromStep.depth,
     toStep.depth,
     elapsed,
-    DEFAULT_MOMENTUM_CONFIG,
+    DEFAULT_MOMENTUM_TIMING,
+    props.forceReducedMotion,
   )
   emit('poseChange', livePose.value)
 
@@ -100,31 +105,32 @@ function tick(timestamp: number) {
     emit('cycleComplete', currentCycleIndex.value)
   }
 
-  if (props.isPlaying) {
+  if (props.isPlaying && !props.forceReducedMotion) {
+    rafId.value = requestAnimationFrame(tick)
+  }
+}
+
+function startLoop() {
+  if (rafId.value) {
+    cancelAnimationFrame(rafId.value)
+    rafId.value = null
+  }
+  cycleStartTime.value = 0
+  if (props.isPlaying && !props.forceReducedMotion) {
     rafId.value = requestAnimationFrame(tick)
   }
 }
 
 watch(
-  () => props.isPlaying,
-  (playing) => {
-    if (playing) {
-      cycleStartTime.value = 0
-      rafId.value = requestAnimationFrame(tick)
-    }
-    else if (rafId.value) {
-      cancelAnimationFrame(rafId.value)
-      rafId.value = null
-    }
+  [() => props.isPlaying, () => props.forceReducedMotion],
+  () => {
+    startLoop()
   },
-  { immediate: true },
+  { immediate: false },
 )
 
 onMounted(() => {
-  if (props.isPlaying && !rafId.value) {
-    cycleStartTime.value = 0
-    rafId.value = requestAnimationFrame(tick)
-  }
+  startLoop()
 })
 
 onUnmounted(() => {
@@ -137,7 +143,7 @@ onUnmounted(() => {
 
 <template>
   <div
-    class="pointer-events-none relative flex select-none items-center justify-center"
+    class="pointer-events-none relative flex select-none items-center justify-center transition-all"
     :style="{ width: `${size}px`, height: `${size}px` }"
     aria-hidden="true"
   >
@@ -150,16 +156,16 @@ onUnmounted(() => {
       <!-- Cardinal Calipers Crosshair Hairlines -->
       <line
         :x1="cx"
-        :y1="cy - r1Base - 12"
+        :y1="cy - r1Base - 14"
         :x2="cx"
-        :y2="cy + r1Base + 12"
+        :y2="cy + r1Base + 14"
         stroke="currentColor"
         class="stroke-0.5 text-neutral-200 dark:text-neutral-800"
       />
       <line
-        :x1="cx - r1Base - 12"
+        :x1="cx - r1Base - 14"
         :y1="cy"
-        :x2="cx + r1Base + 12"
+        :x2="cx + r1Base + 14"
         :y2="cy"
         stroke="currentColor"
         class="stroke-0.5 text-neutral-200 dark:text-neutral-800"
@@ -237,7 +243,7 @@ onUnmounted(() => {
           class="stroke-2 text-neutral-950 dark:text-neutral-50"
         />
 
-        <!-- Active Key Tooth (Bold Emphasis) -->
+        <!-- Active Key Tooth (Bold 2.5px Emphasis) -->
         <g :transform="`translate(0, ${-r3})`">
           <polygon points="0,-6.5 6.5,0 0,6.5 -6.5,0" fill="none" stroke="currentColor" class="stroke-1 text-neutral-600 dark:text-neutral-400" />
           <polygon points="0,-4.5 4.5,0 0,4.5 -4.5,0" fill="currentColor" class="text-neutral-950 dark:text-neutral-50" />

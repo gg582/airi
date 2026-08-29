@@ -222,33 +222,65 @@ describe('layout Scene Generators', () => {
 })
 
 describe('quantized Inward Momentum Transfer Engine', () => {
-  it('computes 3-beat physical momentum cascade correctly', async () => {
-    const { computeQuantizedMomentumPose, DEFAULT_MOMENTUM_CONFIG } = await import('./layouts/quantized-momentum-engine')
+  it('computes 3-beat physical momentum cascade with piecewise velocity crossover', async () => {
+    const { computeQuantizedMomentumPose, DEFAULT_MOMENTUM_TIMING } = await import('./layouts/quantized-momentum-engine')
 
-    // Beat 1: Initiation (t = 200ms) -> Outer moves, middle & inner haven't triggered
-    const poseB1 = computeQuantizedMomentumPose([0, 0, 0], [1, 2, 0], 0, 1, 200, DEFAULT_MOMENTUM_CONFIG)
+    // Beat 1: Initiation (t = 200ms) -> Outer accelerating with tension, Middle dormant
+    const poseB1 = computeQuantizedMomentumPose([0, 0, 0], [1, 2, 0], 0, 1, 200, DEFAULT_MOMENTUM_TIMING)
     expect(poseB1.phase).toBe('initiation')
     expect(poseB1.angles[0]).toBeGreaterThan(-90)
-    expect(poseB1.angles[1]).toBe(-90) // Middle not started yet
+    expect(poseB1.angles[1]).toBe(-90) // Middle dormant
+    expect(poseB1.velocities[0]).toBeGreaterThan(0)
+    expect(poseB1.velocities[1]).toBe(0)
 
-    // Beat 2: Transfer (t = 500ms) -> Moving from Depth 1 to 2 -> Middle fractures to 8
-    const poseB2 = computeQuantizedMomentumPose([0, 0, 0], [1, 2, 0], 1, 2, 500, DEFAULT_MOMENTUM_CONFIG)
-    expect(poseB2.phase).toBe('transfer')
-    expect(poseB2.dashFrequencies[1]).toBe(8) // Fractured on impact
+    // Impact 1: t = 380ms -> Outer peaks, Middle begins accelerating
+    const poseImpact1Before = computeQuantizedMomentumPose([0, 0, 0], [1, 2, 0], 0, 1, 375, DEFAULT_MOMENTUM_TIMING)
+    const poseImpact1After = computeQuantizedMomentumPose([0, 0, 0], [1, 2, 0], 0, 1, 390, DEFAULT_MOMENTUM_TIMING)
+    expect(poseImpact1After.phase).toBe('transfer')
+    expect(Math.abs(poseImpact1After.velocities[0])).toBeLessThan(Math.abs(poseImpact1Before.velocities[0])) // Outer decelerating
+    expect(Math.abs(poseImpact1After.velocities[1])).toBeGreaterThan(0) // Middle accelerating
 
-    // Beat 3: Inner Snap (t = 750ms) -> Moving from Depth 2 to 3 -> Inner fractures to 16
-    const poseB3 = computeQuantizedMomentumPose([1, 2, 0], [2, 0, 3], 2, 3, 750, DEFAULT_MOMENTUM_CONFIG)
-    expect(poseB3.phase).toBe('snap-lock')
-    expect(poseB3.dashFrequencies[2]).toBe(16)
+    // Impact 2: t = 620ms -> Middle strikes Core
+    const poseImpact2Before = computeQuantizedMomentumPose([1, 2, 0], [2, 0, 3], 1, 2, 615, DEFAULT_MOMENTUM_TIMING)
+    const poseImpact2After = computeQuantizedMomentumPose([1, 2, 0], [2, 0, 3], 1, 2, 630, DEFAULT_MOMENTUM_TIMING)
+    expect(poseImpact2After.phase).toBe('snap-lock')
+    expect(Math.abs(poseImpact2After.velocities[1])).toBeLessThan(Math.abs(poseImpact2Before.velocities[1])) // Middle decelerating
+    expect(Math.abs(poseImpact2After.velocities[2])).toBeGreaterThan(0) // Core accelerating
 
-    // Hard Stop Recoil (t = 920ms)
-    const poseRecoil = computeQuantizedMomentumPose([0, 0, 0], [1, 2, 0], 0, 1, 920, DEFAULT_MOMENTUM_CONFIG)
+    // Hard Stop Recoil & Delayed Propagation (t = 820ms)
+    const poseRecoil = computeQuantizedMomentumPose([0, 0, 0], [1, 2, 0], 0, 1, 820, DEFAULT_MOMENTUM_TIMING)
     expect(poseRecoil.phase).toBe('recoil')
-    expect(poseRecoil.recoil).not.toBe(0)
+    expect(poseRecoil.recoils[2]).not.toBe(0) // Core ringing down
+    expect(poseRecoil.recoils[1]).not.toBe(0) // Middle counter-kick
 
-    // Rest (t = 1200ms)
-    const poseRest = computeQuantizedMomentumPose([0, 0, 0], [1, 2, 0], 0, 1, 1200, DEFAULT_MOMENTUM_CONFIG)
+    // Rest & Cardinal Alignment (t = 1000ms -> 1200ms)
+    const poseRest = computeQuantizedMomentumPose([0, 0, 0], [1, 2, 0], 0, 1, 1000, DEFAULT_MOMENTUM_TIMING)
     expect(poseRest.phase).toBe('rest')
-    expect(poseRest.recoil).toBe(0)
+    expect(poseRest.recoils).toEqual([0, 0, 0])
+    expect(poseRest.angles[0]).toBe(0) // 1 * 90 - 90 = 0 (East)
+    expect(poseRest.angles[1]).toBe(90) // 2 * 90 - 90 = 90 (South)
+    expect(poseRest.angles[2]).toBe(-90) // 0 * 90 - 90 = -90 (North)
+  })
+
+  it('instantly settles in reduced-motion mode without intermediate momentum', async () => {
+    const { computeQuantizedMomentumPose, DEFAULT_MOMENTUM_TIMING } = await import('./layouts/quantized-momentum-engine')
+    const poseReduced = computeQuantizedMomentumPose([0, 0, 0], [1, 2, 0], 0, 1, 200, DEFAULT_MOMENTUM_TIMING, true)
+    expect(poseReduced.phase).toBe('rest')
+    expect(poseReduced.angles).toEqual([0, 90, -90])
+    expect(poseReduced.velocities).toEqual([0, 0, 0])
+    expect(poseReduced.recoils).toEqual([0, 0, 0])
+  })
+
+  it('maintains continuous finite values across the complete timeline', async () => {
+    const { computeQuantizedMomentumPose, DEFAULT_MOMENTUM_TIMING } = await import('./layouts/quantized-momentum-engine')
+    for (let t = 0; t <= 1200; t += 20) {
+      const pose = computeQuantizedMomentumPose([0, 0, 0], [1, 2, 0], 0, 1, t, DEFAULT_MOMENTUM_TIMING)
+      expect(Number.isFinite(pose.angles[0])).toBe(true)
+      expect(Number.isFinite(pose.angles[1])).toBe(true)
+      expect(Number.isFinite(pose.angles[2])).toBe(true)
+      expect(Number.isFinite(pose.velocities[0])).toBe(true)
+      expect(Number.isFinite(pose.velocities[1])).toBe(true)
+      expect(Number.isFinite(pose.velocities[2])).toBe(true)
+    }
   })
 })
