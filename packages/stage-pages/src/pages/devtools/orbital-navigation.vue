@@ -5,6 +5,8 @@ import type {
   SettingsTopology,
   SettingsTopologyNode,
   TopologyTransition,
+  TransmissionWaveConfig,
+  TransmissionWavePose,
   ValidationResult,
 } from '../../composables/settings-topology'
 
@@ -15,6 +17,7 @@ import KineticOrbitalMechanism from '../../composables/settings-topology/compone
 import QuantizedGeometryKey from '../../composables/settings-topology/components/QuantizedGeometryKey.vue'
 import QuantizedMomentumMechanism from '../../composables/settings-topology/components/QuantizedMomentumMechanism.vue'
 import StaticTopologyNodeStudy from '../../composables/settings-topology/components/StaticTopologyNodeStudy.vue'
+import TransmissionWaveMechanism from '../../composables/settings-topology/components/TransmissionWaveMechanism.vue'
 
 import {
   buildLiveSettingsTopology,
@@ -30,19 +33,45 @@ import {
   createSingleChildFixture,
   createUnevenDeepFixture,
   createWideSiblingsFixture,
+  DEFAULT_TRANSMISSION_CONFIG,
   getSiblings,
   resolvePath,
   validateTopology,
 } from '../../composables/settings-topology'
 
 // ──────────────────────────────────────────────
-// Playground Main Mode & Tabs (4 Modes)
+// Playground Main Mode & Tabs (5 Modes)
 // ──────────────────────────────────────────────
-const activeMainTab = ref<'static-nodes' | 'geometry-showcase' | 'sketch' | 'escapement-lab'>('static-nodes')
+const activeMainTab = ref<'transmission-wave' | 'static-nodes' | 'momentum-cascade' | 'sketch' | 'escapement-lab'>('transmission-wave')
 const catalogTopology = computed(() => buildSettingsCatalogTopology())
 
 // ──────────────────────────────────────────────
-// Static 4-Node Topology Study State (Tab 1)
+// Transmission Wave Study State (Tab 1)
+// ──────────────────────────────────────────────
+const isTransmissionPlaying = ref(true)
+const transmissionSpeed = ref(1.0)
+const showTransmissionDiag = ref(false)
+const transmissionConfig = ref<TransmissionWaveConfig>({ ...DEFAULT_TRANSMISSION_CONFIG })
+const liveTransmissionPose = ref<TransmissionWavePose | null>(null)
+
+function handleTransmissionPose(pose: TransmissionWavePose) {
+  liveTransmissionPose.value = pose
+}
+
+function toggleTransmissionPlay() {
+  isTransmissionPlaying.value = !isTransmissionPlaying.value
+}
+
+function toggleTransmissionSlowMo() {
+  transmissionSpeed.value = transmissionSpeed.value === 1.0 ? 0.40 : 1.0
+}
+
+function resetTransmissionConfig() {
+  transmissionConfig.value = { ...DEFAULT_TRANSMISSION_CONFIG }
+}
+
+// ──────────────────────────────────────────────
+// Static 4-Node Topology Study State (Tab 2)
 // ──────────────────────────────────────────────
 const staticVariantMode = ref<'side-by-side' | 'explicit' | 'implied'>('side-by-side')
 const staticShowLinks = ref<boolean>(true)
@@ -90,7 +119,7 @@ const STATIC_STATES: Array<{
 const geometryViewMode = ref<'clean-capture' | 'diagnostic'>('clean-capture')
 
 // ──────────────────────────────────────────────
-// RAF Momentum Motion Strip State (Tab 2)
+// RAF Momentum Motion Strip State (Tab 3)
 // ──────────────────────────────────────────────
 const isStripPlaying = ref(true)
 const stripSpeedMultiplier = ref(1.0)
@@ -283,12 +312,25 @@ function triggerBranchHop() {
             </h1>
           </div>
           <p class="mt-0.5 text-xs text-neutral-500 font-mono dark:text-neutral-400">
-            Static 4-Node 3-Square topology · Momentum cascade · Programmatic integration sketches
+            Transmission Wave Mechanism · Static 4-Node topology · Momentum cascade · Integration sketches
           </p>
         </div>
 
-        <!-- Master View Switcher (4 Tabs) -->
+        <!-- Master View Switcher (5 Tabs) -->
         <div class="dark:bg-neutral-850 flex flex-wrap rounded-xl bg-neutral-200/60 p-1 backdrop-blur-sm">
+          <button
+            type="button"
+            class="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-mono transition-all"
+            :class="[
+              activeMainTab === 'transmission-wave'
+                ? 'bg-white text-neutral-900 shadow-sm font-semibold dark:bg-neutral-700 dark:text-white'
+                : 'text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100',
+            ]"
+            @click="activeMainTab = 'transmission-wave'"
+          >
+            <div class="i-solar:refresh-circle-bold size-3.5" />
+            <span>Transmission Wave</span>
+          </button>
           <button
             type="button"
             class="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-mono transition-all"
@@ -306,11 +348,11 @@ function triggerBranchHop() {
             type="button"
             class="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-mono transition-all"
             :class="[
-              activeMainTab === 'geometry-showcase'
+              activeMainTab === 'momentum-cascade'
                 ? 'bg-white text-neutral-900 shadow-sm font-semibold dark:bg-neutral-700 dark:text-white'
                 : 'text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100',
             ]"
-            @click="activeMainTab = 'geometry-showcase'"
+            @click="activeMainTab = 'momentum-cascade'"
           >
             <div class="i-solar:shield-keyhole-minimalistic-bold size-3.5" />
             <span>Momentum Cascade</span>
@@ -345,9 +387,152 @@ function triggerBranchHop() {
       </div>
 
       <!-- ══════════════════════════════════════════════════════ -->
-      <!-- TAB 1: STATIC 4-NODE 3-SQUARE TOPOLOGY STUDY           -->
+      <!-- TAB 1: TRANSMISSION WAVE MECHANISM (NEW PRIMARY STUDY) -->
       <!-- ══════════════════════════════════════════════════════ -->
-      <div v-if="activeMainTab === 'static-nodes'" class="space-y-6">
+      <div v-if="activeMainTab === 'transmission-wave'" class="space-y-6">
+        <!-- Editorial Header & Toolbar -->
+        <div class="flex flex-col gap-4 border-b border-neutral-200/80 pb-4 sm:flex-row sm:items-center sm:justify-between dark:border-neutral-800/80">
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="rounded bg-neutral-900 px-2 py-0.5 text-xs text-white font-bold font-mono dark:bg-neutral-100 dark:text-neutral-900">TRANSMISSION WAVE</span>
+              <h2 class="text-lg text-neutral-900 font-bold font-serif dark:text-neutral-100">
+                Outward Transmission Wave · 3 Nested Squares · 12 Tracking Nodes
+              </h2>
+            </div>
+            <p class="text-xs text-neutral-500 font-mono dark:text-neutral-400">
+              Inner initiates clockwise motion → pulls middle → middle enters opposing counter-rotation → pulls outer. Zero recoil, stepped tick/crank cadence.
+            </p>
+          </div>
+
+          <!-- Transport & Diagnostic Drawer Toggles -->
+          <div class="flex items-center gap-2 text-xs font-mono">
+            <button
+              type="button"
+              class="dark:bg-neutral-850 flex items-center gap-1.5 border border-neutral-300 rounded-xl bg-neutral-50 px-3 py-1.5 transition-all active:scale-95 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800"
+              @click="toggleTransmissionPlay"
+            >
+              <div :class="isTransmissionPlaying ? 'i-solar:pause-bold' : 'i-solar:play-bold'" class="size-3.5" />
+              <span>{{ isTransmissionPlaying ? 'Pause' : 'Play' }}</span>
+            </button>
+
+            <button
+              type="button"
+              class="dark:bg-neutral-850 border border-neutral-300 rounded-xl bg-neutral-50 px-3 py-1.5 transition-all active:scale-95 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800"
+              :class="transmissionSpeed < 1.0 ? 'font-bold text-neutral-900 dark:text-white bg-neutral-200 dark:bg-neutral-700' : ''"
+              @click="toggleTransmissionSlowMo"
+            >
+              <span>{{ transmissionSpeed < 1.0 ? 'Slow-Mo (0.40x)' : '1.0x Speed' }}</span>
+            </button>
+
+            <button
+              type="button"
+              class="dark:bg-neutral-850 border border-neutral-300 rounded-xl bg-neutral-50 px-3 py-1.5 transition-all active:scale-95 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800"
+              :class="showTransmissionDiag ? 'font-bold text-neutral-900 dark:text-white bg-neutral-200 dark:bg-neutral-700' : 'text-neutral-500'"
+              @click="showTransmissionDiag = !showTransmissionDiag"
+            >
+              <span>{{ showTransmissionDiag ? 'Hide Tuning' : 'Tuning Controls' }}</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- ── Clean Presentation Frame (Enlarged 440px, Zero Distraction) ── -->
+        <div class="flex flex-col items-center justify-center border border-neutral-200/80 rounded-3xl bg-white p-12 shadow-sm dark:border-neutral-800/80 dark:bg-neutral-900/80">
+          <TransmissionWaveMechanism
+            :size="440"
+            :is-playing="isTransmissionPlaying"
+            :speed-multiplier="transmissionSpeed"
+            :config="transmissionConfig"
+            :clean-mode="true"
+            @pose-change="handleTransmissionPose"
+          />
+        </div>
+
+        <!-- ── Compact Developer Tuning Drawer (Optional) ── -->
+        <div v-if="showTransmissionDiag" class="border border-neutral-200/80 rounded-3xl bg-white p-6 shadow-sm dark:border-neutral-800/80 dark:bg-neutral-900/80">
+          <div class="mb-4 flex items-center justify-between border-b border-neutral-200/60 pb-3 dark:border-neutral-800/60">
+            <h3 class="text-xs text-neutral-400 font-bold tracking-wider font-mono uppercase">
+              Transmission Kinematics & Interval Tuning
+            </h3>
+            <button
+              type="button"
+              class="text-xs text-neutral-500 font-mono hover:text-neutral-900 dark:hover:text-neutral-100"
+              @click="resetTransmissionConfig"
+            >
+              Reset to Defaults
+            </button>
+          </div>
+
+          <div class="grid grid-cols-1 gap-6 md:grid-cols-3">
+            <!-- Slider 1: Small Tick Step Size -->
+            <div class="text-xs font-mono space-y-1">
+              <div class="flex justify-between">
+                <span>SMALL TICK SIZE:</span>
+                <strong>{{ transmissionConfig.tickDeg }}°</strong>
+              </div>
+              <input
+                v-model.number="transmissionConfig.tickDeg"
+                type="range"
+                min="6"
+                max="25"
+                step="1"
+                class="w-full accent-neutral-900 dark:accent-neutral-100"
+              >
+              <div class="flex justify-between text-[10px] text-neutral-400">
+                <span>6° (Micro)</span>
+                <span>12° (Default)</span>
+                <span>25° (Pronounced)</span>
+              </div>
+            </div>
+
+            <!-- Slider 2: Decisive Crank Step Size -->
+            <div class="text-xs font-mono space-y-1">
+              <div class="flex justify-between">
+                <span>DECISIVE CRANK SIZE:</span>
+                <strong>{{ transmissionConfig.crankDeg }}°</strong>
+              </div>
+              <input
+                v-model.number="transmissionConfig.crankDeg"
+                type="range"
+                min="30"
+                max="90"
+                step="2"
+                class="w-full accent-neutral-900 dark:accent-neutral-100"
+              >
+              <div class="flex justify-between text-[10px] text-neutral-400">
+                <span>30°</span>
+                <span>66° (Default)</span>
+                <span>90° (Quarter-Turn)</span>
+              </div>
+            </div>
+
+            <!-- Slider 3: Mechanical Hold Duration -->
+            <div class="text-xs font-mono space-y-1">
+              <div class="flex justify-between">
+                <span>HOLD DWELL TIME:</span>
+                <strong>{{ transmissionConfig.holdDurationMs }}ms</strong>
+              </div>
+              <input
+                v-model.number="transmissionConfig.holdDurationMs"
+                type="range"
+                min="100"
+                max="600"
+                step="20"
+                class="w-full accent-neutral-900 dark:accent-neutral-100"
+              >
+              <div class="flex justify-between text-[10px] text-neutral-400">
+                <span>100ms</span>
+                <span>260ms (Default)</span>
+                <span>600ms</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════════════════════ -->
+      <!-- TAB 2: STATIC 4-NODE 3-SQUARE TOPOLOGY STUDY           -->
+      <!-- ══════════════════════════════════════════════════════ -->
+      <div v-else-if="activeMainTab === 'static-nodes'" class="space-y-6">
         <!-- Study Control Bar -->
         <div class="flex flex-col gap-4 border-b border-neutral-200/80 pb-4 sm:flex-row sm:items-center sm:justify-between dark:border-neutral-800/80">
           <div>
@@ -417,7 +602,7 @@ function triggerBranchHop() {
 
             <div class="grid grid-cols-1 gap-8 md:grid-cols-2">
               <!-- Variant A: Explicit Hairline Squares -->
-              <div class="dark:border-neutral-850 flex flex-col items-center justify-center border border-neutral-100 rounded-2xl bg-neutral-50/50 p-6 dark:bg-neutral-950/50">
+              <div class="dark:border-neutral-855 flex flex-col items-center justify-center border border-neutral-100 rounded-2xl bg-neutral-50/50 p-6 dark:bg-neutral-950/50">
                 <span class="mb-4 text-[10px] text-neutral-400 tracking-wider font-mono uppercase">Variant A · Explicit Hairlines</span>
                 <StaticTopologyNodeStudy
                   :size="210"
@@ -430,7 +615,7 @@ function triggerBranchHop() {
               </div>
 
               <!-- Variant B: Implied Squares (Nodes Only) -->
-              <div class="dark:border-neutral-850 flex flex-col items-center justify-center border border-neutral-100 rounded-2xl bg-neutral-50/50 p-6 dark:bg-neutral-950/50">
+              <div class="dark:border-neutral-855 flex flex-col items-center justify-center border border-neutral-100 rounded-2xl bg-neutral-50/50 p-6 dark:bg-neutral-950/50">
                 <span class="mb-4 text-[10px] text-neutral-400 tracking-wider font-mono uppercase">Variant B · Implied (Nodes Only)</span>
                 <StaticTopologyNodeStudy
                   :size="210"
@@ -471,9 +656,9 @@ function triggerBranchHop() {
       </div>
 
       <!-- ══════════════════════════════════════════════════════ -->
-      <!-- TAB 2: QUANTIZED MOMENTUM CASCADE SHOWCASE             -->
+      <!-- TAB 3: QUANTIZED MOMENTUM CASCADE SHOWCASE             -->
       <!-- ══════════════════════════════════════════════════════ -->
-      <div v-else-if="activeMainTab === 'geometry-showcase'" class="space-y-6">
+      <div v-else-if="activeMainTab === 'momentum-cascade'" class="space-y-6">
         <!-- Sub-View Switcher (Clean Capture vs Diagnostic Workbench) -->
         <div class="flex items-center justify-between border-b border-neutral-200/80 pb-4 dark:border-neutral-800/80">
           <div>
@@ -679,7 +864,7 @@ function triggerBranchHop() {
       </div>
 
       <!-- ══════════════════════════════════════════════════════ -->
-      <!-- TAB 3: Integration Sketch (Experimental Canvas)       -->
+      <!-- TAB 4: Integration Sketch (Experimental Canvas)       -->
       <!-- ══════════════════════════════════════════════════════ -->
       <div v-else-if="activeMainTab === 'sketch'" class="space-y-4">
         <!-- Notice banner contextualizing the sketch -->
@@ -697,7 +882,7 @@ function triggerBranchHop() {
       </div>
 
       <!-- ══════════════════════════════════════════════════════ -->
-      <!-- TAB 4: Orbital Escapement Lab (Machinery Workbench)   -->
+      <!-- TAB 5: Orbital Escapement Lab (Machinery Workbench)   -->
       <!-- ══════════════════════════════════════════════════════ -->
       <div v-else class="grid grid-cols-1 gap-6 lg:grid-cols-12">
         <!-- ── Left Column: Mechanical Anatomy & Dataset Toggles ── -->

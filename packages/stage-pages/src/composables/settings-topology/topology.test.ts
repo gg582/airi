@@ -284,3 +284,50 @@ describe('quantized Inward Momentum Transfer Engine', () => {
     }
   })
 })
+
+describe('transmission Wave Kinematic Engine', () => {
+  it('propagates outward motion with tick/crank cadence and opposing middle phase', async () => {
+    const { computeTransmissionPose, DEFAULT_TRANSMISSION_CONFIG, getPhraseDuration } = await import('./layouts/transmission-wave-engine')
+
+    // Tick 1 (t = 80ms, middle of Tick 1): Inner starts moving clockwise, Middle janked clockwise
+    const poseTick1Early = computeTransmissionPose([0, 0, 0], 40, DEFAULT_TRANSMISSION_CONFIG)
+    expect(poseTick1Early.phase).toBe('tick-1')
+    expect(poseTick1Early.angles[2]).toBeGreaterThan(0) // Inner moving clockwise
+    expect(poseTick1Early.angles[1]).toBeGreaterThan(0) // Middle pulled initially clockwise
+
+    // Tick 1 (t = 150ms, late in Tick 1): Middle enters opposing counter-rotation
+    const poseTick1Late = computeTransmissionPose([0, 0, 0], 150, DEFAULT_TRANSMISSION_CONFIG)
+    expect(poseTick1Late.angles[1]).toBeLessThan(0) // Middle counter-rotates opposingly
+    expect(poseTick1Late.angles[0]).toBeGreaterThan(0) // Outer dragged along
+
+    // Hold Phase (at end of phrase): Zero velocity, settled angles
+    const totalDuration = getPhraseDuration(DEFAULT_TRANSMISSION_CONFIG)
+    const poseHold = computeTransmissionPose([0, 0, 0], totalDuration - 20, DEFAULT_TRANSMISSION_CONFIG)
+    expect(poseHold.phase).toBe('hold')
+    expect(Number.isFinite(poseHold.angles[0])).toBe(true)
+    expect(Number.isFinite(poseHold.angles[1])).toBe(true)
+    expect(Number.isFinite(poseHold.angles[2])).toBe(true)
+  })
+
+  it('settles cleanly in reduced-motion mode', async () => {
+    const { computeTransmissionPose, DEFAULT_TRANSMISSION_CONFIG } = await import('./layouts/transmission-wave-engine')
+    const poseReduced = computeTransmissionPose([10, -5, 45], 200, DEFAULT_TRANSMISSION_CONFIG, true)
+    expect(poseReduced.phase).toBe('hold')
+    expect(poseReduced.angles).toEqual([10, -5, 45])
+    expect(poseReduced.velocities).toEqual([0, 0, 0])
+  })
+
+  it('guarantees continuous finite values across full phrase timeline', async () => {
+    const { computeTransmissionPose, DEFAULT_TRANSMISSION_CONFIG, getPhraseDuration } = await import('./layouts/transmission-wave-engine')
+    const total = getPhraseDuration(DEFAULT_TRANSMISSION_CONFIG)
+    for (let t = 0; t <= total; t += 10) {
+      const pose = computeTransmissionPose([0, 0, 0], t, DEFAULT_TRANSMISSION_CONFIG)
+      expect(Number.isFinite(pose.angles[0])).toBe(true)
+      expect(Number.isFinite(pose.angles[1])).toBe(true)
+      expect(Number.isFinite(pose.angles[2])).toBe(true)
+      expect(Number.isFinite(pose.velocities[0])).toBe(true)
+      expect(Number.isFinite(pose.velocities[1])).toBe(true)
+      expect(Number.isFinite(pose.velocities[2])).toBe(true)
+    }
+  })
+})
