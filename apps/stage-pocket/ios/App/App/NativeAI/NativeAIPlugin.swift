@@ -497,7 +497,11 @@ public class NativeAIPlugin: CAPPlugin, CAPBridgedPlugin {
             let request = GenerationRequest(
                 prompt: prompt,
                 config: genConfig,
-                history: []
+                history: [],
+                // KV prefix reuse: the chat prompt keeps a static system prefix,
+                // so warm turns only prefill the newly appended delta tokens.
+                // Falls back to a full prefill when the prefix diverges.
+                reuseCache: true
             )
 
             var tokenCount = 0
@@ -515,6 +519,14 @@ public class NativeAIPlugin: CAPPlugin, CAPBridgedPlugin {
                     }
 
                     switch event {
+                    case .prefillCompleted(let prefill):
+                        self.notifyListeners("prefill", data: [
+                            "requestId": requestId,
+                            "promptTokens": prefill.promptTokens,
+                            "reusedTokens": prefill.reusedTokens,
+                            "prefillMs": Int(prefill.duration.components.seconds * 1000
+                                + prefill.duration.components.attoseconds / 1_000_000_000_000_000)
+                        ])
                     case .token(let chunk):
                         tokenCount += 1
                         let elapsedMs = Date().timeIntervalSince(startTime) * 1000
@@ -537,6 +549,9 @@ public class NativeAIPlugin: CAPPlugin, CAPBridgedPlugin {
                             "ttftMs": Int(ttftMs),
                             "tokensPerSecond": Double(round(metrics.decodeTokensPerSecond * 10) / 10),
                             "finishReason": metrics.finishReason?.rawValue ?? "stop",
+                            "reusedTokens": metrics.reusedTokens,
+                            "feedWidths": metrics.feedWidths ?? [],
+                            "peakMemoryBytes": NSNumber(value: metrics.peakMemoryBytes ?? 0),
                             "isFinished": true
                         ])
                     default:

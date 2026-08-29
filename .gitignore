@@ -141,3 +141,8 @@ apps/stage-mate/bin/
 recovery_artifacts/
 recovery/
 personal_airi/
+
+# Swift / SPM
+.build/
+**/CoreLLMKit/.build/
+**/CoreLLMKit/Package.resolved

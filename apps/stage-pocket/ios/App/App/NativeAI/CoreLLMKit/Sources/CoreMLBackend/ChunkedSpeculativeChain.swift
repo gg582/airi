@@ -52,6 +52,11 @@ final class ChunkedSpeculativeChain {
 
     private(set) var blockScheduledPrefill = false
 
+    /// Width schedule used by the most recent batched prefill (for telemetry).
+    /// After prefill completes, transient per-width models/buffers are evicted
+    /// so only the decode chain + lmhead (+ KV) stay resident.
+    private(set) var lastFeedWidths: [Int] = []
+
     private var kbuf: [MLMultiArray] = []
     private var vbuf: [MLMultiArray] = []
 
@@ -302,20 +307,104 @@ final class ChunkedSpeculativeChain {
                 reason: "prefill invoked on a decode-only (restore) chain; restore replaces prefill so the wide prefill functions are never loaded")
         }
 
-        for i in 0..<(ids.count - 1) {
+        let widths = availablePrefillWidths()
+        guard !widths.isEmpty else {
+            // Fallback for bundles without prefill functions: sequential decode ingestion.
+            for i in 0..<(ids.count - 1) {
+                try Task.checkCancellation()
+                try runDecodeChunks(tokenID: ids[i], softRow: rowRefs[i])
+            }
             try Task.checkCancellation()
-            try runDecodeChunks(tokenID: ids[i], softRow: rowRefs[i])
+            try runDecodeChunks(tokenID: ids[ids.count - 1], softRow: rowRefs[ids.count - 1])
+            return try lmhead(hiddenBuffer)
         }
-        try Task.checkCancellation()
-        try runDecodeChunks(tokenID: ids[ids.count - 1], softRow: rowRefs[ids.count - 1])
-        return try lmhead(hiddenBuffer)
+
+        // Greedy width decomposition: fewest batched passes cover the prompt.
+        // Blocks at position 0 use runPrefillPlain (plainN, e.g. 512).
+        // Blocks past position 0 use runPrefillOffset, which requires offset-compatible widths (e.g. 256, 32).
+        var hidden: MLMultiArray?
+        var lastL = 0
+        var offset = 0
+        var used = Set<Int>()
+        while offset < ids.count {
+            try Task.checkCancellation()
+            let remaining = ids.count - offset
+            let isPlain = (position == 0 && offset == 0 && widths.contains(config.plainN))
+            let candidateWidths = isPlain ? widths : widths.filter { $0 != config.plainN }
+            let N = pickWidth(forRemaining: remaining, widths: candidateWidths.isEmpty ? widths : candidateWidths)
+            let L = min(N, remaining)
+            let block = Array(ids[offset..<(offset + L)])
+            let rows = softSlice(rowRefs, offset, offset + L)
+            if isPlain {
+                hidden = try runPrefillPlain(block, N: N, softRows: rows)
+            } else {
+                hidden = try runPrefillOffset(block, p: position, N: N, softRows: rows)
+            }
+            used.insert(N)
+            lastL = L
+            offset += L
+        }
+        lastFeedWidths = used.sorted(by: >)
+        // Evict per-width function instances and buffers immediately: pal6 chunk
+        // weights are mmap'd per MLModel instance, so holding every prefill width
+        // alongside the decode chain is what previously triggered Jetsam kills.
+        evictPrefillAssets(widths: used)
+
+        guard let h = hidden else {
+            throw LLMEngineError.generationFailed(reason: "scheduled prefill produced no hidden state")
+        }
+        return try lmheadRow(h, row: lastL - 1)
+    }
+
+    /// Prefill widths offered by the bundle (descending), excluding verify-only
+    /// functions (e.g. width 4 is reserved for the MTP verify path).
+    private func availablePrefillWidths() -> [Int] {
+        config.prefillNs.filter { config.prefillFunctions[$0] != nil }.sorted(by: >)
+    }
+
+    /// Greedy width selection: smallest width that covers `remaining`; if the
+    /// remainder exceeds the largest width, take the largest. Widths descending.
+    private func pickWidth(forRemaining remaining: Int, widths: [Int]) -> Int {
+        guard !widths.isEmpty else { return config.plainN }
+        if let n = widths.last(where: { $0 >= remaining }) { return n }
+        return widths[0]
+    }
+
+    private func evictPrefillAssets(widths: Set<Int>) {
+        for n in widths where n != Self.verifyWidth {
+            prefillModels[n] = nil
+            prefillBufs[n] = nil
+        }
     }
 
     func plannedPrefillWidths(promptLength: Int, from startPosition: Int = 0) -> [Int] {
-        return []
+        let allWidths = availablePrefillWidths()
+        guard !allWidths.isEmpty, promptLength > 0 else { return [] }
+        var plan = Set<Int>()
+        var remaining = promptLength
+        var pos = startPosition
+        var off = 0
+        while remaining > 0 {
+            let isPlain = (pos == 0 && off == 0 && allWidths.contains(config.plainN))
+            let candidateWidths = isPlain ? allWidths : allWidths.filter { $0 != config.plainN }
+            let N = pickWidth(forRemaining: remaining, widths: candidateWidths.isEmpty ? allWidths : candidateWidths)
+            let L = min(N, remaining)
+            plan.insert(N)
+            remaining -= L
+            pos += L
+            off += L
+        }
+        return plan.sorted(by: >)
     }
 
+    /// Eagerly instantiates the given prefill widths. Note that feedScheduled
+    /// evicts them again after each prefill, so materializing is only a
+    /// latency-smoothing hint when a follow-up prefill is known to be imminent.
     func materializePrefill(widths: [Int]) throws {
+        for n in widths where n != Self.verifyWidth {
+            _ = try prefillChain(N: n)
+            _ = try prefillBuffers(N: n)
+        }
     }
 
     private func softSlice(_ rowRefs: [SoftRowRef?], _ lo: Int, _ hi: Int) -> [SoftRowRef?]? {

@@ -810,7 +810,7 @@ public actor CoreMLEngine: LLMEngine {
         let finishReason: FinishReason = sawEOS ? .eos : (capIsContextBound ? .contextFull : .cap)
         let footprintAtEnd = Self.memoryFootprint()
         let pld = useMTP ? (chain as? ChunkedSpeculativeChain)?.pldStatsSnapshot() : nil
-        let widths = (chain as? ChunkedSpeculativeChain)?.residentPrefillWidths()
+        let widths = (chain as? ChunkedSpeculativeChain)?.lastFeedWidths
         var perTokenMillis: [Double] = []
         var previous = decodeStart
         for instant in tokenInstants {
