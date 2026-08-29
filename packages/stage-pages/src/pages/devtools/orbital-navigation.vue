@@ -14,6 +14,7 @@ import FullPageSettingsEngine from '../../composables/settings-topology/componen
 import KineticOrbitalMechanism from '../../composables/settings-topology/components/KineticOrbitalMechanism.vue'
 import QuantizedGeometryKey from '../../composables/settings-topology/components/QuantizedGeometryKey.vue'
 import QuantizedMomentumMechanism from '../../composables/settings-topology/components/QuantizedMomentumMechanism.vue'
+import StaticTopologyNodeStudy from '../../composables/settings-topology/components/StaticTopologyNodeStudy.vue'
 
 import {
   buildLiveSettingsTopology,
@@ -35,10 +36,53 @@ import {
 } from '../../composables/settings-topology'
 
 // ──────────────────────────────────────────────
-// Playground Main Mode & Tabs (3 Modes)
+// Playground Main Mode & Tabs (4 Modes)
 // ──────────────────────────────────────────────
-const activeMainTab = ref<'sketch' | 'escapement-lab' | 'geometry-showcase'>('geometry-showcase')
+const activeMainTab = ref<'static-nodes' | 'geometry-showcase' | 'sketch' | 'escapement-lab'>('static-nodes')
 const catalogTopology = computed(() => buildSettingsCatalogTopology())
+
+// ──────────────────────────────────────────────
+// Static 4-Node Topology Study State (Tab 1)
+// ──────────────────────────────────────────────
+const staticVariantMode = ref<'side-by-side' | 'explicit' | 'implied'>('side-by-side')
+const staticShowLinks = ref<boolean>(true)
+
+const STATIC_STATES: Array<{
+  facets: [number, number, number]
+  depth: number
+  label: string
+  code: string
+  desc: string
+}> = [
+  {
+    facets: [0, 0, 0],
+    depth: 0,
+    label: 'STATE 01 · ROOT',
+    code: 'D0 // NORTH-0',
+    desc: 'One active outer node. Middle & inner layers dormant in neutral alignment.',
+  },
+  {
+    facets: [1, 2, 0],
+    depth: 1,
+    label: 'STATE 02 · 2-LEVEL PATH',
+    code: 'D1 // EAST-1 → SOUTH-2',
+    desc: 'Outer active at East; adjacent link connects directly to Middle node at South.',
+  },
+  {
+    facets: [3, 0, 1],
+    depth: 2,
+    label: 'STATE 03 · 3-LEVEL PATH',
+    code: 'D2 // WEST-3 → NORTH-0 → EAST-1',
+    desc: 'Three active nodes (Outer West → Middle North → Inner East). All 12 node stations visible.',
+  },
+  {
+    facets: [2, 3, 2],
+    depth: 3,
+    label: 'STATE 04 · ROLLED WINDOW',
+    code: 'D3+ // SOUTH-2 → WEST-3 → SOUTH-2',
+    desc: 'Sliding window transfer [L-2, L-1, L]. Oldest level drops off as window rolls forward.',
+  },
+]
 
 // ──────────────────────────────────────────────
 // Quantized Geometry Tab Mode (Clean Capture vs Diagnostic)
@@ -46,7 +90,7 @@ const catalogTopology = computed(() => buildSettingsCatalogTopology())
 const geometryViewMode = ref<'clean-capture' | 'diagnostic'>('clean-capture')
 
 // ──────────────────────────────────────────────
-// RAF Momentum Motion Strip State (Tab 1)
+// RAF Momentum Motion Strip State (Tab 2)
 // ──────────────────────────────────────────────
 const isStripPlaying = ref(true)
 const stripSpeedMultiplier = ref(1.0)
@@ -239,12 +283,25 @@ function triggerBranchHop() {
             </h1>
           </div>
           <p class="mt-0.5 text-xs text-neutral-500 font-mono dark:text-neutral-400">
-            3-Level recursive quantized geometric key · Escapement mechanics · Programmatic integration sketches
+            Static 4-Node 3-Square topology · Momentum cascade · Programmatic integration sketches
           </p>
         </div>
 
-        <!-- Master View Switcher (3 Tabs) -->
+        <!-- Master View Switcher (4 Tabs) -->
         <div class="dark:bg-neutral-850 flex flex-wrap rounded-xl bg-neutral-200/60 p-1 backdrop-blur-sm">
+          <button
+            type="button"
+            class="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-mono transition-all"
+            :class="[
+              activeMainTab === 'static-nodes'
+                ? 'bg-white text-neutral-900 shadow-sm font-semibold dark:bg-neutral-700 dark:text-white'
+                : 'text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100',
+            ]"
+            @click="activeMainTab = 'static-nodes'"
+          >
+            <div class="i-solar:widget-bold size-3.5" />
+            <span>Static 4-Node Study</span>
+          </button>
           <button
             type="button"
             class="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-mono transition-all"
@@ -256,7 +313,7 @@ function triggerBranchHop() {
             @click="activeMainTab = 'geometry-showcase'"
           >
             <div class="i-solar:shield-keyhole-minimalistic-bold size-3.5" />
-            <span>Quantized Geometry Key</span>
+            <span>Momentum Cascade</span>
           </button>
           <button
             type="button"
@@ -288,9 +345,135 @@ function triggerBranchHop() {
       </div>
 
       <!-- ══════════════════════════════════════════════════════ -->
-      <!-- TAB 1 (NEW SHOWCASE): Quantized Geometry Key           -->
+      <!-- TAB 1: STATIC 4-NODE 3-SQUARE TOPOLOGY STUDY           -->
       <!-- ══════════════════════════════════════════════════════ -->
-      <div v-if="activeMainTab === 'geometry-showcase'" class="space-y-6">
+      <div v-if="activeMainTab === 'static-nodes'" class="space-y-6">
+        <!-- Study Control Bar -->
+        <div class="flex flex-col gap-4 border-b border-neutral-200/80 pb-4 sm:flex-row sm:items-center sm:justify-between dark:border-neutral-800/80">
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="rounded bg-neutral-900 px-2 py-0.5 text-xs text-white font-bold font-mono dark:bg-neutral-100 dark:text-neutral-900">STATIC STUDY</span>
+              <h2 class="text-lg text-neutral-900 font-bold font-serif dark:text-neutral-100">
+                Three Nested Squares · Exactly 4 Cardinal Nodes Per Square
+              </h2>
+            </div>
+            <p class="text-xs text-neutral-500 font-mono dark:text-neutral-400">
+              12 total visible node stations across 3 visible hierarchy levels. Zero perimeter dashes, zero recoil, pure static spatial relation.
+            </p>
+          </div>
+
+          <!-- Study Variant & Link Toggles -->
+          <div class="flex flex-wrap items-center gap-2 text-xs font-mono">
+            <!-- Variant Selector -->
+            <div class="dark:bg-neutral-850 flex items-center rounded-xl bg-neutral-200/60 p-1 backdrop-blur-sm">
+              <button
+                type="button"
+                class="rounded-lg px-2.5 py-1 transition-all"
+                :class="staticVariantMode === 'side-by-side' ? 'bg-white text-neutral-900 font-bold shadow-sm dark:bg-neutral-700 dark:text-white' : 'text-neutral-600 hover:text-neutral-900 dark:text-neutral-400'"
+                @click="staticVariantMode = 'side-by-side'"
+              >
+                Side-by-Side
+              </button>
+              <button
+                type="button"
+                class="rounded-lg px-2.5 py-1 transition-all"
+                :class="staticVariantMode === 'explicit' ? 'bg-white text-neutral-900 font-bold shadow-sm dark:bg-neutral-700 dark:text-white' : 'text-neutral-600 hover:text-neutral-900 dark:text-neutral-400'"
+                @click="staticVariantMode = 'explicit'"
+              >
+                Var A: Hairlines
+              </button>
+              <button
+                type="button"
+                class="rounded-lg px-2.5 py-1 transition-all"
+                :class="staticVariantMode === 'implied' ? 'bg-white text-neutral-900 font-bold shadow-sm dark:bg-neutral-700 dark:text-white' : 'text-neutral-600 hover:text-neutral-900 dark:text-neutral-400'"
+                @click="staticVariantMode = 'implied'"
+              >
+                Var B: Implied
+              </button>
+            </div>
+
+            <!-- Link Toggle -->
+            <button
+              type="button"
+              class="dark:bg-neutral-850 border border-neutral-300 rounded-xl bg-neutral-50 px-3 py-1.5 transition-all dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800"
+              :class="staticShowLinks ? 'font-bold text-neutral-900 dark:text-white' : 'text-neutral-500 opacity-60'"
+              @click="staticShowLinks = !staticShowLinks"
+            >
+              {{ staticShowLinks ? 'Links: Connected' : 'Links: Unconnected' }}
+            </button>
+          </div>
+        </div>
+
+        <!-- ── SIDE-BY-SIDE COMPARISON VIEW ── -->
+        <div v-if="staticVariantMode === 'side-by-side'" class="space-y-6">
+          <div v-for="(state, idx) in STATIC_STATES" :key="`state-${idx}`" class="border border-neutral-200/80 rounded-3xl bg-white p-6 shadow-sm dark:border-neutral-800/80 dark:bg-neutral-900/80">
+            <div class="mb-4 flex items-center justify-between border-b border-neutral-200/60 pb-3 font-mono dark:border-neutral-800/60">
+              <div class="flex items-center gap-2">
+                <span class="text-xs text-neutral-900 font-bold dark:text-white">{{ state.label }}</span>
+                <span class="rounded bg-neutral-100 px-1.5 py-0.2 text-[10px] text-neutral-500 font-medium dark:bg-neutral-800 dark:text-neutral-400">{{ state.code }}</span>
+              </div>
+              <span class="text-[11px] text-neutral-400">{{ state.desc }}</span>
+            </div>
+
+            <div class="grid grid-cols-1 gap-8 md:grid-cols-2">
+              <!-- Variant A: Explicit Hairline Squares -->
+              <div class="dark:border-neutral-850 flex flex-col items-center justify-center border border-neutral-100 rounded-2xl bg-neutral-50/50 p-6 dark:bg-neutral-950/50">
+                <span class="mb-4 text-[10px] text-neutral-400 tracking-wider font-mono uppercase">Variant A · Explicit Hairlines</span>
+                <StaticTopologyNodeStudy
+                  :size="210"
+                  :facets="state.facets"
+                  :active-depth="state.depth"
+                  variant="explicit"
+                  :show-connections="staticShowLinks"
+                  :hide-label="true"
+                />
+              </div>
+
+              <!-- Variant B: Implied Squares (Nodes Only) -->
+              <div class="dark:border-neutral-850 flex flex-col items-center justify-center border border-neutral-100 rounded-2xl bg-neutral-50/50 p-6 dark:bg-neutral-950/50">
+                <span class="mb-4 text-[10px] text-neutral-400 tracking-wider font-mono uppercase">Variant B · Implied (Nodes Only)</span>
+                <StaticTopologyNodeStudy
+                  :size="210"
+                  :facets="state.facets"
+                  :active-depth="state.depth"
+                  variant="implied"
+                  :show-connections="staticShowLinks"
+                  :hide-label="true"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── SINGLE VARIANT 2x2 MATRIX VIEW ── -->
+        <div v-else class="grid grid-cols-1 gap-6 md:grid-cols-2">
+          <div
+            v-for="(state, idx) in STATIC_STATES"
+            :key="`single-state-${idx}`"
+            class="flex flex-col items-center justify-between border border-neutral-200/80 rounded-3xl bg-white p-8 shadow-sm transition-all dark:border-neutral-800/80 dark:bg-neutral-900/80"
+          >
+            <div class="mb-4 w-full flex items-center justify-between text-xs text-neutral-400 font-mono uppercase">
+              <span>0{{ idx + 1 }} / SPECIMEN</span>
+              <span>{{ staticVariantMode === 'explicit' ? 'VAR A: HAIRLINES' : 'VAR B: IMPLIED' }}</span>
+            </div>
+            <StaticTopologyNodeStudy
+              :size="220"
+              :facets="state.facets"
+              :active-depth="state.depth"
+              :variant="staticVariantMode"
+              :show-connections="staticShowLinks"
+              :label="state.label"
+              :state-code="state.code"
+              :description="state.desc"
+            />
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════════════════════ -->
+      <!-- TAB 2: QUANTIZED MOMENTUM CASCADE SHOWCASE             -->
+      <!-- ══════════════════════════════════════════════════════ -->
+      <div v-else-if="activeMainTab === 'geometry-showcase'" class="space-y-6">
         <!-- Sub-View Switcher (Clean Capture vs Diagnostic Workbench) -->
         <div class="flex items-center justify-between border-b border-neutral-200/80 pb-4 dark:border-neutral-800/80">
           <div>
@@ -496,7 +679,7 @@ function triggerBranchHop() {
       </div>
 
       <!-- ══════════════════════════════════════════════════════ -->
-      <!-- TAB 2: Integration Sketch (Experimental Canvas)       -->
+      <!-- TAB 3: Integration Sketch (Experimental Canvas)       -->
       <!-- ══════════════════════════════════════════════════════ -->
       <div v-else-if="activeMainTab === 'sketch'" class="space-y-4">
         <!-- Notice banner contextualizing the sketch -->
@@ -514,7 +697,7 @@ function triggerBranchHop() {
       </div>
 
       <!-- ══════════════════════════════════════════════════════ -->
-      <!-- TAB 3: Orbital Escapement Lab (Machinery Workbench)   -->
+      <!-- TAB 4: Orbital Escapement Lab (Machinery Workbench)   -->
       <!-- ══════════════════════════════════════════════════════ -->
       <div v-else class="grid grid-cols-1 gap-6 lg:grid-cols-12">
         <!-- ── Left Column: Mechanical Anatomy & Dataset Toggles ── -->
