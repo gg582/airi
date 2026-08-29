@@ -160,7 +160,22 @@ async function startAudioInteraction() {
   }
 }
 
+let vadMaxUtteranceTimeout: ReturnType<typeof setTimeout> | undefined
+
+function clearVadSafetyTimeout() {
+  if (vadMaxUtteranceTimeout) {
+    clearTimeout(vadMaxUtteranceTimeout)
+    vadMaxUtteranceTimeout = undefined
+  }
+}
+
 async function handleSpeechStart() {
+  clearVadSafetyTimeout()
+  vadMaxUtteranceTimeout = setTimeout(() => {
+    console.warn('[Main Page] VAD speech duration exceeded safety limit (30s), forcing handleSpeechEnd()')
+    void handleSpeechEnd()
+  }, 30_000)
+
   if (shouldUseStreamInput.value && stream.value) {
     // Use both callbacks to support incremental updates and final transcript replacement.
     // ChatArea uses only onSentenceEnd to avoid re-adding deleted text.
@@ -192,6 +207,8 @@ async function handleSpeechStart() {
 }
 
 async function handleSpeechEnd() {
+  clearVadSafetyTimeout()
+
   if (shouldUseStreamInput.value) {
     // Keep streaming session alive; idle timer in pipeline will handle teardown.
     return
@@ -202,6 +219,7 @@ async function handleSpeechEnd() {
 
 function stopAudioInteraction() {
   try {
+    clearVadSafetyTimeout()
     stopOnStopRecord?.()
     stopOnStopRecord = undefined
     // Stop any active streaming transcription sessions to prevent session leakage

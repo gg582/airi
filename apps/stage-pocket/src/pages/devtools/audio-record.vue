@@ -28,7 +28,8 @@ async function handleStop() {
 }
 
 function handleCancel() {
-  // Simple cancel: just stop the stream
+  // Simple cancel: stop recording and stop stream tracks
+  void stopRecord()
   stream.value?.getTracks().forEach(track => track.stop())
   stream.value = undefined
 }

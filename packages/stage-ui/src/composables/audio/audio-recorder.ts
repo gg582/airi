@@ -55,11 +55,14 @@ function encodeWAV(samples: Float32Array, sampleRate: number): Blob {
 
 export function useAudioRecorder(
   media: MaybeRefOrGetter<MediaStream | undefined>,
-  options: { sampleRate?: number } = {},
+  options: {
+    sampleRate?: number
+    maxDurationMs?: number
+  } = {},
 ) {
   // NOTICE: Defaulting to hardware native rate or 48kHz for PoC-style cleanliness.
   // Resampling is often where crackles start.
-  const { sampleRate: requestedSampleRate } = options
+  const { sampleRate: requestedSampleRate, maxDurationMs = 60_000 } = options
   const mediaRef = toRef(media)
   const recording = shallowRef<Blob>()
   const isRecording = ref(false)
@@ -75,6 +78,7 @@ export function useAudioRecorder(
   let recordedChunks: Float32Array[] = []
   // Track which MediaStream we have a source for, to detect stream changes
   let currentStreamId: string | undefined
+  let maxDurationTimer: ReturnType<typeof setTimeout> | undefined
 
   const onStopRecordHooks = ref<Array<(recording: Blob | undefined) => Promise<void>>>([])
 
@@ -82,6 +86,21 @@ export function useAudioRecorder(
     onStopRecordHooks.value.push(callback)
     return () => {
       onStopRecordHooks.value = onStopRecordHooks.value.filter(h => h !== callback)
+    }
+  }
+
+  function clearMaxDurationTimer() {
+    if (maxDurationTimer) {
+      clearTimeout(maxDurationTimer)
+      maxDurationTimer = undefined
+    }
+  }
+
+  function cleanupProcessor() {
+    if (processor.value) {
+      processor.value.disconnect()
+      processor.value.onaudioprocess = null
+      processor.value = undefined
     }
   }
 
@@ -107,11 +126,7 @@ export function useAudioRecorder(
         source.value.disconnect()
         source.value = undefined
       }
-      if (processor.value) {
-        processor.value.disconnect()
-        processor.value.onaudioprocess = null
-        processor.value = undefined
-      }
+      cleanupProcessor()
       await recordingAudioContext.value.close()
       recordingAudioContext.value = undefined
     }
@@ -140,16 +155,36 @@ export function useAudioRecorder(
 
     const ctx = await ensureAudioContext(stream)
 
+    clearMaxDurationTimer()
     recordedChunks = []
     isRecording.value = true
 
     // Create a fresh processor node for this recording session
     processor.value = ctx.createScriptProcessor(4096, 1, 1)
 
+    // Calculate max chunks based on buffer size 4096 and sampleRate to prevent memory blowup
+    const maxChunks = Math.ceil((maxDurationMs / 1000) * ctx.sampleRate / 4096)
+
     processor.value.onaudioprocess = (e) => {
+      if (!isRecording.value)
+        return
       const input = e.inputBuffer.getChannelData(0)
-      recordedChunks.push(new Float32Array(input))
+      if (recordedChunks.length < maxChunks) {
+        recordedChunks.push(new Float32Array(input))
+      }
+      else {
+        console.warn(`[Audio Recorder] Buffer safety limit reached (${maxChunks} chunks, ~${maxDurationMs / 1000}s), auto-stopping`)
+        void stopRecord()
+      }
     }
+
+    // Auto-stop safety timer
+    maxDurationTimer = setTimeout(() => {
+      if (isRecording.value) {
+        console.warn(`[Audio Recorder] Max recording duration reached (${maxDurationMs}ms), automatically stopping capture`)
+        void stopRecord()
+      }
+    }, maxDurationMs)
 
     // Connect: source -> processor -> destination (keeps audio graph active)
     source.value!.connect(processor.value)
@@ -161,8 +196,12 @@ export function useAudioRecorder(
   const finalizing = ref(false)
 
   async function stopRecord() {
-    if (!isRecording.value || finalizing.value)
+    clearMaxDurationTimer()
+
+    if (!isRecording.value || finalizing.value) {
+      cleanupProcessor()
       return
+    }
 
     finalizing.value = true
     isRecording.value = false
@@ -170,17 +209,14 @@ export function useAudioRecorder(
       console.info('[Audio Recorder] Stopping capture and encoding WAV...')
 
       // Disconnect processor but keep AudioContext and source alive
-      if (processor.value) {
-        processor.value.disconnect()
-        processor.value.onaudioprocess = null
-        processor.value = undefined
-      }
+      cleanupProcessor()
       // NOTICE: Do NOT disconnect source or close AudioContext here.
       // Closing the AudioContext corrupts the MediaStream on Windows.
 
       const ctx = recordingAudioContext.value
       if (!ctx) {
         console.warn('[Audio Recorder] No AudioContext available during stop')
+        recordedChunks = []
         return
       }
 
@@ -200,6 +236,9 @@ export function useAudioRecorder(
         offset += chunk.length
       }
 
+      // Free chunk memory immediately after combining
+      recordedChunks = []
+
       console.info(`[Audio Recorder] Finalizing recording: ${totalLength} samples, ${(totalLength / sampleRate).toFixed(2)}s. Header rate: ${sampleRate}Hz`)
 
       // Encode
@@ -216,12 +255,10 @@ export function useAudioRecorder(
         }
       }
 
-      // Free chunk memory but keep context alive
-      recordedChunks = []
-
       return audioBlob
     }
     finally {
+      recordedChunks = []
       finalizing.value = false
     }
   }
@@ -231,6 +268,8 @@ export function useAudioRecorder(
    * Call this on component unmount only.
    */
   async function dispose() {
+    clearMaxDurationTimer()
+
     if (isRecording.value) {
       await stopRecord()
     }
@@ -239,11 +278,7 @@ export function useAudioRecorder(
       source.value.disconnect()
       source.value = undefined
     }
-    if (processor.value) {
-      processor.value.disconnect()
-      processor.value.onaudioprocess = null
-      processor.value = undefined
-    }
+    cleanupProcessor()
     if (recordingAudioContext.value && recordingAudioContext.value.state !== 'closed') {
       await recordingAudioContext.value.close()
     }
@@ -252,8 +287,12 @@ export function useAudioRecorder(
     recordedChunks = []
   }
 
-  // Auto-recreate source when the media stream changes
+  // Auto-recreate source or stop when the media stream changes
   watch(mediaRef, async (newStream) => {
+    if (!newStream && isRecording.value) {
+      console.info('[Audio Recorder] MediaStream removed while recording, stopping capture')
+      await stopRecord()
+    }
     if (newStream && recordingAudioContext.value) {
       // Stream changed while we have an active context — the old source is stale
       console.info('[Audio Recorder] MediaStream ref changed, will use new stream on next startRecord()')

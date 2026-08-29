@@ -445,6 +445,14 @@ const {
 })
 
 let stopOnStopRecord: (() => void) | undefined
+let vadMaxUtteranceTimeout: ReturnType<typeof setTimeout> | undefined
+
+function clearVadSafetyTimeout() {
+  if (vadMaxUtteranceTimeout) {
+    clearTimeout(vadMaxUtteranceTimeout)
+    vadMaxUtteranceTimeout = undefined
+  }
+}
 
 // Caption overlay broadcast channel
 type CaptionChannelEvent
@@ -457,11 +465,21 @@ async function handleSpeechStart() {
   if (shouldUseStreamInput.value) {
     return
   }
+
+  clearVadSafetyTimeout()
+  // Safety timeout: if VAD gets stuck due to continuous noise/talking, force speech end after 30s
+  vadMaxUtteranceTimeout = setTimeout(() => {
+    console.warn('[Main Page] VAD speech duration exceeded safety limit (30s), forcing handleSpeechEnd()')
+    void handleSpeechEnd()
+  }, 30_000)
+
   startRecord()
 }
 
 async function handleSpeechEnd() {
   console.info('[Main Page] Speech End detected')
+  clearVadSafetyTimeout()
+
   if (shouldUseStreamInput.value) {
     return
   }
@@ -488,10 +506,7 @@ async function startAudioInteraction() {
         console.info('[Main Page] Skipping separate VAD in streaming mode (provider handles segmentation)')
       }
       else {
-        if (!shouldUseStreamInput.value) {
-          console.info('[Main Page] Manual mode enabled, starting recording immediately')
-          startRecord()
-        }
+        console.info('[Main Page] Manual mode enabled, waiting for push-to-talk trigger')
       }
     }
 
@@ -614,6 +629,7 @@ async function startAudioInteraction() {
 
 async function stopAudioInteraction() {
   try {
+    clearVadSafetyTimeout()
     await stopRecord()
     stopOnStopRecord?.()
     stopOnStopRecord = undefined
