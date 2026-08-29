@@ -8,7 +8,6 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import {
   computeEscapementPose,
   DEFAULT_ESCAPEMENT_TIMING,
-
   getSiblingAngle,
 } from '../layouts/kinetic-escapement'
 import { classifyTransition, getSiblings } from '../path-resolver'
@@ -18,13 +17,37 @@ const props = withDefaults(defineProps<{
   activePath: string[]
   beatMs?: number
   size?: number
+  forceReducedMotion?: boolean
+  showBezel?: boolean
+  showTicks?: boolean
+  showGearRing?: boolean
+  showInactiveDetents?: boolean
+  showChildIris?: boolean
+  showPrimaryHand?: boolean
+  showDiamondEcho?: boolean
+  showCounterHand?: boolean
+  showCoreHub?: boolean
 }>(), {
   beatMs: 500,
   size: 150,
+  forceReducedMotion: false,
+  showBezel: true,
+  showTicks: true,
+  showGearRing: true,
+  showInactiveDetents: true,
+  showChildIris: true,
+  showPrimaryHand: true,
+  showDiamondEcho: true,
+  showCounterHand: true,
+  showCoreHub: true,
 })
 
+const emit = defineEmits<{
+  (e: 'poseChange', pose: EscapementPose): void
+}>()
+
 const reducedMotionPreference = usePreferredReducedMotion()
-const isReducedMotion = computed(() => reducedMotionPreference.value === 'reduce')
+const isReducedMotion = computed(() => props.forceReducedMotion || reducedMotionPreference.value === 'reduce')
 
 const cx = computed(() => props.size / 2)
 const cy = computed(() => props.size / 2)
@@ -73,6 +96,8 @@ function updateAnimation(now: number) {
     isReducedMotion.value,
   )
 
+  emit('poseChange', pose.value)
+
   if (elapsed < props.beatMs && !isReducedMotion.value) {
     rafId.value = requestAnimationFrame(updateAnimation)
   }
@@ -101,6 +126,7 @@ function startTransition(newPath: string[]) {
       timingConfig.value,
       true,
     )
+    emit('poseChange', pose.value)
     prevPath.value = [...newPath]
   }
   else {
@@ -123,11 +149,12 @@ onUnmounted(() => {
   }
 })
 
-// ── Geometry Generators ──
-const bezelRadius = computed(() => Math.min(cx.value, cy.value) - 8)
-const coreRadius = computed(() => 18)
-const gearRadius = computed(() => 48)
-const childRadius = computed(() => 66)
+// ── Scaled Geometry Generators ──
+const scaleFactor = computed(() => props.size / 150)
+const bezelRadius = computed(() => Math.min(cx.value, cy.value) - 8 * scaleFactor.value)
+const coreRadius = computed(() => 18 * scaleFactor.value)
+const gearRadius = computed(() => 48 * scaleFactor.value)
+const childRadius = computed(() => 66 * scaleFactor.value)
 
 // Sibling notch positions along the active gear track
 const siblingDetents = computed(() => {
@@ -169,7 +196,7 @@ const childDetents = computed(() => {
 // Primary hand tip coordinates (with radial engagement offset)
 const primaryHandTip = computed(() => {
   const rad = pose.value.primaryAngle * (Math.PI / 180)
-  const r = gearRadius.value + pose.value.engagementOffset
+  const r = gearRadius.value + pose.value.engagementOffset * scaleFactor.value
   return {
     x: cx.value + r * Math.cos(rad),
     y: cy.value + r * Math.sin(rad),
@@ -179,7 +206,7 @@ const primaryHandTip = computed(() => {
 // Counter-strike escapement hand tip coordinates
 const counterHandTip = computed(() => {
   const rad = pose.value.counterAngle * (Math.PI / 180)
-  const r = coreRadius.value + 12
+  const r = coreRadius.value + 12 * scaleFactor.value
   return {
     x: cx.value + r * Math.cos(rad),
     y: cy.value + r * Math.sin(rad),
@@ -200,7 +227,7 @@ const counterHandTip = computed(() => {
       class="block h-full w-full overflow-visible"
     >
       <!-- ── 1. Outer Bezel Ring & Escapement Caliper Ticks ── -->
-      <g>
+      <g v-if="showBezel">
         <circle
           :cx="cx"
           :cy="cy"
@@ -211,48 +238,54 @@ const counterHandTip = computed(() => {
         />
 
         <!-- 12 Dial Caliper Ticks -->
-        <line
-          v-for="t in 12"
-          :key="`tick-${t}`"
-          :x1="cx + (bezelRadius - (t % 3 === 0 ? 5 : 2.5)) * Math.cos((t * 30 - 90) * Math.PI / 180)"
-          :y1="cy + (bezelRadius - (t % 3 === 0 ? 5 : 2.5)) * Math.sin((t * 30 - 90) * Math.PI / 180)"
-          :x2="cx + bezelRadius * Math.cos((t * 30 - 90) * Math.PI / 180)"
-          :y2="cy + bezelRadius * Math.sin((t * 30 - 90) * Math.PI / 180)"
-          stroke="currentColor"
-          :class="[
-            t === 12
-              ? 'text-neutral-600 dark:text-neutral-400 stroke-1'
-              : t % 3 === 0
-                ? 'text-neutral-400 dark:text-neutral-600 stroke-0.8'
-                : 'text-neutral-300 dark:text-neutral-750 stroke-0.6',
-          ]"
-        />
+        <g v-if="showTicks">
+          <line
+            v-for="t in 12"
+            :key="`tick-${t}`"
+            :x1="cx + (bezelRadius - (t % 3 === 0 ? 5 * scaleFactor : 2.5 * scaleFactor)) * Math.cos((t * 30 - 90) * Math.PI / 180)"
+            :y1="cy + (bezelRadius - (t % 3 === 0 ? 5 * scaleFactor : 2.5 * scaleFactor)) * Math.sin((t * 30 - 90) * Math.PI / 180)"
+            :x2="cx + bezelRadius * Math.cos((t * 30 - 90) * Math.PI / 180)"
+            :y2="cy + bezelRadius * Math.sin((t * 30 - 90) * Math.PI / 180)"
+            stroke="currentColor"
+            :class="[
+              t === 12
+                ? 'text-neutral-600 dark:text-neutral-400 stroke-1'
+                : t % 3 === 0
+                  ? 'text-neutral-400 dark:text-neutral-600 stroke-0.8'
+                  : 'text-neutral-300 dark:text-neutral-750 stroke-0.6',
+            ]"
+          />
+        </g>
       </g>
 
       <!-- ── 2. Active Sibling Gear Track ── -->
-      <circle
-        :cx="cx"
-        :cy="cy"
-        :r="gearRadius"
-        fill="none"
-        stroke="currentColor"
-        class="stroke-dasharray-[2,3] stroke-0.8 text-neutral-300 dark:text-neutral-700"
-      />
-
-      <!-- Sibling Inactive Detents (Hollow Gray Diamonds) -->
-      <g v-for="detent in siblingDetents" :key="`detent-${detent.id}`">
-        <polygon
-          v-if="!detent.isCurrent"
-          :points="`${detent.x},${detent.y - 4} ${detent.x + 4},${detent.y} ${detent.x},${detent.y + 4} ${detent.x - 4},${detent.y}`"
+      <g v-if="showGearRing">
+        <circle
+          :cx="cx"
+          :cy="cy"
+          :r="gearRadius"
           fill="none"
           stroke="currentColor"
-          class="stroke-1 text-neutral-300 dark:text-neutral-700"
+          class="stroke-dasharray-[2,3] stroke-0.8 text-neutral-300 dark:text-neutral-700"
         />
+
+        <!-- Sibling Inactive Detents (Hollow Gray Diamonds) -->
+        <g v-if="showInactiveDetents">
+          <g v-for="detent in siblingDetents" :key="`detent-${detent.id}`">
+            <polygon
+              v-if="!detent.isCurrent"
+              :points="`${detent.x},${detent.y - 4 * scaleFactor} ${detent.x + 4 * scaleFactor},${detent.y} ${detent.x},${detent.y + 4 * scaleFactor} ${detent.x - 4 * scaleFactor},${detent.y}`"
+              fill="none"
+              stroke="currentColor"
+              class="stroke-1 text-neutral-300 dark:text-neutral-700"
+            />
+          </g>
+        </g>
       </g>
 
       <!-- ── 3. Unfolding Child Iris Ring ── -->
       <g
-        v-if="childDetents.length > 0"
+        v-if="showChildIris && childDetents.length > 0"
         :style="{ transform: `scale(${pose.irisScale})`, transformOrigin: `${cx}px ${cy}px`, opacity: pose.irisScale }"
       >
         <circle
@@ -266,7 +299,7 @@ const counterHandTip = computed(() => {
         <polygon
           v-for="c in childDetents"
           :key="`child-${c.id}`"
-          :points="`${c.x},${c.y - 3.5} ${c.x + 3.5},${c.y} ${c.x},${c.y + 3.5} ${c.x - 3.5},${c.y}`"
+          :points="`${c.x},${c.y - 3.5 * scaleFactor} ${c.x + 3.5 * scaleFactor},${c.y} ${c.x},${c.y + 3.5 * scaleFactor} ${c.x - 3.5 * scaleFactor},${c.y}`"
           fill="none"
           stroke="currentColor"
           class="stroke-0.8 text-neutral-400 dark:text-neutral-600"
@@ -274,7 +307,7 @@ const counterHandTip = computed(() => {
       </g>
 
       <!-- ── 4. Opposing Escapement Counter-Hand (Secondary Hand) ── -->
-      <g>
+      <g v-if="showCounterHand">
         <line
           :x1="cx"
           :y1="cy"
@@ -286,13 +319,13 @@ const counterHandTip = computed(() => {
         <circle
           :cx="counterHandTip.x"
           :cy="counterHandTip.y"
-          r="1.8"
+          :r="1.8 * scaleFactor"
           class="fill-neutral-500 dark:fill-neutral-400"
         />
       </g>
 
       <!-- ── 5. Primary Active Hand & Engaged Diamond ── -->
-      <g>
+      <g v-if="showPrimaryHand">
         <!-- Primary Hand Ray -->
         <line
           :x1="cx"
@@ -306,13 +339,14 @@ const counterHandTip = computed(() => {
         <!-- Active Engaged Diamond (Solid Near-Black with Double Hairline Echo) -->
         <g :transform="`translate(${primaryHandTip.x}, ${primaryHandTip.y})`">
           <polygon
-            points="0,-7.5 7.5,0 0,7.5 -7.5,0"
+            v-if="showDiamondEcho"
+            :points="`0,${-7.5 * scaleFactor} ${7.5 * scaleFactor},0 0,${7.5 * scaleFactor} ${-7.5 * scaleFactor},0`"
             fill="none"
             stroke="currentColor"
             class="stroke-0.8 text-neutral-400 dark:text-neutral-500"
           />
           <polygon
-            points="0,-5 5,0 0,5 -5,0"
+            :points="`0,${-5 * scaleFactor} ${5 * scaleFactor},0 0,${5 * scaleFactor} ${-5 * scaleFactor},0`"
             fill="currentColor"
             class="text-neutral-900 dark:text-neutral-100"
           />
@@ -320,26 +354,28 @@ const counterHandTip = computed(() => {
       </g>
 
       <!-- ── 6. Axle Hub / Escapement Core ── -->
-      <circle
-        :cx="cx"
-        :cy="cy"
-        :r="coreRadius"
-        fill="none"
-        stroke="currentColor"
-        class="stroke-1 text-neutral-800 dark:text-neutral-200"
-      />
-      <circle
-        :cx="cx"
-        :cy="cy"
-        r="4.5"
-        class="fill-neutral-900 dark:fill-neutral-100"
-      />
-      <circle
-        :cx="cx"
-        :cy="cy"
-        r="1.5"
-        class="fill-white dark:fill-neutral-900"
-      />
+      <g v-if="showCoreHub">
+        <circle
+          :cx="cx"
+          :cy="cy"
+          :r="coreRadius"
+          fill="none"
+          stroke="currentColor"
+          class="stroke-1 text-neutral-800 dark:text-neutral-200"
+        />
+        <circle
+          :cx="cx"
+          :cy="cy"
+          :r="4.5 * scaleFactor"
+          class="fill-neutral-900 dark:fill-neutral-100"
+        />
+        <circle
+          :cx="cx"
+          :cy="cy"
+          :r="1.5 * scaleFactor"
+          class="fill-white dark:fill-neutral-900"
+        />
+      </g>
     </svg>
   </div>
 </template>

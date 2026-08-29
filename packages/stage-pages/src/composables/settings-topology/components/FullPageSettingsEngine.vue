@@ -21,8 +21,8 @@ const props = defineProps<{
 
 const router = useRouter()
 
-// Header layout format (Default to combined 80/20)
-const layoutStyle = ref<'combined' | 'folded-track' | 'radar'>('combined')
+// Header layout format (Default to folded-track)
+const layoutStyle = ref<'folded-track' | 'radar' | 'combined'>('folded-track')
 
 // Recall presentation mode (Eiki overlay vs legacy inline dashboard)
 const recallMode = ref<'overlay' | 'inline'>('overlay')
@@ -50,7 +50,7 @@ function handleBack() {
 
 function handleReset() {
   activeId.value = props.topology.rootId
-  layoutStyle.value = 'combined'
+  layoutStyle.value = 'folded-track'
 }
 
 function handleLaunchRealRoute() {
@@ -105,18 +105,6 @@ onUnmounted(() => {
               type="button"
               class="rounded-md px-2.5 py-1 text-xs font-mono transition-all"
               :class="[
-                layoutStyle === 'combined'
-                  ? 'bg-white text-neutral-900 shadow-xs font-semibold dark:bg-neutral-700 dark:text-white'
-                  : 'text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-200',
-              ]"
-              @click="layoutStyle = 'combined'"
-            >
-              Combined (80/20)
-            </button>
-            <button
-              type="button"
-              class="rounded-md px-2.5 py-1 text-xs font-mono transition-all"
-              :class="[
                 layoutStyle === 'folded-track'
                   ? 'bg-white text-neutral-900 shadow-xs font-semibold dark:bg-neutral-700 dark:text-white'
                   : 'text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-200',
@@ -136,6 +124,18 @@ onUnmounted(() => {
               @click="layoutStyle = 'radar'"
             >
               Stepped + Radar
+            </button>
+            <button
+              type="button"
+              class="rounded-md px-2.5 py-1 text-xs font-mono transition-all"
+              :class="[
+                layoutStyle === 'combined'
+                  ? 'bg-white text-neutral-900 shadow-xs font-semibold dark:bg-neutral-700 dark:text-white'
+                  : 'text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-200',
+              ]"
+              @click="layoutStyle = 'combined'"
+            >
+              Combined (80/20)
             </button>
           </div>
         </div>
