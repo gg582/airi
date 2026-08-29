@@ -1,15 +1,71 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
 import { computed, ref } from 'vue'
+import { toast } from 'vue-sonner'
 
+import { useBackgroundStore } from '../../../stores/background'
 import { useJournalPreviewStore } from '../../../stores/journal-preview'
+import { useShortTermMemoryStore } from '../../../stores/memory-short-term'
+import { useTextJournalStore } from '../../../stores/memory-text-journal'
 import { useAutonomousArtistryStore } from '../../../stores/modules/artistry-autonomous'
 import { MarkdownRenderer } from '../../markdown'
 
 defineEmits(['attach'])
 const store = useJournalPreviewStore()
 const { previewModal } = storeToRefs(store)
-const { closePreview, downloadImage } = store
+const { closePreview: baseClosePreview, downloadImage } = store
+
+const isConfirmingDelete = ref(false)
+const deleting = ref(false)
+
+function closePreview() {
+  isConfirmingDelete.value = false
+  baseClosePreview()
+}
+
+async function handleDelete() {
+  if (!previewModal.value?.id)
+    return
+  if (!isConfirmingDelete.value) {
+    isConfirmingDelete.value = true
+    return
+  }
+
+  deleting.value = true
+  try {
+    const modal = previewModal.value
+    const targetId = modal.id
+    if (!targetId)
+      return
+
+    if (modal.type === 'text') {
+      if (modal.entryType === 'auto') {
+        const stmStore = useShortTermMemoryStore()
+        await stmStore.deleteBlock(targetId)
+        toast.success('Daily summary block deleted.')
+      }
+      else {
+        const textJournalStore = useTextJournalStore()
+        await textJournalStore.deleteEntry(targetId)
+        toast.success('Journal entry deleted.')
+      }
+    }
+    else if (modal.type === 'image') {
+      const backgroundStore = useBackgroundStore()
+      await backgroundStore.removeBackground(targetId)
+      toast.success('Image entry deleted.')
+    }
+    closePreview()
+  }
+  catch (err) {
+    console.error('[JournalPreviewModal] Delete failed:', err)
+    toast.error('Failed to delete memory entry.')
+  }
+  finally {
+    deleting.value = false
+    isConfirmingDelete.value = false
+  }
+}
 
 const autonomousStore = useAutonomousArtistryStore()
 const viewMode = ref<'image' | 'prompt' | 'note'>('image')
@@ -95,6 +151,24 @@ const directorNote = computed(() => {
                   <div i-solar:gallery-send-bold-duotone class="text-lg" />
                 </button>
               </template>
+
+              <!-- Delete Action (when entry id is available) -->
+              <button
+                v-if="previewModal.id"
+                :class="[
+                  'rounded-full p-1 transition-colors flex items-center gap-1',
+                  isConfirmingDelete
+                    ? 'bg-rose-500/10 text-rose-600 px-2 dark:bg-rose-900/30 dark:text-rose-400 text-xs font-bold'
+                    : 'text-neutral-400 hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-950/30 dark:hover:text-rose-400',
+                ]"
+                :title="isConfirmingDelete ? 'Click again to confirm deletion' : 'Delete memory entry'"
+                :disabled="deleting"
+                @click="handleDelete"
+                @mouseleave="isConfirmingDelete = false"
+              >
+                <div i-solar:trash-bin-trash-bold-duotone class="text-lg" />
+                <span v-if="isConfirmingDelete" class="text-[10px]">Confirm?</span>
+              </button>
 
               <button
                 :class="['rounded-full p-1 text-neutral-400 transition-colors', 'hover:bg-neutral-100 hover:text-neutral-600', 'dark:hover:bg-neutral-800 dark:hover:text-neutral-200']"

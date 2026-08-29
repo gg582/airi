@@ -7,13 +7,20 @@ export interface PreviewModalState {
   content: string // text content or image URL
   prompt?: string
   id?: string
+  entryType?: 'manual' | 'auto' | 'echo' | string
 }
 
 export const useJournalPreviewStore = defineStore('journal-preview', () => {
   const previewModal = ref<PreviewModalState | null>(null)
 
-  function openTextPreview(entry: { title: string, content: string }) {
-    previewModal.value = { type: 'text', title: entry.title, content: entry.content }
+  function openTextPreview(entry: { title: string, content: string, id?: string, entryType?: 'manual' | 'auto' | 'echo' | string, type?: string }) {
+    previewModal.value = {
+      type: 'text',
+      title: entry.title,
+      content: entry.content,
+      id: entry.id,
+      entryType: entry.entryType || (entry.type !== 'text' && entry.type !== 'image' ? entry.type : undefined),
+    }
   }
 
   function openImagePreview(entry: { title: string, url: string | null, prompt?: string, id?: string }) {

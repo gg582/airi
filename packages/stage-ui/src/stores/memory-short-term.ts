@@ -57,7 +57,26 @@ function normalizeBlock(block: ShortTermMemoryBlock): ShortTermMemoryBlock {
 }
 
 function normalizeBlocks(blocks: ShortTermMemoryBlock[]) {
-  return blocks.map(normalizeBlock)
+  const normalized = blocks.map(normalizeBlock)
+  const uniqueMap = new Map<string, ShortTermMemoryBlock>()
+
+  for (const block of normalized) {
+    const key = `${block.userId}:${block.characterId}:${block.date}:${block.universeId || 'global'}`
+    const existing = uniqueMap.get(key)
+    if (!existing) {
+      uniqueMap.set(key, block)
+    }
+    else {
+      // Pick the more complete or newer block
+      const existingScore = (existing.updatedAt || existing.createdAt || 0) + (existing.messageCount || 0) * 1000
+      const currentScore = (block.updatedAt || block.createdAt || 0) + (block.messageCount || 0) * 1000
+      if (currentScore >= existingScore) {
+        uniqueMap.set(key, block)
+      }
+    }
+  }
+
+  return Array.from(uniqueMap.values())
 }
 
 function formatLocalDayKey(timestamp: number) {
@@ -544,7 +563,18 @@ export const useShortTermMemoryStore = defineStore('short-term-memory', () => {
       if (!nextBlock)
         return false
 
-      await persist([...blocks.value, nextBlock])
+      const currentUserId = getCurrentUserId()
+      const nextBlocks = [...blocks.value]
+      const existingIndex = nextBlocks.findIndex(block => block.userId === currentUserId && block.characterId === characterId && block.date === targetDate && (block.universeId || 'global') === currentUniverseId)
+
+      if (existingIndex >= 0) {
+        nextBlocks.splice(existingIndex, 1, nextBlock)
+      }
+      else {
+        nextBlocks.push(nextBlock)
+      }
+
+      await persist(nextBlocks)
       return true
     })()
 
@@ -555,6 +585,17 @@ export const useShortTermMemoryStore = defineStore('short-term-memory', () => {
     finally {
       runningEnsure.delete(key)
     }
+  }
+
+  async function deleteBlock(blockId: string): Promise<boolean> {
+    await load()
+    const targetIndex = blocks.value.findIndex(b => b.id === blockId)
+    if (targetIndex < 0)
+      return false
+
+    const nextBlocks = blocks.value.filter(b => b.id !== blockId)
+    await persist(nextBlocks)
+    return true
   }
 
   return {
@@ -570,6 +611,7 @@ export const useShortTermMemoryStore = defineStore('short-term-memory', () => {
     rebuildFromHistory,
     rebuildToday,
     ensureYesterdayBlock,
+    deleteBlock,
     summarizeBucket,
     persist,
   }

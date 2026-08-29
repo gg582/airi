@@ -1,7 +1,7 @@
 ---
 name: airi-memory-short-term
 description: >-
-  Use when working with AIRI memory pillar 3 — Short-Term Memory (STMM): memory-short-term.ts store (574 lines), short-term-memory.repo (local:memory/short-term/{userId}), one daily summary block per character per day, tokenBudgetPerDay (default 1000) and windowSize (default 3) card settings, rebuildFromHistory/rebuildToday/ensureYesterdayBlock flows, universe-scoped day buckets, and the prompt injection of recent blocks. Trigger on daily summaries, STMM, continuity blocks, or rebuilds. Hub: airi-memory-systems.
+  Use when working with AIRI memory pillar 3 — Short-Term Memory (STMM): memory-short-term.ts store (598 lines), short-term-memory.repo (local:memory/short-term/{userId}), one daily summary block per character per day, tokenBudgetPerDay (default 1000) and windowSize (default 3) card settings, rebuildFromHistory/rebuildToday/ensureYesterdayBlock flows, deleteBlock, deduplication, universe-scoped day buckets, and the prompt injection of recent blocks. Trigger on daily summaries, STMM, continuity blocks, or rebuilds. Hub: airi-memory-systems.
 ---
 
 # Memory Pillar 3 — Short-Term Memory (STMM)
@@ -12,7 +12,7 @@ Daily continuity blocks distilled from chat history — one block per character 
 
 | Attribute | Value |
 | :--- | :--- |
-| Store | `packages/stage-ui/src/stores/memory-short-term.ts` (574 ln) — `useShortTermMemoryStore` :136 |
+| Store | `packages/stage-ui/src/stores/memory-short-term.ts` (598 ln) — `useShortTermMemoryStore` :136 |
 | Repo | `packages/stage-ui/src/database/repos/short-term-memory.repo.ts` → `local:memory/short-term/{userId}` |
 | Block shape | `ShortTermMemoryBlock` (`date` local day key, `summary`, `characterId`, `universeId?`, `sessionId?`) |
 | Data catalog | `docs/data-catalog.md` §1.7 |
@@ -22,12 +22,16 @@ Daily continuity blocks distilled from chat history — one block per character 
 - **Per-day bucketing**: `collectCharacterDayBuckets(characterId, universeId = 'global')` (:263) groups message history into local day keys (`formatLocalDayKey` :62) filtered by universe.
 - **Summarization**: `summarizeBucket()` (:310) calls `llmStore.generate` with `buildSummarizerMessages()` (:99 — language-aware context prompt) producing the day's block under the token budget.
 - **Card config**: budget/window live on `card.extensions.airi.shortTermMemory`: `tokenBudgetPerDay` (fallback **1000**) and `windowSize` (fallback **3**). Never hardcode — per-card overrides are supported.
-- **Rebuilds**: `rebuildFromHistory()` (:368) re-derives all blocks for a character; `rebuildToday()` (:443) refreshes the current day; `ensureYesterdayBlock()` (:505) guarantees yesterday exists for session resets.
+- **Rebuilds & Lifecycle**: `rebuildFromHistory()` (:368) re-derives all blocks for a character; `rebuildToday()` (:443) refreshes the current day; `ensureYesterdayBlock()` (:505) guarantees yesterday exists for session resets.
+- **Multi-window safety & deduplication**: `normalizeBlocks()` collapses duplicates sharing `(userId, characterId, date, universeId)` to heal stored duplicates on load. `App.vue` gates `ensureYesterdayShortTermBlockForActiveCharacter()` to `isMainWindow` only to prevent multi-window Electron startup races.
+- **Deletion**: `deleteBlock(blockId)` (:578) removes a daily summary block, persists to repo, and broadcasts `airi:short-term-memory-sync`.
 - **Prompt injection**: the *consumer* is pillar 1 — `session-store.ts` `buildShortTermMemoryContext()` (:210) takes the newest `windowSize` blocks and emits `[Short-Term Memory]` in the system prompt.
 
 ## Pitfalls
 
-- Blocks are derived, not sacred — they may be freely regenerated (unlike journal, pillar 2).
+- Blocks are derived, not sacred — they may be freely regenerated (unlike journal, pillar 2) or deleted by the user.
+- Secondary Electron windows (Chat, Customizer, Control Strip) must NOT trigger automatic generation on boot or card switches — always guard via `isMainWindow`.
+- In-memory concurrency locks (`runningEnsure`) are per-process; `ensureYesterdayBlock` and `rebuildToday` must perform in-flight index lookups before saving to avoid duplicate appends.
 - Universe filter defaults to `'global'` — must match pillar 1's session `universeId` or sessions see the wrong continuity.
 - Search layer: `memory_block` kind maps to `stmm` layer in `layered-memory.ts` (`airi-memory-retrieval-engine`) — a new block shape must keep the doc-kind mapping valid.
 

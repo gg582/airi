@@ -596,11 +596,54 @@ ${input.instructions ? `\nAdditional Instructions: ${input.instructions}\n` : ''
     }
   }
 
+  async function deleteEntry(entryId: string): Promise<boolean> {
+    try {
+      await load()
+    }
+    catch (err) {
+      throw new Error(`text_journal: failed to load entries before deleting: ${err instanceof Error ? err.message : String(err)}`)
+    }
+
+    const target = entries.value.find(e => e.id === entryId)
+    if (!target)
+      return false
+
+    const nextEntries = entries.value.filter(e => e.id !== entryId)
+    await persist(nextEntries)
+
+    // Re-index search layer without the deleted entry
+    backgroundIndexAll().catch(err => console.error('text_journal: background search indexing failed after delete:', err))
+
+    // Emit deletion event to Event Ledger
+    try {
+      const eventLogStore = useEventLogStore()
+      void eventLogStore.appendEvent({
+        category: 'memory',
+        type: 'text_journal',
+        source: target.characterName || 'AIRI',
+        textSummary: `Deleted text journal entry: "${target.title}"`,
+        payload: {
+          id: target.id,
+          title: target.title,
+          source: target.source,
+          characterId: target.characterId,
+        },
+        inspectable: true,
+      })
+    }
+    catch (e) {
+      console.warn('[TextJournal] Failed to log delete event:', e)
+    }
+
+    return true
+  }
+
   return {
     entries: sortedEntries,
     loading,
     load,
     createEntry,
+    deleteEntry,
     seedActiveCharacterEntry,
     searchEntries,
     backgroundIndexAll,

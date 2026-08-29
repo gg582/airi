@@ -31,6 +31,7 @@ Manual and assistant-written journal entries are **append-only and high-authorit
 - No automated worker may edit, delete, or rewrite an entry in place.
 - Derived stores (lifetime artifacts, echo chips, STMM) may be regenerated; the journal cannot.
 - Any feature that "updates" a journal entry must create a new entry instead. This is audited by `airi-memory-consolidation-dreaming` and the Rosetta Stone.
+- **User-Initiated Deletions**: While automated background loops and assistant tools remain append-only, users may manually delete journal records or daily summary blocks from the UI (modal preview or settings) via `useTextJournalStore.deleteEntry()` / `useShortTermMemoryStore.deleteBlock()`, which synchronizes state and updates layered memory indexes.
 
 ## Pitfalls
 

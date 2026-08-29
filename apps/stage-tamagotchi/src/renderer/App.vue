@@ -226,8 +226,10 @@ onMounted(async () => {
   await chatSessionStore.initialize()
   logStep('Loading short-term memory')
   await shortTermMemoryStore.load()
-  logStep('Checking yesterday short-term block')
-  await ensureYesterdayShortTermBlockForActiveCharacter()
+  if (isMainWindow.value) {
+    logStep('Checking yesterday short-term block')
+    await ensureYesterdayShortTermBlockForActiveCharacter()
+  }
   // TEMPORARY ISOLATION TEST: Disabled eager catalog scan at boot (stage model init handles active model)
   // await displayModelsStore.loadDisplayModelsFromIndexedDB()
   logStep('Initializing stage model')
@@ -315,7 +317,7 @@ watch(themeColorsHueDynamic, () => {
 watch(
   () => cardStore.activeCardId,
   async (nextCardId, previousCardId) => {
-    if (!nextCardId || nextCardId === previousCardId)
+    if (!nextCardId || nextCardId === previousCardId || !isMainWindow.value)
       return
 
     await ensureYesterdayShortTermBlockForActiveCharacter()

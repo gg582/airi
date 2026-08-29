@@ -101,6 +101,17 @@ async function synthesizeEchoes() {
   }
 }
 
+async function handleDeleteBlock(id: string) {
+  try {
+    await shortTermMemory.deleteBlock(id)
+    toast.success('Daily summary block deleted.')
+  }
+  catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    toast.error(`Failed to delete block: ${message}`)
+  }
+}
+
 onMounted(async () => {
   cardStore.initialize()
   await shortTermMemory.load()
@@ -340,8 +351,17 @@ watch([windowSize, tokensPerDay], ([newWindowSize, newTokensPerDay]) => {
                     {{ block.source === 'automatic' ? '24H Generated' : 'Manual Rebuild' }}
                   </div>
                 </div>
-                <div class="text-[10px] text-neutral-400 font-bold tracking-widest uppercase">
-                  ~{{ block.estimatedTokens }} tokens | {{ block.messageCount }} msgs
+                <div class="flex items-center gap-3">
+                  <div class="text-[10px] text-neutral-400 font-bold tracking-widest uppercase">
+                    ~{{ block.estimatedTokens }} tokens | {{ block.messageCount }} msgs
+                  </div>
+                  <button
+                    class="rounded-lg p-1 text-neutral-400 opacity-0 transition-all hover:bg-rose-50 hover:text-rose-500 group-hover:opacity-100 dark:hover:bg-rose-950/30 dark:hover:text-rose-400"
+                    title="Delete daily summary block"
+                    @click="handleDeleteBlock(block.id)"
+                  >
+                    <div class="i-solar:trash-bin-trash-bold-duotone text-sm" />
+                  </button>
                 </div>
               </div>
 

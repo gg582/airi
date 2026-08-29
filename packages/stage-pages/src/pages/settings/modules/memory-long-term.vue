@@ -115,6 +115,17 @@ async function seedEntry() {
   }
 }
 
+async function handleDeleteEntry(id: string) {
+  try {
+    await textJournalStore.deleteEntry(id)
+    toast.success('Journal entry deleted.')
+  }
+  catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    toast.error(`Failed to delete entry: ${message}`)
+  }
+}
+
 onMounted(async () => {
   cardStore.initialize()
   await textJournalStore.load()
@@ -291,8 +302,18 @@ watch(characterOptions, (options) => {
                   Source: {{ (entry as any).kind === 'raw_turn' ? 'Chat' : (entry as any).kind === 'stmm_block' ? 'Recap' : 'Journal' }}
                 </div>
               </div>
-              <div class="text-[10px] text-neutral-400 font-bold tracking-widest uppercase">
-                {{ formatTimestamp(entry.createdAt) }}
+              <div class="flex items-center gap-3">
+                <div class="text-[10px] text-neutral-400 font-bold tracking-widest uppercase">
+                  {{ formatTimestamp(entry.createdAt) }}
+                </div>
+                <button
+                  v-if="!(entry as any).kind || (entry as any).kind === 'ltmm_entry'"
+                  class="rounded-lg p-1 text-neutral-400 opacity-0 transition-all hover:bg-rose-50 hover:text-rose-500 group-hover:opacity-100 dark:hover:bg-rose-950/30 dark:hover:text-rose-400"
+                  title="Delete journal record"
+                  @click="handleDeleteEntry(entry.id)"
+                >
+                  <div class="i-solar:trash-bin-trash-bold-duotone text-sm" />
+                </button>
               </div>
             </div>
 
