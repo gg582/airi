@@ -3,6 +3,7 @@ import type { WebLlmLoadTarget } from '../../../../../../libs/inference/adapters
 import type { ProgressPayload } from '../../../../../../libs/inference/protocol'
 import type { ProviderMetadata } from '../../../../../../stores/providers'
 
+import { Capacitor } from '@capacitor/core'
 import { isWebGPUSupported } from '@proj-airi/stage-shared/webgpu'
 import { Button } from '@proj-airi/ui'
 import { storeToRefs } from 'pinia'
@@ -13,7 +14,9 @@ import CompanionBubble from '../components/companion-bubble.vue'
 import ProviderPickerGrid from '../components/provider-picker-grid.vue'
 
 import { WEB_LLM_MODELS } from '../../../../../../libs/inference/constants'
+import { NativeAI } from '../../../../../../libs/native-ai'
 import { useProvidersStore } from '../../../../../../stores/providers'
+import { DEFAULT_APPLE_CORE_AI_MODEL } from '../../../../../../stores/providers/apple-core-ai'
 import { BrainModelPicker } from '../../../../chat'
 import { useOnboardingV2Draft } from '../draft-store'
 import { onboardingV2GateKey } from '../gate'
@@ -30,6 +33,10 @@ const emit = defineEmits<{
 //    - Item 2: Models Dropdown (populated live, shows 'No Models Found' if empty).
 //    - Item 3: 'Get Models' manual trigger button.
 //    - Item 4: Connection Probe with 🟠 Connecting -> 🟡 Inferencing -> 🟢 Verified states.
+// 4. Platform-Adaptive Local Engine:
+//    - iOS Native: Apple Core AI (Neural Engine / CoreML) hero card with on-device model downloader.
+//    - Desktop / Web: WebLLM (WebGPU) hero cards.
+//    - Android: Pure cloud / API provider flow.
 
 // --- Stores ---
 const providersStore = useProvidersStore()
@@ -41,6 +48,11 @@ const selectedProviderId = ref(draft.state.consciousness.provider ?? '')
 const selectedModelId = ref(draft.state.consciousness.model ?? '')
 
 const { allChatProvidersMetadata, configuredChatProvidersMetadata } = storeToRefs(providersStore)
+
+// Platform detection
+const isIOSNative = computed(() => NativeAI.isNative())
+const isAndroidNative = computed(() => Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'android')
+const isWebLlmPlatform = computed(() => !isIOSNative.value && !isAndroidNative.value)
 
 // Cloud model list is id-keyed and queries live providerRuntimeState.
 const providerModels = computed(() => {
@@ -54,11 +66,92 @@ const isLoadingActiveProviderModels = computed(() => providersStore.isLoadingMod
 // --- Hardware detection (webllm needs WebGPU) ---
 const webgpuSupported = ref(false)
 onMounted(async () => {
-  webgpuSupported.value = await isWebGPUSupported()
-  await checkModelResident()
+  if (isIOSNative.value) {
+    await checkCoreAiResident()
+    if (!selectedProviderId.value) {
+      selectCoreAiModel()
+    }
+  }
+  else if (isWebLlmPlatform.value) {
+    webgpuSupported.value = await isWebGPUSupported()
+    await checkModelResident()
+  }
 })
 
-// --- WebLLM in-context download ---
+// --- Apple Core AI (iOS Native) State ---
+type CoreAiDownloadState = 'idle' | 'downloading' | 'ready' | 'error'
+const coreAiState = ref<CoreAiDownloadState>('idle')
+const coreAiProgress = ref(0)
+const coreAiSpeedMBs = ref(0)
+const coreAiStatusText = ref('')
+const coreAiErrorMessage = ref('')
+
+const isCoreAiSelected = computed(() => selectedProviderId.value === 'apple-core-ai')
+
+async function checkCoreAiResident() {
+  if (!isIOSNative.value)
+    return
+  try {
+    const res = await NativeAI.listCachedModels()
+    const sanitized = DEFAULT_APPLE_CORE_AI_MODEL.replace(/\//g, '_')
+    const found = res.models?.some(m => (m.modelId === sanitized || m.modelId === DEFAULT_APPLE_CORE_AI_MODEL) && m.isCompiled)
+    if (found) {
+      coreAiState.value = 'ready'
+      coreAiProgress.value = 100
+    }
+    else {
+      coreAiState.value = 'idle'
+      coreAiProgress.value = 0
+    }
+  }
+  catch {
+    coreAiState.value = 'idle'
+  }
+}
+
+function selectCoreAiModel() {
+  selectedProviderId.value = 'apple-core-ai'
+  selectedModelId.value = DEFAULT_APPLE_CORE_AI_MODEL
+  recordDraft()
+  void checkCoreAiResident()
+}
+
+async function startCoreAiDownload() {
+  coreAiState.value = 'downloading'
+  coreAiProgress.value = 0
+  coreAiStatusText.value = 'Preparing Apple Neural Engine model…'
+  coreAiErrorMessage.value = ''
+  try {
+    await NativeAI.downloadModel(
+      {
+        modelId: DEFAULT_APPLE_CORE_AI_MODEL,
+        repo: DEFAULT_APPLE_CORE_AI_MODEL,
+      },
+      (p) => {
+        coreAiProgress.value = p.percentage || 0
+        coreAiSpeedMBs.value = p.speedMBs || 0
+        if (p.percentage >= 99 && !p.isCompleted) {
+          coreAiStatusText.value = 'Compiling neural graphs on Apple Neural Engine (takes ~60–90s on first run)…'
+        }
+        else {
+          coreAiStatusText.value = p.speedMBs ? `Downloading model weights (${p.speedMBs.toFixed(1)} MB/s)…` : 'Downloading & compiling on-device model…'
+        }
+        if (p.isCompleted) {
+          coreAiState.value = 'ready'
+          coreAiProgress.value = 100
+          toast.success('Apple Core AI Neural Engine model ready!')
+        }
+      },
+    )
+  }
+  catch (err: any) {
+    coreAiState.value = 'error'
+    coreAiErrorMessage.value = err?.message || String(err)
+    toast.error(`Core AI download failed: ${coreAiErrorMessage.value}`)
+  }
+}
+
+// --- WebLLM in-context download (Desktop/Web) ---
 type DownloadState = 'idle' | 'downloading' | 'ready' | 'error'
 const downloadState = ref<DownloadState>('idle')
 const downloadProgress = ref(0)
@@ -156,7 +249,7 @@ const showBaseUrl = ref(false)
 const isSavingConfig = ref(false)
 
 const selectedChatProvider = computed<ProviderMetadata | null>(() => {
-  if (isWebLlmSelected.value)
+  if (isWebLlmSelected.value || isCoreAiSelected.value)
     return null
   return allChatProvidersMetadata.value.find(p => p.id === selectedProviderId.value) || null
 })
@@ -217,6 +310,13 @@ function onSelectProvider(provider: ProviderMetadata) {
   if (provider.id === 'web-llm') {
     if (downloadState.value === 'idle' && webgpuSupported.value)
       void startWebLlmDownload()
+    return
+  }
+
+  if (provider.id === 'apple-core-ai') {
+    selectCoreAiModel()
+    if (coreAiState.value === 'idle')
+      void startCoreAiDownload()
     return
   }
 
@@ -367,6 +467,9 @@ const verified = computed(() => {
   if (isWebLlmSelected.value) {
     return downloadState.value === 'ready'
   }
+  if (isCoreAiSelected.value) {
+    return coreAiState.value === 'ready'
+  }
   return probeState.value === 'verified' || (!!selectedProviderId.value && !!selectedModelId.value.trim())
 })
 
@@ -415,7 +518,11 @@ watch(verified, (v) => {
 
     <CompanionBubble
       class="flex-shrink-0"
-      message="Pick an AI brain for your companion. Connect a free provider, configure your preferred cloud API (OpenRouter, Gemini, OpenAI, Claude), or run local WebLLM on WebGPU!"
+      :message="isIOSNative
+        ? 'Pick an AI brain for your companion. Run 100% offline with Apple Neural Engine (ANE) or connect your preferred cloud API (OpenRouter, Gemini, OpenAI, Claude)!'
+        : (isAndroidNative
+          ? 'Pick an AI brain for your companion. Connect a free provider or configure your preferred cloud API (OpenRouter, Gemini, OpenAI, Claude)!'
+          : 'Pick an AI brain for your companion. Connect a free provider, configure your preferred cloud API (OpenRouter, Gemini, OpenAI, Claude), or run local WebLLM on WebGPU!')"
     />
 
     <!-- Quick-Pick for Configured Brains -->
@@ -443,17 +550,137 @@ watch(verified, (v) => {
       />
     </div>
 
-    <!-- WebGPU warning when local engine unavailable -->
+    <!-- Apple Core AI Local Engine (iOS Native) -->
     <div
-      v-if="!webgpuSupported"
+      v-if="isIOSNative"
+      :class="['p-4 rounded-xl', 'bg-white/40 dark:bg-neutral-900/40', 'border border-neutral-200/60 dark:border-neutral-800/80', 'backdrop-blur-md', 'flex flex-col gap-3']"
+    >
+      <div class="flex items-center gap-2">
+        <div class="i-solar:cpu-bolt-bold-duotone h-4 w-4 text-primary-500" />
+        <span class="text-xs text-neutral-500 font-bold tracking-wider uppercase dark:text-neutral-400">Apple Core AI (Neural Engine)</span>
+        <span class="ml-auto rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] text-emerald-600 font-bold dark:text-emerald-400">ANE ACCELERATED · 100% OFFLINE</span>
+      </div>
+
+      <div class="grid grid-cols-1 gap-2">
+        <button
+          :class="[
+            'relative flex items-center gap-3 border-2 rounded-xl p-3.5 text-left transition-all duration-300',
+            isCoreAiSelected
+              ? 'border-primary-500 bg-primary-500/5 shadow-lg shadow-primary-500/10 dark:border-primary-400'
+              : 'border-neutral-200/60 bg-white/40 dark:border-neutral-800/80 dark:bg-neutral-900/40 hover:border-primary-500/50',
+          ]"
+          @click="selectCoreAiModel"
+        >
+          <div
+            class="h-10 w-10 flex flex-shrink-0 items-center justify-center rounded-xl"
+            :class="[isCoreAiSelected ? 'bg-primary-500/15' : 'bg-neutral-100 dark:bg-neutral-800']"
+          >
+            <div class="i-solar:cpu-bolt-bold-duotone h-6 w-6" :class="isCoreAiSelected ? 'text-primary-500' : 'text-neutral-500'" />
+          </div>
+          <div class="min-w-0 flex-1">
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="text-sm text-neutral-800 font-bold dark:text-neutral-100">Gemma 4 E2B IT (Speculative CoreML)</span>
+              <span class="rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] text-amber-600 font-bold dark:text-amber-400">
+                ⭐ RECOMMENDED ON-DEVICE
+              </span>
+            </div>
+            <p class="mt-0.5 truncate text-xs text-neutral-500 dark:text-neutral-400">
+              High-speed neural dialogue on Apple Neural Engine (~45+ tok/s). 100% offline & private.
+            </p>
+          </div>
+          <span class="flex-shrink-0 rounded-md bg-neutral-100 px-2 py-1 text-[10px] text-neutral-600 font-bold font-mono dark:bg-neutral-800 dark:text-neutral-300">
+            ~1.4 GB RAM
+          </span>
+        </button>
+      </div>
+
+      <!-- Core AI In-context download & action controls -->
+      <div v-if="isCoreAiSelected" class="flex flex-col gap-2.5 border border-neutral-200/60 rounded-xl bg-white/40 p-3.5 backdrop-blur-md dark:border-neutral-800/80 dark:bg-neutral-900/40">
+        <div class="flex items-center justify-between gap-3">
+          <div class="min-w-0 flex-1 flex-col">
+            <span class="truncate text-xs text-neutral-800 font-semibold dark:text-neutral-200">
+              Selected: Gemma 4 E2B IT (Speculative CoreML)
+            </span>
+            <span class="text-[11px] text-neutral-500 dark:text-neutral-400">
+              {{ coreAiState === 'ready' ? 'Model is compiled and ready to think on Apple Neural Engine.' : (coreAiState === 'downloading' ? 'Downloading CoreML weight bundle and compiling on device…' : 'Click to download and compile model on Apple Neural Engine.') }}
+            </span>
+          </div>
+
+          <!-- Action buttons -->
+          <div class="flex flex-shrink-0 items-center gap-2">
+            <Button
+              v-if="coreAiState === 'idle'"
+              variant="primary"
+              class="h-[34px] flex items-center gap-1.5 px-3.5 text-xs font-medium"
+              @click="startCoreAiDownload"
+            >
+              <div class="i-solar:cloud-download-bold-duotone text-base" />
+              <span>Download & Compile</span>
+            </Button>
+
+            <div
+              v-else-if="coreAiState === 'ready'"
+              class="flex items-center gap-1.5 rounded-lg bg-emerald-500/10 px-3 py-1.5 text-xs text-emerald-600 font-bold dark:text-emerald-400"
+            >
+              <div class="i-solar:check-circle-bold-duotone text-base" />
+              <span>Active & Ready</span>
+            </div>
+
+            <Button
+              v-else-if="coreAiState === 'error'"
+              variant="primary"
+              class="h-[34px] flex items-center gap-1.5 px-3.5 text-xs font-medium"
+              @click="startCoreAiDownload"
+            >
+              <div class="i-solar:restart-bold-duotone text-base" />
+              <span>Retry Download</span>
+            </Button>
+          </div>
+        </div>
+
+        <!-- Download progress bar -->
+        <div v-if="coreAiState === 'downloading'" class="flex flex-col gap-1.5 pt-1">
+          <div class="flex items-center justify-between text-xs text-neutral-500 dark:text-neutral-400">
+            <span class="truncate">{{ coreAiStatusText }}</span>
+            <span class="font-bold font-mono">{{ Math.floor(coreAiProgress) }}%</span>
+          </div>
+          <div class="h-2 w-full overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-700">
+            <div class="h-full rounded-full from-primary-500 to-indigo-500 bg-gradient-to-r transition-all duration-150" :style="{ width: `${coreAiProgress}%` }" />
+          </div>
+        </div>
+
+        <!-- Error message -->
+        <div v-if="coreAiState === 'error' && coreAiErrorMessage" class="break-all text-[11px] text-red-600/80 dark:text-red-400/80">
+          {{ coreAiErrorMessage }}
+        </div>
+
+        <!-- Initial Warmup & Compilation Disclaimer Banner -->
+        <div class="flex items-start gap-2.5 border border-amber-500/20 rounded-lg bg-amber-500/10 p-3 text-xs text-amber-900 dark:border-amber-400/20 dark:bg-amber-500/10 dark:text-amber-200">
+          <div class="i-solar:hourglass-line-bold-duotone mt-0.5 h-4 w-4 flex-shrink-0 text-amber-500" />
+          <div class="min-w-0 flex-1 space-y-0.5">
+            <span class="font-bold">First-Launch On-Device Warmup Notice</span>
+            <p class="text-[11px] text-amber-800/90 leading-relaxed dark:text-amber-300/90">
+              When starting the companion for the first time, Apple Neural Engine takes <strong>~60–90 seconds</strong> to compile model graphs and warm up memory buffers. Please be patient while it initializes — all subsequent chat replies run near-instantaneously (~45+ tok/s)!
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- WebGPU warning when local engine unavailable (Desktop/Web only) -->
+    <div
+      v-if="isWebLlmPlatform && !webgpuSupported"
       class="flex flex-shrink-0 items-start gap-2 border border-amber-300/60 rounded-xl bg-amber-50/80 p-3 text-xs text-amber-800 dark:border-amber-700/60 dark:bg-amber-900/20 dark:text-amber-300"
     >
       <div class="i-solar:danger-triangle-bold-duotone mt-0.5 h-4 w-4 flex-shrink-0" />
-      <span>WebGPU isn't available on mobile WebKit or this browser. Pick a free or cloud provider below (e.g. OpenRouter, Gemini, Pollinations, MiMo) to power your companion.</span>
+      <span>WebGPU isn't available in this browser. Pick a free or cloud provider below (e.g. OpenRouter, Gemini, Pollinations, MiMo) to power your companion.</span>
     </div>
 
-    <!-- WebLLM Local Engine -->
-    <div :class="['p-4 rounded-xl', 'bg-white/40 dark:bg-neutral-900/40', 'border border-neutral-200/60 dark:border-neutral-800/80', 'backdrop-blur-md', 'flex flex-col gap-3', !webgpuSupported ? 'opacity-60' : '']">
+    <!-- WebLLM Local Engine (Desktop / Web only) -->
+    <div
+      v-if="isWebLlmPlatform"
+      :class="['p-4 rounded-xl', 'bg-white/40 dark:bg-neutral-900/40', 'border border-neutral-200/60 dark:border-neutral-800/80', 'backdrop-blur-md', 'flex flex-col gap-3', !webgpuSupported ? 'opacity-60' : '']"
+    >
       <div class="flex items-center gap-2">
         <div class="i-solar:cpu-bolt-bold-duotone h-4 w-4 text-primary-500" />
         <span class="text-xs text-neutral-500 font-bold tracking-wider uppercase dark:text-neutral-400">Local WebLLM (WebGPU Engine)</span>
@@ -686,7 +913,7 @@ watch(verified, (v) => {
 
       <!-- The 4-Item Model Section: Text Input, Dropdown, Get Models Trigger, Rich Probe -->
       <div
-        v-if="!isWebLlmSelected && selectedProviderId && (isProviderConfigured || selectedChatProvider?.requiresCredentials === false)"
+        v-if="!isWebLlmSelected && !isCoreAiSelected && selectedProviderId && (isProviderConfigured || selectedChatProvider?.requiresCredentials === false)"
         :class="['p-4 rounded-xl', 'bg-white/40 dark:bg-neutral-900/40', 'border border-neutral-200/60 dark:border-neutral-800/80', 'backdrop-blur-md space-y-4']"
       >
         <!-- Section Header -->
