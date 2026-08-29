@@ -200,6 +200,7 @@ While HumanML3D feature vectors (263-dim) represent 3D body joint velocities and
   - `ParamArmLeft`, `ParamArmRight` (arm elevation)
   - `ParamBreath` (rhythmic motion)
 - Exports standard Live2D Cubism `motion.json` structures for consumption by `pixi-live2d-display` / `stage-ui-live2d`.
+- **Notice on 2D Ambient vs. Semantic Movement**: While 3D skeletal diffusion retargeting applies to discrete semantic gestures, continuous organic idle movement in 2D Live2D relies on a specialized parameter-space autoregressive model. See the companion specification: [`design-live2d-autoregressive-motion.md`](./design-live2d-autoregressive-motion.md).
 
 ---
 
@@ -295,6 +296,7 @@ NVIDIA's Kimodo family introduces a two-stage transformer architecture separatin
   * [`nvidia/TMR-SOMA-RP-v1`](https://huggingface.co/nvidia/TMR-SOMA-RP-v1) (Text-to-Motion Retrieval encoder)
   * [`nvidia/Kimodo-Motion-Gen-Benchmark`](https://huggingface.co/datasets/nvidia/Kimodo-Motion-Gen-Benchmark) (Standardized evaluation benchmark)
 
-## Relevant Skills
+## Relevant Skills & Companion References
 
 - [[airi-generative-motion-vrma]]
+- [`docs/design-live2d-autoregressive-motion.md`](./design-live2d-autoregressive-motion.md) — Autoregressive Live2D Ambient Motion & Micro-Movement Synthesis
