@@ -1,11 +1,19 @@
 <script setup lang="ts">
-import type { EscapementPose, SettingsTopology, SettingsTopologyNode, TopologyTransition, ValidationResult } from '../../composables/settings-topology'
+import type {
+  EscapementPose,
+  QuantizedMomentumPose,
+  SettingsTopology,
+  SettingsTopologyNode,
+  TopologyTransition,
+  ValidationResult,
+} from '../../composables/settings-topology'
 
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 import FullPageSettingsEngine from '../../composables/settings-topology/components/FullPageSettingsEngine.vue'
 import KineticOrbitalMechanism from '../../composables/settings-topology/components/KineticOrbitalMechanism.vue'
 import QuantizedGeometryKey from '../../composables/settings-topology/components/QuantizedGeometryKey.vue'
+import QuantizedMomentumMechanism from '../../composables/settings-topology/components/QuantizedMomentumMechanism.vue'
 
 import {
   buildLiveSettingsTopology,
@@ -33,45 +41,32 @@ const activeMainTab = ref<'sketch' | 'escapement-lab' | 'geometry-showcase'>('ge
 const catalogTopology = computed(() => buildSettingsCatalogTopology())
 
 // ──────────────────────────────────────────────
-// Autonomous Motion Strip State (Tab 1)
+// RAF Momentum Motion Strip State (Tab 1)
 // ──────────────────────────────────────────────
 const isStripPlaying = ref(true)
-const stripStepIndex = ref(0)
-const stripCadenceMs = ref(1600)
-const stripTimer = ref<number | null>(null)
+const stripSpeedMultiplier = ref(1.0)
+const activeMomentumPose = ref<QuantizedMomentumPose>({
+  angles: [-90, -90, -90],
+  scales: [1.0, 0.65, 0.33],
+  opacities: [0.35, 0.70, 1.0],
+  dashFrequencies: [0, 4, 8],
+  recoil: 0,
+  facets: [0, 0, 0],
+  depth: 0,
+  phase: 'rest',
+})
 
-const STRIP_STEPS: Array<{
-  facets: [number, number, number]
-  depth: number
-  code: string
-  desc: string
-}> = [
-  { facets: [0, 0, 0], depth: 0, code: 'PHASE 0 · ROOT ORIGIN (D0)', desc: 'Continuous solid frame. Outer key locked at North.' },
-  { facets: [1, 2, 0], depth: 1, code: 'PHASE 1 · CARDINAL DESCENT (D1)', desc: '4-interval outer frame. Mechanical key latch engages middle diamond at South.' },
-  { facets: [3, 0, 1], depth: 2, code: 'PHASE 2 · 3-TIER KEY LOCK (D2)', desc: '8-interval parent frame. Direct latch engages 16-interval inner core at East.' },
-  { facets: [2, 3, 2], depth: 3, code: 'PHASE 3 · SLIDING WINDOW ROLLOVER (D3+)', desc: 'Grandparent drops off. Parent expands outward, inner becomes parent, new core keys in.' },
-]
-
-function advanceStripStep(delta = 1) {
-  stripStepIndex.value = (stripStepIndex.value + delta + STRIP_STEPS.length) % STRIP_STEPS.length
+function handleMomentumPose(pose: QuantizedMomentumPose) {
+  activeMomentumPose.value = pose
 }
 
 function toggleStripPlay() {
   isStripPlaying.value = !isStripPlaying.value
 }
 
-onMounted(() => {
-  stripTimer.value = window.setInterval(() => {
-    if (isStripPlaying.value && activeMainTab.value === 'geometry-showcase') {
-      advanceStripStep(1)
-    }
-  }, stripCadenceMs.value)
-})
-
-onUnmounted(() => {
-  if (stripTimer.value)
-    clearInterval(stripTimer.value)
-})
+function toggleSlowMo() {
+  stripSpeedMultiplier.value = stripSpeedMultiplier.value === 1.0 ? 0.45 : 1.0
+}
 
 // ──────────────────────────────────────────────
 // Escapement Lab State & Anatomy Toggles
@@ -103,7 +98,7 @@ const prevPath = ref<string[]>([])
 const activePath = ref<string[]>(['hub'])
 const lastTransition = ref<TopologyTransition>({ type: 'initial', nextPath: ['hub'] })
 
-// Live telemetry state from mechanism
+// Live telemetry state from escapement mechanism
 const livePose = ref<EscapementPose>({
   primaryAngle: -90,
   counterAngle: -90,
@@ -372,23 +367,40 @@ function triggerBranchHop() {
           </div>
         </div>
 
-        <!-- ── Live Autonomous Mechanical Transfer Strip ── -->
+        <!-- ── Live Autonomous Mechanical Transfer Strip (RAF 3-Beat Momentum Engine) ── -->
         <div class="border border-neutral-200/80 rounded-3xl bg-white p-8 shadow-sm dark:border-neutral-800/80 dark:bg-neutral-900/80">
           <div class="mb-6 flex flex-col gap-3 border-b border-neutral-200/80 pb-4 sm:flex-row sm:items-center sm:justify-between dark:border-neutral-800/80">
             <div>
               <div class="flex items-center gap-2">
-                <span class="rounded bg-neutral-900 px-2 py-0.5 text-xs text-white font-bold font-mono dark:bg-neutral-100 dark:text-neutral-900">MOTION STRIP</span>
+                <span class="rounded bg-neutral-900 px-2 py-0.5 text-xs text-white font-bold font-mono dark:bg-neutral-100 dark:text-neutral-900">MOMENTUM ENGINE</span>
                 <h3 class="text-base text-neutral-900 font-bold font-serif dark:text-white">
-                  Autonomous Mechanical State Transfer Loop
+                  3-Beat Inward Momentum Transfer Cascade
                 </h3>
               </div>
               <p class="text-xs text-neutral-500 font-mono dark:text-neutral-400">
-                Continuous autonomous progression through depth quantization and sliding window rollover without descriptive captions.
+                Outer gathers tension → strikes middle ratchet (4→8 intervals) → strikes inner core with decisive snap and micro-recoil.
               </p>
             </div>
 
-            <!-- Play / Pause & Cadence Controls -->
+            <!-- Transport & Telemetry Controls -->
             <div class="flex items-center gap-2 text-xs font-mono">
+              <span
+                class="rounded px-2 py-0.5 text-xs font-bold uppercase transition-colors"
+                :class="[
+                  activeMomentumPose.phase === 'initiation'
+                    ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400'
+                    : activeMomentumPose.phase === 'transfer'
+                      ? 'bg-blue-500/15 text-blue-600 dark:text-blue-400'
+                      : activeMomentumPose.phase === 'snap-lock'
+                        ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
+                        : activeMomentumPose.phase === 'recoil'
+                          ? 'bg-red-500/15 text-red-600 dark:text-red-400'
+                          : 'bg-neutral-200 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400',
+                ]"
+              >
+                PHASE: {{ activeMomentumPose.phase }}
+              </span>
+
               <button
                 type="button"
                 class="dark:bg-neutral-850 flex items-center gap-1.5 border border-neutral-300 rounded-lg bg-neutral-50 px-3 py-1.5 transition-all active:scale-95 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800"
@@ -401,48 +413,41 @@ function triggerBranchHop() {
               <button
                 type="button"
                 class="dark:bg-neutral-850 border border-neutral-300 rounded-lg bg-neutral-50 px-2.5 py-1.5 transition-all active:scale-95 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800"
-                title="Step backward"
-                @click="advanceStripStep(-1)"
+                :class="stripSpeedMultiplier < 1.0 ? 'font-bold text-neutral-900 dark:text-white bg-neutral-200 dark:bg-neutral-700' : ''"
+                @click="toggleSlowMo"
               >
-                <div class="i-solar:arrow-left-bold size-3.5" />
-              </button>
-              <button
-                type="button"
-                class="dark:bg-neutral-850 border border-neutral-300 rounded-lg bg-neutral-50 px-2.5 py-1.5 transition-all active:scale-95 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800"
-                title="Step forward"
-                @click="advanceStripStep(1)"
-              >
-                <div class="i-solar:arrow-right-bold size-3.5" />
+                <span>{{ stripSpeedMultiplier < 1.0 ? 'Slow-Mo (0.45x)' : '1.0x Speed' }}</span>
               </button>
             </div>
           </div>
 
-          <!-- Central Unlabeled Transfer Mechanism -->
+          <!-- Central RAF-Driven Momentum Mechanism -->
           <div class="flex flex-col items-center justify-center py-4">
-            <QuantizedGeometryKey
+            <QuantizedMomentumMechanism
               :size="260"
-              :facets="STRIP_STEPS[stripStepIndex].facets"
-              :active-depth="STRIP_STEPS[stripStepIndex].depth"
-              :hide-label="true"
+              :is-playing="isStripPlaying"
+              :speed-multiplier="stripSpeedMultiplier"
+              @pose-change="handleMomentumPose"
             />
 
-            <!-- Step Progress Indicator Pills -->
-            <div class="mt-6 flex flex-wrap items-center justify-center gap-2 text-xs font-mono">
-              <button
-                v-for="(step, idx) in STRIP_STEPS"
-                :key="idx"
-                type="button"
-                class="flex items-center gap-2 border rounded-xl px-3 py-1.5 transition-all active:scale-95"
-                :class="[
-                  idx === stripStepIndex
-                    ? 'border-neutral-900 bg-neutral-900 text-white font-bold dark:border-neutral-100 dark:bg-neutral-100 dark:text-neutral-900'
-                    : 'border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-850 text-neutral-600 dark:text-neutral-400 hover:border-neutral-400',
-                ]"
-                @click="stripStepIndex = idx"
-              >
-                <span>0{{ idx + 1 }}</span>
-                <span>{{ step.code.split(' · ')[1] }}</span>
-              </button>
+            <!-- Real-Time Momentum Telemetry Readouts -->
+            <div class="grid grid-cols-2 mt-6 max-w-2xl w-full gap-2 text-xs font-mono sm:grid-cols-4">
+              <div class="dark:bg-neutral-850 border border-neutral-200 rounded-xl bg-neutral-50 p-2 text-center dark:border-neutral-800">
+                <span class="block text-[10px] text-neutral-400 uppercase">Outer (θ1)</span>
+                <strong class="text-neutral-900 dark:text-neutral-100">{{ activeMomentumPose.angles[0].toFixed(1) }}°</strong>
+              </div>
+              <div class="dark:bg-neutral-850 border border-neutral-200 rounded-xl bg-neutral-50 p-2 text-center dark:border-neutral-800">
+                <span class="block text-[10px] text-neutral-400 uppercase">Middle (θ2)</span>
+                <strong class="text-neutral-900 dark:text-neutral-100">{{ activeMomentumPose.angles[1].toFixed(1) }}°</strong>
+              </div>
+              <div class="dark:bg-neutral-850 border border-neutral-200 rounded-xl bg-neutral-50 p-2 text-center dark:border-neutral-800">
+                <span class="block text-[10px] text-neutral-400 uppercase">Core (θ3)</span>
+                <strong class="text-neutral-900 dark:text-neutral-100">{{ activeMomentumPose.angles[2].toFixed(1) }}°</strong>
+              </div>
+              <div class="dark:bg-neutral-850 border border-neutral-200 rounded-xl bg-neutral-50 p-2 text-center dark:border-neutral-800">
+                <span class="block text-[10px] text-neutral-400 uppercase">Recoil (δ)</span>
+                <strong class="text-neutral-900 dark:text-neutral-100">{{ activeMomentumPose.recoil.toFixed(2) }}°</strong>
+              </div>
             </div>
           </div>
         </div>

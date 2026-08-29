@@ -220,3 +220,35 @@ describe('layout Scene Generators', () => {
     expect(scene.connectors.length).toBeGreaterThan(0)
   })
 })
+
+describe('quantized Inward Momentum Transfer Engine', () => {
+  it('computes 3-beat physical momentum cascade correctly', async () => {
+    const { computeQuantizedMomentumPose, DEFAULT_MOMENTUM_CONFIG } = await import('./layouts/quantized-momentum-engine')
+
+    // Beat 1: Initiation (t = 200ms) -> Outer moves, middle & inner haven't triggered
+    const poseB1 = computeQuantizedMomentumPose([0, 0, 0], [1, 2, 0], 0, 1, 200, DEFAULT_MOMENTUM_CONFIG)
+    expect(poseB1.phase).toBe('initiation')
+    expect(poseB1.angles[0]).toBeGreaterThan(-90)
+    expect(poseB1.angles[1]).toBe(-90) // Middle not started yet
+
+    // Beat 2: Transfer (t = 500ms) -> Moving from Depth 1 to 2 -> Middle fractures to 8
+    const poseB2 = computeQuantizedMomentumPose([0, 0, 0], [1, 2, 0], 1, 2, 500, DEFAULT_MOMENTUM_CONFIG)
+    expect(poseB2.phase).toBe('transfer')
+    expect(poseB2.dashFrequencies[1]).toBe(8) // Fractured on impact
+
+    // Beat 3: Inner Snap (t = 750ms) -> Moving from Depth 2 to 3 -> Inner fractures to 16
+    const poseB3 = computeQuantizedMomentumPose([1, 2, 0], [2, 0, 3], 2, 3, 750, DEFAULT_MOMENTUM_CONFIG)
+    expect(poseB3.phase).toBe('snap-lock')
+    expect(poseB3.dashFrequencies[2]).toBe(16)
+
+    // Hard Stop Recoil (t = 920ms)
+    const poseRecoil = computeQuantizedMomentumPose([0, 0, 0], [1, 2, 0], 0, 1, 920, DEFAULT_MOMENTUM_CONFIG)
+    expect(poseRecoil.phase).toBe('recoil')
+    expect(poseRecoil.recoil).not.toBe(0)
+
+    // Rest (t = 1200ms)
+    const poseRest = computeQuantizedMomentumPose([0, 0, 0], [1, 2, 0], 0, 1, 1200, DEFAULT_MOMENTUM_CONFIG)
+    expect(poseRest.phase).toBe('rest')
+    expect(poseRest.recoil).toBe(0)
+  })
+})
