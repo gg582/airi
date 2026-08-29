@@ -85,6 +85,14 @@ export interface TopologyBreadcrumb {
   depth: number
 }
 
+export interface HeaderTrackOptions {
+  width?: number
+  height?: number
+  showLabels?: boolean
+  showInactiveSiblings?: boolean
+  showDecorativeSlots?: boolean
+}
+
 export interface TopologyScene {
   viewBox: string
   width: number

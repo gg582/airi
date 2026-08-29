@@ -8,6 +8,7 @@ import { useRouter } from 'vue-router'
 import SettingsQuickAccess from '../../../pages/settings/components/SettingsQuickAccess.vue'
 import SettingsSearchBar from '../../../pages/settings/components/SettingsSearchBar.vue'
 import SettingsDynamicClusterList from './SettingsDynamicClusterList.vue'
+import SettingsHeaderCombined from './SettingsHeaderCombined.vue'
 import SettingsHeaderOrbital from './SettingsHeaderOrbital.vue'
 import SettingsHeaderTrack from './SettingsHeaderTrack.vue'
 import SettingsRecallOverlay from './SettingsRecallOverlay.vue'
@@ -20,8 +21,8 @@ const props = defineProps<{
 
 const router = useRouter()
 
-// Header layout format (Default to folded-track)
-const layoutStyle = ref<'orbital' | 'header-track'>('header-track')
+// Header layout format (Default to combined 80/20)
+const layoutStyle = ref<'combined' | 'folded-track' | 'radar'>('combined')
 
 // Recall presentation mode (Eiki overlay vs legacy inline dashboard)
 const recallMode = ref<'overlay' | 'inline'>('overlay')
@@ -49,7 +50,7 @@ function handleBack() {
 
 function handleReset() {
   activeId.value = props.topology.rootId
-  layoutStyle.value = 'header-track'
+  layoutStyle.value = 'combined'
 }
 
 function handleLaunchRealRoute() {
@@ -104,11 +105,23 @@ onUnmounted(() => {
               type="button"
               class="rounded-md px-2.5 py-1 text-xs font-mono transition-all"
               :class="[
-                layoutStyle === 'header-track'
+                layoutStyle === 'combined'
                   ? 'bg-white text-neutral-900 shadow-xs font-semibold dark:bg-neutral-700 dark:text-white'
                   : 'text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-200',
               ]"
-              @click="layoutStyle = 'header-track'"
+              @click="layoutStyle = 'combined'"
+            >
+              Combined (80/20)
+            </button>
+            <button
+              type="button"
+              class="rounded-md px-2.5 py-1 text-xs font-mono transition-all"
+              :class="[
+                layoutStyle === 'folded-track'
+                  ? 'bg-white text-neutral-900 shadow-xs font-semibold dark:bg-neutral-700 dark:text-white'
+                  : 'text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-200',
+              ]"
+              @click="layoutStyle = 'folded-track'"
             >
               Folded Track
             </button>
@@ -116,11 +129,11 @@ onUnmounted(() => {
               type="button"
               class="rounded-md px-2.5 py-1 text-xs font-mono transition-all"
               :class="[
-                layoutStyle === 'orbital'
+                layoutStyle === 'radar'
                   ? 'bg-white text-neutral-900 shadow-xs font-semibold dark:bg-neutral-700 dark:text-white'
                   : 'text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-200',
               ]"
-              @click="layoutStyle = 'orbital'"
+              @click="layoutStyle = 'radar'"
             >
               Stepped + Radar
             </button>
@@ -172,9 +185,17 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <!-- ── Layer 1 & 2: Dynamic Header (Topology + Identity) ── -->
+    <!-- ── Dynamic Header (Combined / Folded Track / Stepped Radar) ── -->
+    <SettingsHeaderCombined
+      v-if="layoutStyle === 'combined'"
+      :topology="topology"
+      :active-path="activePath"
+      @navigate="handleNavigate"
+      @back="handleBack"
+      @recall="isRecallOpen = true"
+    />
     <SettingsHeaderTrack
-      v-if="layoutStyle === 'header-track'"
+      v-else-if="layoutStyle === 'folded-track'"
       :topology="topology"
       :active-path="activePath"
       @navigate="handleNavigate"

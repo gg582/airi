@@ -1,4 +1,5 @@
 import type {
+  HeaderTrackOptions,
   LayoutConnector,
   LayoutNodeMarker,
   LayoutTrack,
@@ -9,24 +10,16 @@ import type {
 
 import { getSiblings } from '../path-resolver'
 
-export interface HeaderTrackOptions {
-  width?: number
-  height?: number
-  showLabels?: boolean
-  showInactiveSiblings?: boolean
-  showDecorativeSlots?: boolean
-}
-
 export function createHeaderTrackScene(
   topology: SettingsTopology,
   activePath: string[],
   options: HeaderTrackOptions = {},
 ): TopologyScene {
-  const width = options.width ?? 960
+  const width = options.width ?? 640
   const activeId = activePath[activePath.length - 1] || topology.rootId
   const activeNode = topology.nodesById[activeId] || topology.nodesById[topology.rootId]
   const hasChildTrack = !!(activeNode && activeNode.children && activeNode.children.length > 0)
-  const height = options.height ?? (hasChildTrack ? 94 : 52)
+  const height = options.height ?? (hasChildTrack ? 74 : 40)
   const showInactiveSiblings = options.showInactiveSiblings ?? true
 
   const breadcrumbs: TopologyBreadcrumb[] = activePath.map((id, depth) => {
@@ -47,13 +40,13 @@ export function createHeaderTrackScene(
   const siblings = getSiblings(topology, activeId)
   const siblingTotal = siblings.length
 
-  // Track Y positions (Compact: trackY = 22, childY = 62)
-  const trackY = 22
-  const paddingX = 36
+  // Track Y positions (Tighter layout: trackY = 14, childY = 48)
+  const trackY = 14
+  const paddingX = 22
   const availableWidth = width - paddingX * 2
 
   // 1. Ancestor track line (left-hand anchor rail)
-  const ancestorSpacing = Math.min(50, (availableWidth * 0.2) / Math.max(1, activeDepth))
+  const ancestorSpacing = Math.min(48, (availableWidth * 0.22) / Math.max(1, activeDepth))
   const ancestorStartX = paddingX
 
   for (let d = 0; d < activeDepth; d++) {
@@ -66,7 +59,7 @@ export function createHeaderTrackScene(
       markers.push({
         nodeId: ancId,
         label: ancNode.label,
-        shortLabel: ancNode.shortLabel || ancNode.label.slice(0, 4),
+        shortLabel: ancNode.shortLabel || ancNode.label.slice(0, 5),
         route: ancNode.route,
         kind: ancNode.kind || 'page',
         icon: ancNode.icon,
@@ -94,7 +87,7 @@ export function createHeaderTrackScene(
   }
 
   // 2. Active sibling track (spans the remaining width)
-  const siblingStartX = activeDepth > 0 ? ancestorStartX + activeDepth * ancestorSpacing + 28 : paddingX
+  const siblingStartX = activeDepth > 0 ? ancestorStartX + activeDepth * ancestorSpacing + 24 : paddingX
   const siblingAvailableWidth = width - siblingStartX - paddingX
   const siblingStep = siblingTotal > 1 ? siblingAvailableWidth / (siblingTotal - 1) : 0
 
@@ -126,7 +119,7 @@ export function createHeaderTrackScene(
       markers.push({
         nodeId: sibId,
         label: sibNode.label,
-        shortLabel: sibNode.shortLabel || sibNode.label.slice(0, 5),
+        shortLabel: sibNode.shortLabel || sibNode.label.slice(0, 6),
         route: sibNode.route,
         kind: sibNode.kind || 'page',
         icon: sibNode.icon,
@@ -148,9 +141,9 @@ export function createHeaderTrackScene(
   if (hasChildTrack && activeNode) {
     const activeMarker = markers.find(m => m.nodeId === activeId)
     if (activeMarker) {
-      const childY = 62
+      const childY = 48
       const childCount = activeNode.children.length
-      const childWidth = Math.min(availableWidth, Math.max(availableWidth * 0.75, childCount * 48))
+      const childWidth = Math.min(availableWidth, Math.max(availableWidth * 0.8, childCount * 48))
       const childStartX = Math.max(paddingX, Math.min(width - paddingX - childWidth, activeMarker.x - childWidth / 2))
       const childStep = childCount > 1 ? childWidth / (childCount - 1) : 0
 
@@ -180,15 +173,15 @@ export function createHeaderTrackScene(
         if (!childNode)
           continue
 
-        const cx = childCount > 1 ? childStartX + c * childStep : childStartX + childWidth / 2
+        const childX = childCount > 1 ? childStartX + c * childStep : childStartX + childWidth / 2
         markers.push({
           nodeId: childId,
           label: childNode.label,
-          shortLabel: childNode.shortLabel || childNode.label.slice(0, 4),
+          shortLabel: childNode.shortLabel || childNode.label.slice(0, 6),
           route: childNode.route,
           kind: childNode.kind || 'page',
           icon: childNode.icon,
-          x: cx,
+          x: childX,
           y: childY,
           depth: activeDepth + 1,
           siblingIndex: c,
@@ -203,16 +196,14 @@ export function createHeaderTrackScene(
     }
   }
 
-  const activeMarker = markers.find(m => m.isActive)
-
   return {
-    viewBox: `0 0 ${width} ${height}`,
     width,
     height,
+    viewBox: `0 0 ${width} ${height}`,
+    markers,
     tracks,
     connectors,
-    markers,
-    activeMarker,
     breadcrumbs,
+    activeMarker: markers.find(m => m.nodeId === activeId),
   }
 }
