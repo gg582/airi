@@ -190,7 +190,7 @@ export const useChatOrchestratorStore = defineStore('chat-orchestrator', () => {
           return
         }
 
-        if (!payload.sendingMessage)
+        if (!payload.sendingMessage && !payload.options?.triggerOnly && !payload.options?.attachments?.length)
           return
 
         // NOTICE: Align the main window's active session to the sender's target so that in-band
@@ -199,7 +199,7 @@ export const useChatOrchestratorStore = defineStore('chat-orchestrator', () => {
         // circuits when the session is already active, preventing broadcast loops.
         if (payload.targetSessionId && payload.targetSessionId !== chatSession.activeSessionId)
           chatSession.setActiveSession(payload.targetSessionId)
-        ingest(payload.sendingMessage, {
+        ingest(payload.sendingMessage || '', {
           ...payload.options,
           tools: toolsResolver.value,
         }, payload.targetSessionId)
