@@ -440,4 +440,22 @@ describe('astrolabe Canopy Topology Engine', () => {
     expect(resultMemory.hierarchy.length).toBeGreaterThan(0)
     expect(resultMemory.activeIndices[0]).toBe(4) // area-memory is 5th child
   })
+
+  it('extracts valid 3-layer Odometer combination pose from SettingsTopology', async () => {
+    const { extractOdometerPoseFromTopology } = await import('./layouts/odometer-engine')
+    const { buildSettingsCatalogTopology } = await import('./settings-catalog')
+
+    const topology = buildSettingsCatalogTopology()
+    const poseHub = extractOdometerPoseFromTopology(topology, ['hub'])
+    expect(poseHub.angles).toEqual([0, 0, 0])
+
+    const poseModules = extractOdometerPoseFromTopology(topology, ['hub', 'area-modules'])
+    expect(poseModules.angles[0]).toBe(5 * 22.5) // area-modules is 6th area (index 5)
+    expect(poseModules.layers[0].isActive).toBe(true)
+
+    const poseSpeech = extractOdometerPoseFromTopology(topology, ['hub', 'area-modules', 'mod-speech'])
+    expect(poseSpeech.angles[0]).toBe(5 * 22.5) // area-modules stays locked at 112.5°
+    expect(poseSpeech.layers[0].isLocked).toBe(true)
+    expect(poseSpeech.layers[1].isActive).toBe(true)
+  })
 })

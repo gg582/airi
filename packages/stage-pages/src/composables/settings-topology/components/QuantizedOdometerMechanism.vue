@@ -14,13 +14,15 @@ const props = withDefaults(defineProps<{
   showDetentTicks: true,
 })
 
-const cx = computed(() => props.size / 2)
-const cy = computed(() => props.size / 2)
+const CANONICAL_SIZE = 380
 
-// Radii
-const r1 = computed(() => props.size * 0.40)
-const r2 = computed(() => props.size * 0.26)
-const r3 = computed(() => props.size * 0.13)
+const cx = CANONICAL_SIZE / 2
+const cy = CANONICAL_SIZE / 2
+
+// Radii in canonical coordinate space
+const r1 = CANONICAL_SIZE * 0.40
+const r2 = CANONICAL_SIZE * 0.26
+const r3 = CANONICAL_SIZE * 0.13
 
 // Cardinal points at radius r before rotation (Top, Right, Bottom, Left)
 function getBaseSquarePoints(radius: number) {
@@ -32,23 +34,23 @@ function getBaseSquarePoints(radius: number) {
   ]
 }
 
-const outerPoints = computed(() => getBaseSquarePoints(r1.value))
-const middlePoints = computed(() => getBaseSquarePoints(r2.value))
-const innerPoints = computed(() => getBaseSquarePoints(r3.value))
+const outerPoints = computed(() => getBaseSquarePoints(r1))
+const middlePoints = computed(() => getBaseSquarePoints(r2))
+const innerPoints = computed(() => getBaseSquarePoints(r3))
 
 // 16-step 22.5° calibration compass ticks around outer perimeter
 const compassTicks = computed(() => {
   const ticks: Array<{ x1: number, y1: number, x2: number, y2: number, isQuarter: boolean }> = []
-  const tickR1 = r1.value + 6
+  const tickR1 = r1 + 6
   for (let i = 0; i < 16; i++) {
     const angleRad = (i * 22.5 - 90) * (Math.PI / 180)
     const isQuarter = i % 4 === 0
     const len = isQuarter ? 6 : 3
     ticks.push({
-      x1: cx.value + tickR1 * Math.cos(angleRad),
-      y1: cy.value + tickR1 * Math.sin(angleRad),
-      x2: cx.value + (tickR1 + len) * Math.cos(angleRad),
-      y2: cy.value + (tickR1 + len) * Math.sin(angleRad),
+      x1: cx + tickR1 * Math.cos(angleRad),
+      y1: cy + tickR1 * Math.sin(angleRad),
+      x2: cx + (tickR1 + len) * Math.cos(angleRad),
+      y2: cy + (tickR1 + len) * Math.sin(angleRad),
       isQuarter,
     })
   }
@@ -58,15 +60,17 @@ const compassTicks = computed(() => {
 
 <template>
   <div
-    class="relative flex select-none items-center justify-center"
-    :style="{ width: `${size}px`, height: `${size}px` }"
+    class="relative h-full w-full flex select-none items-center justify-center font-mono"
+    :style="{
+      width: size ? `${size}px` : undefined,
+      height: size ? `${size}px` : undefined,
+    }"
     aria-hidden="true"
   >
     <svg
-      :viewBox="`0 0 ${size} ${size}`"
-      :width="size"
-      :height="size"
-      class="block h-full w-full overflow-visible"
+      viewBox="0 0 380 380"
+      class="block h-full max-h-full max-w-full w-full overflow-visible"
+      preserveAspectRatio="xMidYMid meet"
     >
       <!-- Extremely faint center alignment crosshair lines -->
       <line

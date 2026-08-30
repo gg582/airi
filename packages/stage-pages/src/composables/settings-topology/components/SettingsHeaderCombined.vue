@@ -3,11 +3,11 @@ import type { SettingsTopology, SettingsTopologyNode } from '../types'
 
 import { computed } from 'vue'
 
-import AstrolabeCanopy from './AstrolabeCanopy.vue'
+import QuantizedOdometerMechanism from './QuantizedOdometerMechanism.vue'
 import TopologySvgScene from './TopologySvgScene.vue'
 
-import { extractAstrolabeHierarchyFromTopology } from '../layouts/astrolabe-engine'
 import { createHeaderTrackScene } from '../layouts/header-track'
+import { extractOdometerPoseFromTopology } from '../layouts/odometer-engine'
 
 const props = defineProps<{
   topology: SettingsTopology
@@ -30,8 +30,8 @@ const trackScene = computed(() => createHeaderTrackScene(props.topology, props.a
   showInactiveSiblings: true,
 }))
 
-// Astrolabe Canopy mapping for the 20% right rail
-const astrolabeData = computed(() => extractAstrolabeHierarchyFromTopology(props.topology, props.activePath))
+// Invariant 3-Square / 12-Node Escapement Combination Lock Pose
+const odometerPose = computed(() => extractOdometerPoseFromTopology(props.topology, props.activePath))
 
 // Clean breadcrumb text (no Japanese prefix)
 const breadcrumbString = computed(() => {
@@ -49,10 +49,10 @@ const breadcrumbString = computed(() => {
 
 <template>
   <header class="border-b border-neutral-200/80 pb-2.5 pt-0.5 space-y-2 dark:border-neutral-800/80">
-    <!-- ── Layer 1: Combined 70/30 Split (Folded Track + Astrolabe Canopy) ── -->
+    <!-- ── Layer 1: Combined Split (Folded Track + 12-Node Square Escapement Mechanism) ── -->
     <div class="flex items-center justify-between gap-5">
-      <!-- Left ~70-75%: Folded Track Rail -->
-      <div class="min-w-0 w-[72%] flex-[7] overflow-x-auto">
+      <!-- Left ~75-80%: Folded Track Rail -->
+      <div class="min-w-0 flex-1 overflow-x-auto">
         <TopologySvgScene
           :scene="trackScene"
           :show-guides="true"
@@ -62,15 +62,12 @@ const breadcrumbString = computed(() => {
         />
       </div>
 
-      <!-- Right ~25-30%: Astrolabe Canopy Caliper Widget -->
-      <div class="h-24 w-[28%] flex flex-[3] shrink-0 items-center justify-center border-l border-neutral-200/70 px-3 py-1 md:h-28 dark:border-neutral-800/70">
-        <AstrolabeCanopy
-          :hierarchy="astrolabeData.hierarchy"
-          :active-indices="astrolabeData.activeIndices"
-          class="h-full max-h-28 max-w-64 w-full"
-          :show-filaments="false"
-          :show-connecting-line="false"
-          :clean-mode="true"
+      <!-- Right ~20-25%: Invariant 3-Square / 12-Node Escapement Combination Lock (22.5° Ratchet) -->
+      <div class="h-24 w-28 flex shrink-0 items-center justify-center border-l border-neutral-200/70 p-1.5 md:w-32 dark:border-neutral-800/70">
+        <QuantizedOdometerMechanism
+          :pose="odometerPose"
+          :size="84"
+          :show-detent-ticks="true"
         />
       </div>
     </div>

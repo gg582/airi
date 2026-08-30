@@ -9,6 +9,8 @@
  * - Section-by-section sequential startup ratchet sequence.
  */
 
+import type { SettingsTopology } from '../types'
+
 export const ODOMETER_STEP_DEG = 22.5
 
 export interface OdometerLayerState {
@@ -146,4 +148,58 @@ export function generateStartupRatchetSequence(
   }
 
   return frames
+}
+
+/**
+ * Extract active 3-layer Odometer combination pose from SettingsTopology and active navigation path
+ */
+export function extractOdometerPoseFromTopology(
+  topology: SettingsTopology,
+  activePath: string[],
+): OdometerPose {
+  const rootId = topology.rootId || 'hub'
+  const rootNode = topology.nodesById[rootId]
+  const rootChildren = rootNode?.children || []
+
+  // Depth 0: Category / Area
+  let d0Idx = 0
+  const d0Total = Math.max(1, rootChildren.length)
+  if (activePath.length > 1) {
+    const activeT0 = activePath[1]
+    const found = rootChildren.indexOf(activeT0)
+    if (found >= 0)
+      d0Idx = found
+  }
+
+  // Depth 1: Section / Page
+  let d1Idx = 0
+  const t0Node = topology.nodesById[rootChildren[d0Idx]]
+  const t0Children = t0Node?.children || []
+  const d1Total = Math.max(1, t0Children.length)
+  if (activePath.length > 2) {
+    const activeT1 = activePath[2]
+    const found = t0Children.indexOf(activeT1)
+    if (found >= 0)
+      d1Idx = found
+  }
+
+  // Depth 2: Field / Leaf
+  let d2Idx = 0
+  const t1Node = topology.nodesById[t0Children[d1Idx]]
+  const t1Children = t1Node?.children || []
+  const d2Total = Math.max(1, t1Children.length)
+  if (activePath.length > 3) {
+    const activeT2 = activePath[3]
+    const found = t1Children.indexOf(activeT2)
+    if (found >= 0)
+      d2Idx = found
+  }
+
+  const activeDepth = Math.max(0, Math.min(2, activePath.length - 2))
+
+  return resolveOdometerPose(
+    [d0Idx, d1Idx, d2Idx],
+    activeDepth,
+    [d0Total, d1Total, d2Total],
+  )
 }
