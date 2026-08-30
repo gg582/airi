@@ -52,6 +52,8 @@ export interface HeartbeatConfig {
     end: string // e.g., '23:00'
   }
   respectSchedule: boolean
+  pauseWhenAfk?: boolean
+  afkThresholdMinutes?: number
   prefixCacheOptimized?: boolean
 }
 
@@ -135,6 +137,9 @@ export interface ScreenWatchingConfig {
   maxPerHour: number
   hysteresisMinutes: number
   enableVlm?: boolean
+  respectSchedule?: boolean
+  pauseWhenAfk?: boolean
+  afkThresholdMinutes?: number
 }
 
 export interface EventLedgerConfig {
@@ -873,6 +878,8 @@ export const useAiriCardStore = defineStore('airi-card', () => {
         end: '22:00',
       },
       respectSchedule: true,
+      pauseWhenAfk: true,
+      afkThresholdMinutes: 5,
       prefixCacheOptimized: true,
     }
 
@@ -1081,6 +1088,8 @@ export const useAiriCardStore = defineStore('airi-card', () => {
           end: existingExtension?.heartbeats?.schedule?.end ?? defaultHeartbeats.schedule.end,
         },
         respectSchedule: existingExtension?.heartbeats?.respectSchedule ?? defaultHeartbeats.respectSchedule,
+        pauseWhenAfk: existingExtension?.heartbeats?.pauseWhenAfk ?? defaultHeartbeats.pauseWhenAfk,
+        afkThresholdMinutes: existingExtension?.heartbeats?.afkThresholdMinutes ?? defaultHeartbeats.afkThresholdMinutes,
         prefixCacheOptimized: existingExtension?.heartbeats?.prefixCacheOptimized ?? defaultHeartbeats.prefixCacheOptimized,
       },
       dreamState: {

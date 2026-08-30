@@ -1,5 +1,6 @@
 import type { ScreenWatchingConfig } from './airi-card'
 
+import { isWithinSchedule } from '@proj-airi/stage-shared'
 import { nanoid } from 'nanoid'
 import { defineStore, storeToRefs } from 'pinia'
 import { computed, onUnmounted, ref, toRaw, watch } from 'vue'
@@ -8,6 +9,7 @@ import { useChatOrchestratorStore } from '../chat'
 import { useChatSessionStore } from '../chat/session-store'
 import { useEventLogStore } from '../event-log'
 import { useLLM } from '../llm'
+import { useProactivityStore } from '../proactivity'
 import { useProvidersStore } from '../providers'
 import { useAiriCardStore } from './airi-card'
 import { useConsciousnessStore } from './consciousness'
@@ -35,6 +37,7 @@ export const useScreenWatcherStore = defineStore('screen-watcher', () => {
   const providersStore = useProvidersStore()
   const llmStore = useLLM()
   const liveSessionStore = useLiveSessionStore()
+  const proactivityStore = useProactivityStore()
 
   // State
   const isRunning = ref(false)
@@ -292,16 +295,41 @@ export const useScreenWatcherStore = defineStore('screen-watcher', () => {
       return
     }
 
-    // Busy Pipe Safeguard: defer if user or assistant is active
-    if (config.deferWhileSpeaking) {
-      const isSpeaking = Boolean(chatOrchestrator.sending)
-        || Boolean(chatOrchestrator.activeSpokenText)
-        || Boolean(chatOrchestrator.isUserTyping)
-        || liveSessionStore.isActive
-      if (isSpeaking) {
-        console.log('[ScreenWatcher:Tick] ⏸️ Skipped: Busy Pipe (user or character is speaking/typing).')
+    // Gate 1. Operating Schedule / Bedtime: defer if outside active hours
+    if (config.respectSchedule ?? true) {
+      const schedule = activeCard.value?.extensions?.airi?.heartbeats?.schedule
+      if (schedule?.start && schedule?.end) {
+        const isAwake = isWithinSchedule(schedule.start, schedule.end)
+        if (!isAwake) {
+          console.log(`[ScreenWatcher:Tick] ⏸️ Skipped: Outside operating schedule (${schedule.start} - ${schedule.end}) — character is asleep.`)
+          return
+        }
+      }
+    }
+
+    // Gate 2. User Presence Safeguard: pause if user is away from computer (AFK)
+    const pauseWhenAfk = config.pauseWhenAfk ?? activeCard.value?.extensions?.airi?.heartbeats?.pauseWhenAfk ?? true
+    if (pauseWhenAfk) {
+      if (proactivityStore.idleTimeSec === undefined) {
+        await proactivityStore.refreshIdleTimeOnly()
+      }
+      const afkLimitMinutes = config.afkThresholdMinutes ?? activeCard.value?.extensions?.airi?.heartbeats?.afkThresholdMinutes ?? 5
+      const afkLimitSec = afkLimitMinutes * 60
+      const currentIdleSec = proactivityStore.idleTimeSec ?? 0
+      if (currentIdleSec >= afkLimitSec) {
+        console.log(`[ScreenWatcher:Tick] ⏸️ Skipped: User is away / AFK (${Math.floor(currentIdleSec / 60)}m ${currentIdleSec % 60}s idle, limit ${afkLimitMinutes}m).`)
         return
       }
+    }
+
+    // Gate 3. Busy Pipe Safeguard: defer if user or assistant is active (Hard Mutex)
+    const isSpeaking = Boolean(chatOrchestrator.sending)
+      || Boolean(chatOrchestrator.activeSpokenText)
+      || Boolean(chatOrchestrator.isUserTyping)
+      || liveSessionStore.isActive
+    if (isSpeaking) {
+      console.log('[ScreenWatcher:Tick] ⏸️ Skipped: Busy Pipe (user or character is speaking/typing).')
+      return
     }
 
     isCapturing.value = true
@@ -518,11 +546,19 @@ export const useScreenWatcherStore = defineStore('screen-watcher', () => {
 
   // React to card changes or screenWatching configuration toggles
   watch(
-    () => [activeCardId.value, activeConfig.value?.enabled, activeConfig.value?.captureIntervalMs, activeConfig.value?.enableVlm],
-    ([cardId, enabled, _interval, enableVlm]) => {
+    () => [
+      activeCardId.value,
+      activeConfig.value?.enabled,
+      activeConfig.value?.captureIntervalMs,
+      activeConfig.value?.enableVlm,
+      activeConfig.value?.respectSchedule,
+      activeCard.value?.extensions?.airi?.heartbeats?.schedule?.start,
+      activeCard.value?.extensions?.airi?.heartbeats?.schedule?.end,
+    ],
+    ([cardId, enabled, _interval, enableVlm, respectSchedule, start, end]) => {
       if (!isPrimaryHostWindow())
         return
-      console.log('[ScreenWatcher:Watch] Card / config changed:', { cardId, enabled, enableVlm })
+      console.log('[ScreenWatcher:Watch] Card / config changed:', { cardId, enabled, enableVlm, respectSchedule, start, end })
       restartWatcher()
     },
     { immediate: true },

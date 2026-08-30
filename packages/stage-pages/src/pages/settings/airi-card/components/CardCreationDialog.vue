@@ -266,6 +266,8 @@ const heartbeatsContextWindowHistory = ref<boolean>(true)
 const heartbeatsContextSystemLoad = ref<boolean>(true)
 const heartbeatsContextUsageMetrics = ref<boolean>(true)
 const heartbeatsRespectSchedule = ref<boolean>(true)
+const presencePauseWhenAfk = ref<boolean>(true)
+const presenceAfkThresholdMinutes = ref<number>(5)
 const dreamStateEnabled = ref<boolean>(false)
 const dreamStateStrictAfkGating = ref<boolean>(true)
 const dreamStateRichness = ref<'minimal' | 'balanced' | 'lush'>('balanced')
@@ -289,6 +291,7 @@ const screenWatchingDeferWhileSpeaking = ref<boolean>(true)
 const screenWatchingMaxPerHour = ref<number>(4)
 const screenWatchingHysteresisMinutes = ref<number>(3)
 const screenWatchingEnableVlm = ref<boolean>(false)
+const screenWatchingRespectSchedule = ref<boolean>(true)
 
 // Sensors & Event Ledger
 const eventLedgerEnabled = ref<boolean>(true)
@@ -880,6 +883,8 @@ async function saveCard(card: Card): Promise<boolean> {
             end: heartbeatsScheduleEnd.value,
           },
           respectSchedule: heartbeatsRespectSchedule.value,
+          pauseWhenAfk: presencePauseWhenAfk.value,
+          afkThresholdMinutes: presenceAfkThresholdMinutes.value,
         },
         dreamState: {
           ...existingAiriExt?.dreamState,
@@ -916,6 +921,9 @@ async function saveCard(card: Card): Promise<boolean> {
           maxPerHour: screenWatchingMaxPerHour.value,
           hysteresisMinutes: screenWatchingHysteresisMinutes.value,
           enableVlm: screenWatchingEnableVlm.value,
+          respectSchedule: screenWatchingRespectSchedule.value,
+          pauseWhenAfk: presencePauseWhenAfk.value,
+          afkThresholdMinutes: presenceAfkThresholdMinutes.value,
         },
         eventLedger: {
           ...existingAiriExt?.eventLedger,
@@ -1095,6 +1103,8 @@ function initializeCard(): Card {
   heartbeatsContextSystemLoad.value = airiExt?.heartbeats?.contextOptions?.systemLoad ?? true
   heartbeatsContextUsageMetrics.value = airiExt?.heartbeats?.contextOptions?.usageMetrics ?? true
   heartbeatsRespectSchedule.value = airiExt?.heartbeats?.respectSchedule ?? true
+  presencePauseWhenAfk.value = airiExt?.heartbeats?.pauseWhenAfk ?? airiExt?.screenWatching?.pauseWhenAfk ?? true
+  presenceAfkThresholdMinutes.value = airiExt?.heartbeats?.afkThresholdMinutes ?? airiExt?.screenWatching?.afkThresholdMinutes ?? 5
   // Dream State
   dreamStateEnabled.value = airiExt?.dreamState?.enabled ?? false
   dreamStateStrictAfkGating.value = airiExt?.dreamState?.strictAfkGating ?? true
@@ -1119,6 +1129,7 @@ function initializeCard(): Card {
   screenWatchingMaxPerHour.value = airiExt?.screenWatching?.maxPerHour ?? 4
   screenWatchingHysteresisMinutes.value = airiExt?.screenWatching?.hysteresisMinutes ?? 3
   screenWatchingEnableVlm.value = airiExt?.screenWatching?.enableVlm ?? false
+  screenWatchingRespectSchedule.value = airiExt?.screenWatching?.respectSchedule ?? true
 
   // Sensors & Event Ledger
   eventLedgerEnabled.value = airiExt?.eventLedger?.enabled ?? true
@@ -1552,19 +1563,21 @@ function handleGeneratorSave(newValue: string) {
             v-model:heartbeats-interval-minutes="heartbeatsIntervalMinutes"
             v-model:heartbeats-prompt="heartbeatsPrompt"
             v-model:heartbeats-inject-into-prompt="heartbeatsInjectIntoPrompt"
-            v-model:heartbeats-use-as-local-gate="heartbeatsUseAsLocalGate"
             v-model:heartbeats-schedule-start="heartbeatsScheduleStart"
             v-model:heartbeats-schedule-end="heartbeatsScheduleEnd"
             v-model:heartbeats-context-window-history="heartbeatsContextWindowHistory"
             v-model:heartbeats-context-system-load="heartbeatsContextSystemLoad"
             v-model:heartbeats-context-usage-metrics="heartbeatsContextUsageMetrics"
             v-model:heartbeats-respect-schedule="heartbeatsRespectSchedule"
+            v-model:presence-pause-when-afk="presencePauseWhenAfk"
+            v-model:presence-afk-threshold-minutes="presenceAfkThresholdMinutes"
             v-model:dream-state-enabled="dreamStateEnabled"
             v-model:dream-state-strict-afk-gating="dreamStateStrictAfkGating"
             v-model:dream-state-richness="dreamStateRichness"
             v-model:dream-state-afk-threshold-minutes="dreamStateAfkThresholdMinutes"
             v-model:dream-state-session-timeout-minutes="dreamStateSessionTimeoutMinutes"
             v-model:dream-state-max-sessions-per-day="dreamStateMaxSessionsPerDay"
+            v-model:dream-state-min-conversation-turns="dreamStateMinConversationTurns"
             v-model:dream-state-inject-dream-context="dreamStateInjectDreamContext"
             v-model:screen-watching-enabled="screenWatchingEnabled"
             v-model:screen-watching-delivery-mode="screenWatchingDeliveryMode"
@@ -1575,10 +1588,10 @@ function handleGeneratorSave(newValue: string) {
             v-model:screen-watching-workload="screenWatchingWorkload"
             v-model:screen-watching-publish-to-context="screenWatchingPublishToContext"
             v-model:screen-watching-interest-tags="screenWatchingInterestTags"
-            v-model:screen-watching-defer-while-speaking="screenWatchingDeferWhileSpeaking"
             v-model:screen-watching-max-per-hour="screenWatchingMaxPerHour"
             v-model:screen-watching-hysteresis-minutes="screenWatchingHysteresisMinutes"
             v-model:screen-watching-enable-vlm="screenWatchingEnableVlm"
+            v-model:screen-watching-respect-schedule="screenWatchingRespectSchedule"
             v-model:event-ledger-enabled="eventLedgerEnabled"
             v-model:event-ledger-sample-depth="eventLedgerSampleDepth"
             v-model:event-ledger-domains="eventLedgerDomains"

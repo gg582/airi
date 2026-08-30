@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { isWithinSchedule } from '@proj-airi/stage-shared'
 import { useVisionSources } from '@proj-airi/stage-ui/composables'
 import { isModelCached } from '@proj-airi/stage-ui/libs/inference'
 import { useProactivityStore } from '@proj-airi/stage-ui/stores'
@@ -46,6 +47,12 @@ async function refreshTelemetry() {
   isRefreshingSensors.value = true
   try {
     await proactivityStore.updateSensors()
+    const disp = await visionStore.getPrimaryDisplaySize({ force: true })
+    if (disp)
+      primaryDisplaySize.value = { width: disp.width, height: disp.height }
+  }
+  catch (err) {
+    console.error('[CardCreationTabProactivity] Telemetry refresh failed:', err)
   }
   finally {
     isRefreshingSensors.value = false
@@ -53,8 +60,7 @@ async function refreshTelemetry() {
 }
 
 onMounted(async () => {
-  void proactivityStore.updateSensors()
-  primaryDisplaySize.value = await visionStore.getPrimaryDisplaySize()
+  void refreshTelemetry()
   try {
     const lightweightCached = await isModelCached('Xenova/clip-vit-base-patch32')
     const vlmCached = await isModelCached('Xenova/moondream2')
@@ -69,10 +75,11 @@ onMounted(async () => {
 })
 
 // Sub-Tab Navigation State
-type SubTabId = 'heartbeats' | 'screen' | 'dream' | 'ledger' | 'short_term'
-const activeSubTab = ref<SubTabId>('heartbeats')
+type SubTabId = 'schedule' | 'heartbeats' | 'screen' | 'dream' | 'ledger' | 'short_term'
+const activeSubTab = ref<SubTabId>('schedule')
 
 const subTabs = [
+  { id: 'schedule' as const, label: 'Operating Schedule', icon: 'i-solar:clock-circle-bold-duotone', desc: 'Active hours & bedtime' },
   { id: 'heartbeats' as const, label: 'Heartbeats', icon: 'i-solar:alarm-bold-duotone', desc: 'Ambient pull loop' },
   { id: 'screen' as const, label: 'Screen Watching', icon: 'i-solar:eye-bold-duotone', desc: 'Event-driven triggers' },
   { id: 'dream' as const, label: 'Dream State', icon: 'i-solar:moon-stars-bold-duotone', desc: 'Sleep consolidation' },
@@ -85,7 +92,6 @@ const heartbeatsEnabled = defineModel<boolean>('heartbeatsEnabled', { default: f
 const heartbeatsIntervalMinutes = defineModel<number>('heartbeatsIntervalMinutes', { default: 5 })
 const heartbeatsPrompt = defineModel<string>('heartbeatsPrompt', { default: '' })
 const heartbeatsInjectIntoPrompt = defineModel<boolean>('heartbeatsInjectIntoPrompt', { default: true })
-const heartbeatsUseAsLocalGate = defineModel<boolean>('heartbeatsUseAsLocalGate', { default: false })
 const heartbeatsScheduleStart = defineModel<string>('heartbeatsScheduleStart', { default: '09:00' })
 const heartbeatsScheduleEnd = defineModel<string>('heartbeatsScheduleEnd', { default: '23:00' })
 const heartbeatsContextWindowHistory = defineModel<boolean>('heartbeatsContextWindowHistory', { default: true })
@@ -93,6 +99,20 @@ const heartbeatsContextSystemLoad = defineModel<boolean>('heartbeatsContextSyste
 const heartbeatsContextUsageMetrics = defineModel<boolean>('heartbeatsContextUsageMetrics', { default: true })
 const heartbeatsRespectSchedule = defineModel<boolean>('heartbeatsRespectSchedule', { default: true })
 const groundingEnabled = defineModel<boolean>('groundingEnabled', { default: false })
+
+// Computed Schedule Status
+const isAwakeCurrently = computed(() => isWithinSchedule(heartbeatsScheduleStart.value, heartbeatsScheduleEnd.value))
+const scheduleDurationLabel = computed(() => {
+  const [startH, startM] = (heartbeatsScheduleStart.value || '09:00').split(':').map(Number)
+  const [endH, endM] = (heartbeatsScheduleEnd.value || '23:00').split(':').map(Number)
+  const startTotal = (startH || 0) * 60 + (startM || 0)
+  const endTotal = (endH || 0) * 60 + (endM || 0)
+  const activeMinutes = endTotal >= startTotal ? endTotal - startTotal : (1440 - startTotal) + endTotal
+  const sleepMinutes = 1440 - activeMinutes
+  const activeHours = (activeMinutes / 60).toFixed(1).replace(/\.0$/, '')
+  const sleepHours = (sleepMinutes / 60).toFixed(1).replace(/\.0$/, '')
+  return `${activeHours}h active • ${sleepHours}h sleep`
+})
 
 // 2. Screen Watching (Push / Attention Ecology) Models
 const screenWatchingEnabled = defineModel<boolean>('screenWatchingEnabled', { default: false })
@@ -106,10 +126,10 @@ const screenWatchingPublishToContext = defineModel<boolean>('screenWatchingPubli
 const screenWatchingInterestTags = defineModel<string[]>('screenWatchingInterestTags', {
   default: () => ['antigravity', 'terminal_error', 'youtube', 'discord'],
 })
-const screenWatchingDeferWhileSpeaking = defineModel<boolean>('screenWatchingDeferWhileSpeaking', { default: true })
 const screenWatchingMaxPerHour = defineModel<number>('screenWatchingMaxPerHour', { default: 4 })
 const screenWatchingHysteresisMinutes = defineModel<number>('screenWatchingHysteresisMinutes', { default: 3 })
 const screenWatchingEnableVlm = defineModel<boolean>('screenWatchingEnableVlm', { default: false })
+const screenWatchingRespectSchedule = defineModel<boolean>('screenWatchingRespectSchedule', { default: true })
 
 // Capture-resolution readout for the downscale slider. Percentages are applied
 // relative to the display's native size; 100% means a full native-resolution
@@ -192,6 +212,10 @@ function removeInterestTag(indexOrTag: number | string) {
   }
 }
 
+// 1. Operating Schedule & Presence Models
+const presencePauseWhenAfk = defineModel<boolean>('presencePauseWhenAfk', { default: true })
+const presenceAfkThresholdMinutes = defineModel<number>('presenceAfkThresholdMinutes', { default: 5 })
+
 // 3. Dream State Models
 const dreamStateEnabled = defineModel<boolean>('dreamStateEnabled', { default: false })
 const dreamStateStrictAfkGating = defineModel<boolean>('dreamStateStrictAfkGating', { default: true })
@@ -199,6 +223,7 @@ const dreamStateRichness = defineModel<'minimal' | 'balanced' | 'lush'>('dreamSt
 const dreamStateAfkThresholdMinutes = defineModel<number>('dreamStateAfkThresholdMinutes', { default: 5 })
 const dreamStateSessionTimeoutMinutes = defineModel<number>('dreamStateSessionTimeoutMinutes', { default: 60 })
 const dreamStateMaxSessionsPerDay = defineModel<number>('dreamStateMaxSessionsPerDay', { default: 4 })
+const dreamStateMinConversationTurns = defineModel<number>('dreamStateMinConversationTurns', { default: 4 })
 const dreamStateInjectDreamContext = defineModel<boolean>('dreamStateInjectDreamContext', { default: true })
 
 // 4. Sensors & Event Ledger Models
@@ -259,6 +284,167 @@ const intervalPresets = [2, 5, 10, 20]
 
     <!-- Sub-Tab Panels Container -->
     <div class="border border-neutral-200/80 rounded-xl bg-white/70 p-5 shadow-sm dark:border-neutral-800 dark:bg-neutral-900/40">
+      <!-- ================================================================= -->
+      <!-- 0. OPERATING SCHEDULE & BEDTIME SUB-TAB                           -->
+      <!-- ================================================================= -->
+      <div v-if="activeSubTab === 'schedule'" class="flex flex-col gap-6">
+        <div class="flex items-center justify-between border-b border-neutral-100 pb-4 dark:border-neutral-800">
+          <div class="flex flex-col gap-0.5">
+            <div class="flex items-center gap-2">
+              <div class="i-solar:clock-circle-bold-duotone text-lg text-primary-500" />
+              <h4 class="text-sm text-neutral-800 font-semibold dark:text-neutral-100">
+                Character Operating Schedule & Bedtime
+              </h4>
+            </div>
+            <p class="pl-6 text-xs text-neutral-500 dark:text-neutral-400">
+              Establish a shared circadian rhythm for this character. Active hours coordinate Heartbeats, Screen Watching, and Dream State.
+            </p>
+          </div>
+          <span
+            :class="[
+              'px-2.5 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5',
+              isAwakeCurrently
+                ? 'bg-green-100 text-green-700 dark:bg-green-950/60 dark:text-green-300 border border-green-200 dark:border-green-800'
+                : 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800',
+            ]"
+          >
+            <span :class="isAwakeCurrently ? 'i-solar:sun-2-bold-duotone text-amber-500' : 'i-solar:moon-stars-bold-duotone text-indigo-400'" />
+            {{ isAwakeCurrently ? 'Currently Awake' : 'Currently Asleep' }}
+          </span>
+        </div>
+
+        <div class="flex flex-col gap-5">
+          <!-- Active Operating Hours Card -->
+          <div class="border border-neutral-200/80 rounded-xl bg-neutral-50/70 p-4.5 dark:border-neutral-700/80 dark:bg-neutral-950/40">
+            <div class="flex flex-col gap-3">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <span class="i-solar:calendar-date-bold-duotone text-base text-primary-500" />
+                  <label class="text-xs text-neutral-800 font-semibold dark:text-neutral-200">
+                    Daily Active Hours (Wake Up & Bedtime)
+                  </label>
+                </div>
+                <span class="rounded-md bg-neutral-200/70 px-2 py-0.5 text-[11px] text-neutral-600 font-medium dark:bg-neutral-800 dark:text-neutral-300">
+                  {{ scheduleDurationLabel }}
+                </span>
+              </div>
+
+              <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div class="flex flex-col gap-1.5">
+                  <span class="text-[11px] text-neutral-500 font-medium dark:text-neutral-400">
+                    🌅 Wake Up Time (Start of Day)
+                  </span>
+                  <input
+                    v-model="heartbeatsScheduleStart"
+                    type="time"
+                    class="w-full border border-neutral-200 rounded-lg bg-white px-3 py-2 text-xs font-mono dark:border-neutral-700 dark:bg-neutral-800"
+                  >
+                </div>
+
+                <div class="flex flex-col gap-1.5">
+                  <span class="text-[11px] text-neutral-500 font-medium dark:text-neutral-400">
+                    🌙 Bedtime (Quiet Hours Begin)
+                  </span>
+                  <input
+                    v-model="heartbeatsScheduleEnd"
+                    type="time"
+                    class="w-full border border-neutral-200 rounded-lg bg-white px-3 py-2 text-xs font-mono dark:border-neutral-700 dark:bg-neutral-800"
+                  >
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Subsystem Schedule Coordination -->
+          <div class="flex flex-col gap-3 border-t border-neutral-100 pt-4 dark:border-neutral-800">
+            <span class="text-xs text-neutral-700 font-semibold tracking-wider uppercase dark:text-neutral-300">
+              Subsystem Sleep & Quiet Gates
+            </span>
+
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <!-- Heartbeats Toggle -->
+              <div class="flex items-start gap-3 border border-neutral-200 rounded-xl bg-white p-3.5 shadow-sm dark:border-neutral-700/80 dark:bg-neutral-800/60">
+                <input
+                  id="sched-heartbeats-respect"
+                  v-model="heartbeatsRespectSchedule"
+                  type="checkbox"
+                  class="mt-0.5 h-4 w-4 border-gray-300 rounded text-primary-600 focus:ring-primary-500"
+                >
+                <div class="flex flex-col gap-1">
+                  <label for="sched-heartbeats-respect" class="cursor-pointer text-xs text-neutral-800 font-semibold dark:text-neutral-100">
+                    Heartbeats: Respect Operating Schedule
+                  </label>
+                  <p class="text-[11px] text-neutral-500 leading-relaxed dark:text-neutral-400">
+                    Strictly suppresses periodic pull check-ins and autonomous comments outside the active window.
+                  </p>
+                </div>
+              </div>
+
+              <!-- Screen Watching Toggle -->
+              <div class="flex items-start gap-3 border border-neutral-200 rounded-xl bg-white p-3.5 shadow-sm dark:border-neutral-700/80 dark:bg-neutral-800/60">
+                <input
+                  id="sched-screen-respect"
+                  v-model="screenWatchingRespectSchedule"
+                  type="checkbox"
+                  class="mt-0.5 h-4 w-4 border-gray-300 rounded text-primary-600 focus:ring-primary-500"
+                >
+                <div class="flex flex-col gap-1">
+                  <label for="sched-screen-respect" class="cursor-pointer text-xs text-neutral-800 font-semibold dark:text-neutral-100">
+                    Screen Watching: Respect Operating Schedule
+                  </label>
+                  <p class="text-[11px] text-neutral-500 leading-relaxed dark:text-neutral-400">
+                    Pauses continuous screen capture ticks and speech bubble reactions during bedtime quiet hours.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- User Presence & Away (AFK) Gating -->
+          <div class="flex flex-col gap-3 border-t border-neutral-100 pt-4 dark:border-neutral-800">
+            <span class="text-xs text-neutral-700 font-semibold tracking-wider uppercase dark:text-neutral-300">
+              User Presence & Away (AFK) Gating
+            </span>
+
+            <div class="flex flex-col gap-3 border border-neutral-200 rounded-xl bg-white p-4 shadow-sm dark:border-neutral-700/80 dark:bg-neutral-800/60">
+              <div class="flex items-start gap-3">
+                <input
+                  id="sched-presence-afk-check"
+                  v-model="presencePauseWhenAfk"
+                  type="checkbox"
+                  class="mt-0.5 h-4 w-4 border-gray-300 rounded text-primary-600 focus:ring-primary-500"
+                >
+                <div class="flex flex-col gap-1">
+                  <label for="sched-presence-afk-check" class="cursor-pointer text-xs text-neutral-800 font-semibold dark:text-neutral-100">
+                    Pause When Away from Computer (Require User Presence)
+                  </label>
+                  <p class="text-[11px] text-neutral-500 leading-relaxed dark:text-neutral-400">
+                    Automatically pauses both proactive check-ins and screen captures when keyboard/mouse have been idle for more than the specified duration, ensuring AIRI only reacts while you are active at your desk.
+                  </p>
+                </div>
+              </div>
+
+              <div v-if="presencePauseWhenAfk" class="flex items-center gap-2 border-t border-neutral-100 pl-7 pt-1 dark:border-neutral-700/60">
+                <span class="text-xs text-neutral-600 font-medium dark:text-neutral-400">
+                  Consider user AFK / Away after:
+                </span>
+                <div class="flex items-center gap-1.5 border border-neutral-200 rounded-lg bg-neutral-50 px-2.5 py-1 text-xs dark:border-neutral-700 dark:bg-neutral-800">
+                  <input
+                    v-model.number="presenceAfkThresholdMinutes"
+                    type="number"
+                    min="1"
+                    max="120"
+                    class="w-12 bg-transparent text-right font-mono outline-none"
+                  >
+                  <span class="text-neutral-400">min</span>
+                </div>
+                <span class="text-[11px] text-neutral-400">of continuous inactivity</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- ================================================================= -->
       <!-- 1. AMBIENT HEARTBEATS SUB-TAB                                     -->
       <!-- ================================================================= -->
@@ -323,62 +509,6 @@ const intervalPresets = [2, 5, 10, 20]
                   class="w-14 bg-transparent text-right font-medium font-mono outline-none"
                 >
                 <span class="text-neutral-500">min</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Schedule Window -->
-          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div class="flex flex-col gap-2">
-              <label class="text-xs text-neutral-700 font-medium dark:text-neutral-300">
-                Operating Schedule Hours
-              </label>
-              <div class="flex items-center gap-2">
-                <input
-                  v-model="heartbeatsScheduleStart"
-                  type="time"
-                  class="flex-1 border border-neutral-200 rounded-lg bg-neutral-50 px-3 py-1.5 text-xs dark:border-neutral-700 dark:bg-neutral-800"
-                >
-                <span class="text-xs text-neutral-400 font-medium">to</span>
-                <input
-                  v-model="heartbeatsScheduleEnd"
-                  type="time"
-                  class="flex-1 border border-neutral-200 rounded-lg bg-neutral-50 px-3 py-1.5 text-xs dark:border-neutral-700 dark:bg-neutral-800"
-                >
-              </div>
-              <div class="flex items-center gap-2 pt-1">
-                <input
-                  id="respect-schedule"
-                  v-model="heartbeatsRespectSchedule"
-                  type="checkbox"
-                  class="h-3.5 w-3.5 border-gray-300 rounded text-primary-600"
-                >
-                <label for="respect-schedule" class="text-xs text-neutral-500 dark:text-neutral-400">
-                  Strictly stay quiet outside these hours.
-                </label>
-              </div>
-            </div>
-
-            <!-- Inactivity Gating -->
-            <div class="flex flex-col justify-start gap-2 border-t border-neutral-100 pt-2 sm:border-l sm:border-t-0 dark:border-neutral-800 sm:pl-4 sm:pt-0">
-              <label class="text-xs text-neutral-700 font-medium dark:text-neutral-300">
-                Inactivity & Idle Gating
-              </label>
-              <div class="flex items-start gap-2">
-                <input
-                  id="local-gate-check"
-                  v-model="heartbeatsUseAsLocalGate"
-                  type="checkbox"
-                  class="mt-0.5 h-4 w-4 border-gray-300 rounded text-primary-600"
-                >
-                <div class="flex flex-col">
-                  <label for="local-gate-check" class="text-xs text-neutral-800 font-medium dark:text-neutral-200">
-                    Require Keyboard/Mouse Inactivity
-                  </label>
-                  <span class="text-xs text-neutral-500 dark:text-neutral-400">
-                    Only evaluates once user is idle for the specified interval, then pauses until activity resumes.
-                  </span>
-                </div>
               </div>
             </div>
           </div>
@@ -926,24 +1056,6 @@ const intervalPresets = [2, 5, 10, 20]
               </div>
             </div>
 
-            <!-- Busy Pipe Safeguard -->
-            <div class="flex items-start gap-2.5 border border-neutral-200 rounded-lg bg-neutral-50/50 p-3.5 dark:border-neutral-800 dark:bg-neutral-900/50">
-              <input
-                id="defer-while-speaking"
-                v-model="screenWatchingDeferWhileSpeaking"
-                type="checkbox"
-                class="mt-0.5 h-4 w-4 border-gray-300 rounded text-primary-600"
-              >
-              <div class="flex flex-col gap-0.5">
-                <label for="defer-while-speaking" class="text-xs text-neutral-800 font-medium dark:text-neutral-200">
-                  Busy Pipe Safeguard (Defer & Batch While Speaking)
-                </label>
-                <p class="text-xs text-neutral-500 leading-relaxed dark:text-neutral-400">
-                  Never interrupts active TTS voice generation or streaming chat. Queues triggers into a pending batch and consolidates them once conversation clears.
-                </p>
-              </div>
-            </div>
-
             <!-- Rate Limits & Cooldown -->
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div class="flex flex-col gap-1.5">
@@ -1065,7 +1177,8 @@ const intervalPresets = [2, 5, 10, 20]
           </div>
 
           <!-- Sleep Cycle & AFK Thresholds -->
-          <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <!-- Sleep Cycle & AFK Thresholds -->
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-4">
             <div class="flex flex-col gap-1.5">
               <label class="text-xs text-neutral-700 font-medium dark:text-neutral-300">
                 Required Inactivity (AFK)
@@ -1086,6 +1199,17 @@ const intervalPresets = [2, 5, 10, 20]
                 <span class="text-neutral-400">min</span>
               </div>
               <span class="text-[11px] text-neutral-400">Quiet time since last chat turn.</span>
+            </div>
+
+            <div class="flex flex-col gap-1.5">
+              <label class="text-xs text-neutral-700 font-medium dark:text-neutral-300">
+                Min Conversation Turns
+              </label>
+              <div class="flex items-center gap-1.5 border border-neutral-200 rounded-lg bg-neutral-50 px-2.5 py-1.5 text-xs dark:border-neutral-700 dark:bg-neutral-800">
+                <input v-model.number="dreamStateMinConversationTurns" type="number" min="1" max="50" class="w-full bg-transparent outline-none">
+                <span class="text-neutral-400">turns</span>
+              </div>
+              <span class="text-[11px] text-neutral-400">Chat turns required before dream.</span>
             </div>
 
             <div class="flex flex-col gap-1.5">
@@ -1123,6 +1247,36 @@ const intervalPresets = [2, 5, 10, 20]
               <label for="inject-dream-context" class="text-xs text-neutral-700 font-medium dark:text-neutral-300">
                 Inject Pending Dream Insights into Next Session Greeting / Morning Interaction
               </label>
+            </div>
+          </div>
+
+          <!-- Dream State Lifecycle Explainer Card -->
+          <div class="flex flex-col gap-2.5 border border-purple-200/70 rounded-xl bg-purple-50/40 p-4 dark:border-purple-900/50 dark:bg-purple-950/20">
+            <div class="flex items-center gap-2 text-xs text-purple-900 font-semibold dark:text-purple-200">
+              <span class="i-solar:moon-stars-bold-duotone text-base text-purple-600 dark:text-purple-400" />
+              <span>How the Dream State Consolidation Cycle Works</span>
+            </div>
+            <div class="grid grid-cols-1 gap-2 pt-1 sm:grid-cols-4">
+              <div class="flex flex-col gap-1 border border-purple-200/50 rounded-lg bg-white/80 p-2.5 dark:border-purple-800/40 dark:bg-neutral-900/60">
+                <span class="text-[10px] text-purple-600 font-bold tracking-wider uppercase dark:text-purple-400">1. Interaction</span>
+                <span class="text-xs text-neutral-700 font-medium dark:text-neutral-200">Have ≥ {{ dreamStateMinConversationTurns || 4 }} chat turns</span>
+                <span class="text-[11px] text-neutral-400">Accumulates recent context with your companion.</span>
+              </div>
+              <div class="flex flex-col gap-1 border border-purple-200/50 rounded-lg bg-white/80 p-2.5 dark:border-purple-800/40 dark:bg-neutral-900/60">
+                <span class="text-[10px] text-purple-600 font-bold tracking-wider uppercase dark:text-purple-400">2. Quiet Window</span>
+                <span class="text-xs text-neutral-700 font-medium dark:text-neutral-200">Wait {{ dreamStateSessionTimeoutMinutes || 60 }}m quiet time</span>
+                <span class="text-[11px] text-neutral-400">Ensures conversation has naturally ended.</span>
+              </div>
+              <div class="flex flex-col gap-1 border border-purple-200/50 rounded-lg bg-white/80 p-2.5 dark:border-purple-800/40 dark:bg-neutral-900/60">
+                <span class="text-[10px] text-purple-600 font-bold tracking-wider uppercase dark:text-purple-400">3. Sleep / AFK</span>
+                <span class="text-xs text-neutral-700 font-medium dark:text-neutral-200">Go idle for {{ dreamStateAfkThresholdMinutes || 5 }}m</span>
+                <span class="text-[11px] text-neutral-400">Triggers during bedtime or while stepping away.</span>
+              </div>
+              <div class="flex flex-col gap-1 border border-purple-200/50 rounded-lg bg-white/80 p-2.5 dark:border-purple-800/40 dark:bg-neutral-900/60">
+                <span class="text-[10px] text-purple-600 font-bold tracking-wider uppercase dark:text-purple-400">4. Memory Echo</span>
+                <span class="text-xs text-neutral-700 font-medium dark:text-neutral-200">Synthesizes echo chips</span>
+                <span class="text-[11px] text-neutral-400">Condenses reflections to greet you upon return.</span>
+              </div>
             </div>
           </div>
         </div>

@@ -544,6 +544,22 @@ export const useProactivityStore = defineStore('proactivity', () => {
         }
       }
 
+      // User Presence Safeguard: pause if user is away from computer (AFK)
+      const pauseWhenAfk = config?.pauseWhenAfk ?? true
+      if (pauseWhenAfk) {
+        if (idleTimeSec.value === undefined)
+          await refreshIdleTimeOnly()
+
+        const afkThresholdMinutes = config?.afkThresholdMinutes ?? 5
+        const afkThresholdSec = afkThresholdMinutes * 60
+        const currentIdleSec = idleTimeSec.value ?? 0
+
+        if (!options?.force && currentIdleSec >= afkThresholdSec) {
+          debug(`[Proactivity] Aborted: User is away / AFK (${Math.floor(currentIdleSec / 60)}m ${currentIdleSec % 60}s idle, limit ${afkThresholdMinutes}m).`)
+          return
+        }
+      }
+
       if (config?.useAsLocalGate) {
         if (idleTimeSec.value === undefined)
           await refreshIdleTimeOnly()
@@ -1013,5 +1029,6 @@ export const useProactivityStore = defineStore('proactivity', () => {
     cycleHeartbeatInterval,
     isRespectScheduleEnabled,
     toggleRespectSchedule,
+    refreshIdleTimeOnly,
   }
 })

@@ -68,6 +68,8 @@ const AiriHeartbeatSchema = object({
     start: string(),
     end: string(),
   }),
+  pauseWhenAfk: optional(boolean()),
+  afkThresholdMinutes: optional(number()),
 })
 
 const AiriDreamStateSchema = object({
@@ -116,6 +118,9 @@ const AiriScreenWatchingSchema = object({
   deferWhileSpeaking: optional(boolean()),
   maxPerHour: optional(number()),
   hysteresisMinutes: optional(number()),
+  respectSchedule: optional(boolean()),
+  pauseWhenAfk: optional(boolean()),
+  afkThresholdMinutes: optional(number()),
 })
 
 const AiriOutfitSchema = object({
