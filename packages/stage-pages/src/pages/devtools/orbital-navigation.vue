@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type {
   EscapementPose,
+  OdometerPose,
   QuantizedMomentumPose,
   SettingsTopology,
   SettingsTopologyNode,
@@ -16,6 +17,7 @@ import FullPageSettingsEngine from '../../composables/settings-topology/componen
 import KineticOrbitalMechanism from '../../composables/settings-topology/components/KineticOrbitalMechanism.vue'
 import QuantizedGeometryKey from '../../composables/settings-topology/components/QuantizedGeometryKey.vue'
 import QuantizedMomentumMechanism from '../../composables/settings-topology/components/QuantizedMomentumMechanism.vue'
+import QuantizedOdometerMechanism from '../../composables/settings-topology/components/QuantizedOdometerMechanism.vue'
 import StaticTopologyNodeStudy from '../../composables/settings-topology/components/StaticTopologyNodeStudy.vue'
 import TransmissionWaveMechanism from '../../composables/settings-topology/components/TransmissionWaveMechanism.vue'
 
@@ -34,19 +36,126 @@ import {
   createUnevenDeepFixture,
   createWideSiblingsFixture,
   DEFAULT_TRANSMISSION_CONFIG,
+  generateStartupRatchetSequence,
   getSiblings,
+  resolveOdometerPose,
   resolvePath,
   validateTopology,
 } from '../../composables/settings-topology'
 
 // ──────────────────────────────────────────────
-// Playground Main Mode & Tabs (5 Modes)
+// Playground Main Mode & Tabs (6 Modes)
 // ──────────────────────────────────────────────
-const activeMainTab = ref<'transmission-wave' | 'static-nodes' | 'momentum-cascade' | 'sketch' | 'escapement-lab'>('transmission-wave')
+const activeMainTab = ref<'odometer-lock' | 'transmission-wave' | 'static-nodes' | 'momentum-cascade' | 'sketch' | 'escapement-lab'>('odometer-lock')
 const catalogTopology = computed(() => buildSettingsCatalogTopology())
 
 // ──────────────────────────────────────────────
-// Transmission Wave Study State (Tab 1)
+// 22.5° Odometer Lock Study State (Tab 1)
+// ──────────────────────────────────────────────
+const ODOMETER_MOCK_TREE = [
+  {
+    name: 'General',
+    items: [
+      { name: 'App Appearance', fields: ['Theme Mode', 'Accent Color', 'Window Blur', 'Font Scaling'] },
+      { name: 'Language & Locale', fields: ['Language', 'Fallback', 'Date Format'] },
+      { name: 'Desktop Dock', fields: ['Dock Position', 'Auto-Hide', 'Opacity', 'Keep On Top'] },
+      { name: 'Audio Outputs', fields: ['Default Output', 'Master Volume', 'Sample Rate', 'Buffer Size'] },
+    ],
+  },
+  {
+    name: 'Consciousness',
+    items: [
+      { name: 'LLM Dispatch', fields: ['Provider', 'Model ID', 'Context Window', 'Temperature', 'Top P', 'Max Output Tokens'] },
+      { name: 'Cognitive Streaming', fields: ['Stream Chunks', 'Abort Signal', 'Buffer Latency'] },
+      { name: 'Thinking Budget', fields: ['Max Steps', 'Grounding Search', 'Safety Gate'] },
+    ],
+  },
+  {
+    name: 'Memory',
+    items: [
+      { name: 'Short-Term Memory', fields: ['Daily Summary Window', 'Token Budget', 'Continuous Cadence'] },
+      { name: 'Long-Term Text Journal', fields: ['Sacred Journal Rule', 'Indexing Depth', 'Vector Threshold'] },
+      { name: 'Lifetime Artifacts', fields: ['Auto-Provisioning', 'Distill Passes', 'Changelog Watermark', 'Audit Chain'] },
+      { name: 'Echo Chips', fields: ['Salience Gate', 'Delta-h Vote', 'Evidence Window'] },
+    ],
+  },
+  {
+    name: 'Vessel',
+    items: [
+      { name: '3D VRM Model', fields: ['Model File', 'LookAt Camera', 'Blink Interval', 'Hair Physics', 'SpringBones'] },
+      { name: 'Live2D Display', fields: ['Model3 JSON', 'Motion Group', 'Expression Map', 'Hit Zones'] },
+      { name: 'Outfits & Wardrobe', fields: ['Active Outfit', 'Mesh Hot-Swap', 'Texture Layer'] },
+    ],
+  },
+  {
+    name: 'Sensory',
+    items: [
+      { name: 'Vision Perception', fields: ['Salience Gate', 'CLIP Embedding', 'OCR Engine', 'VLM Forwarder'] },
+      { name: 'Audio Hearing (STT)', fields: ['Input Device', 'Whisper Worker', 'VAD Sensitivity', 'Noise Filter'] },
+      { name: 'Speech Synthesis (TTS)', fields: ['Voice Profile', 'Kokoro Engine', 'Speech Rate', 'Pitch Trim'] },
+    ],
+  },
+]
+
+const odometerActiveDepth = ref<0 | 1 | 2>(0)
+const odometerSelectedIndices = ref<[number, number, number]>([0, 0, 0])
+const isRatchetPlaying = ref(false)
+const showOdometerClean = ref(false)
+
+const currentCategory = computed(() => ODOMETER_MOCK_TREE[odometerSelectedIndices.value[0]] || ODOMETER_MOCK_TREE[0])
+const currentSection = computed(() => currentCategory.value.items[odometerSelectedIndices.value[1]] || currentCategory.value.items[0])
+const currentField = computed(() => currentSection.value.fields[odometerSelectedIndices.value[2]] || currentSection.value.fields[0])
+
+const activeOdometerPose = computed<OdometerPose>(() => {
+  return resolveOdometerPose(
+    odometerSelectedIndices.value,
+    odometerActiveDepth.value,
+    [ODOMETER_MOCK_TREE.length, currentCategory.value.items.length, currentSection.value.fields.length],
+  )
+})
+
+function selectOdometerCategory(idx: number) {
+  odometerSelectedIndices.value = [idx, 0, 0]
+  odometerActiveDepth.value = 0
+}
+
+function selectOdometerSection(idx: number) {
+  odometerSelectedIndices.value = [odometerSelectedIndices.value[0], idx, 0]
+  odometerActiveDepth.value = 1
+}
+
+function selectOdometerField(idx: number) {
+  odometerSelectedIndices.value = [odometerSelectedIndices.value[0], odometerSelectedIndices.value[1], idx]
+  odometerActiveDepth.value = 2
+}
+
+function playStartupRatchetSequence() {
+  if (isRatchetPlaying.value)
+    return
+  isRatchetPlaying.value = true
+
+  const frames = generateStartupRatchetSequence(odometerSelectedIndices.value)
+  let frameIdx = 0
+
+  const interval = setInterval(() => {
+    if (frameIdx >= frames.length) {
+      clearInterval(interval)
+      isRatchetPlaying.value = false
+      return
+    }
+    const frame = frames[frameIdx]
+    odometerSelectedIndices.value = [
+      Math.round(frame.angles[0] / 22.5),
+      Math.round(frame.angles[1] / 22.5),
+      Math.round(frame.angles[2] / 22.5),
+    ]
+    odometerActiveDepth.value = frame.activeLayer as 0 | 1 | 2
+    frameIdx++
+  }, 90)
+}
+
+// ──────────────────────────────────────────────
+// Transmission Wave Study State (Tab 2)
 // ──────────────────────────────────────────────
 const isTransmissionPlaying = ref(true)
 const transmissionSpeed = ref(1.0)
@@ -71,7 +180,7 @@ function resetTransmissionConfig() {
 }
 
 // ──────────────────────────────────────────────
-// Static 4-Node Topology Study State (Tab 2)
+// Static 4-Node Topology Study State (Tab 3)
 // ──────────────────────────────────────────────
 const staticVariantMode = ref<'side-by-side' | 'explicit' | 'implied'>('side-by-side')
 const staticShowLinks = ref<boolean>(true)
@@ -119,7 +228,7 @@ const STATIC_STATES: Array<{
 const geometryViewMode = ref<'clean-capture' | 'diagnostic'>('clean-capture')
 
 // ──────────────────────────────────────────────
-// RAF Momentum Motion Strip State (Tab 3)
+// RAF Momentum Motion Strip State (Tab 4)
 // ──────────────────────────────────────────────
 const isStripPlaying = ref(true)
 const stripSpeedMultiplier = ref(1.0)
@@ -148,7 +257,7 @@ function toggleSlowMo() {
 }
 
 // ──────────────────────────────────────────────
-// Escapement Lab State & Anatomy Toggles
+// Escapement Lab State & Anatomy Toggles (Tab 6)
 // ──────────────────────────────────────────────
 const labSize = ref<number>(280)
 const beatMs = ref<number>(500)
@@ -312,12 +421,25 @@ function triggerBranchHop() {
             </h1>
           </div>
           <p class="mt-0.5 text-xs text-neutral-500 font-mono dark:text-neutral-400">
-            Transmission Wave Mechanism · Static 4-Node topology · Momentum cascade · Integration sketches
+            22.5° Odometer Lock · Transmission Wave · Static 4-Node topology · Momentum cascade
           </p>
         </div>
 
-        <!-- Master View Switcher (5 Tabs) -->
+        <!-- Master View Switcher (6 Tabs) -->
         <div class="dark:bg-neutral-850 flex flex-wrap rounded-xl bg-neutral-200/60 p-1 backdrop-blur-sm">
+          <button
+            type="button"
+            class="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-mono transition-all"
+            :class="[
+              activeMainTab === 'odometer-lock'
+                ? 'bg-white text-neutral-900 shadow-sm font-semibold dark:bg-neutral-700 dark:text-white'
+                : 'text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100',
+            ]"
+            @click="activeMainTab = 'odometer-lock'"
+          >
+            <div class="i-solar:lock-keyhole-bold size-3.5" />
+            <span>22.5° Odometer Lock</span>
+          </button>
           <button
             type="button"
             class="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-mono transition-all"
@@ -387,9 +509,228 @@ function triggerBranchHop() {
       </div>
 
       <!-- ══════════════════════════════════════════════════════ -->
-      <!-- TAB 1: TRANSMISSION WAVE MECHANISM (NEW PRIMARY STUDY) -->
+      <!-- TAB 1: 22.5° QUANTIZED ESCAPEMENT ODOMETER LOCK        -->
       <!-- ══════════════════════════════════════════════════════ -->
-      <div v-if="activeMainTab === 'transmission-wave'" class="space-y-6">
+      <div v-if="activeMainTab === 'odometer-lock'" class="space-y-6">
+        <!-- Control Header & Odometer Status -->
+        <div class="flex flex-col gap-4 border-b border-neutral-200/80 pb-4 sm:flex-row sm:items-center sm:justify-between dark:border-neutral-800/80">
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="rounded bg-neutral-900 px-2 py-0.5 text-xs text-white font-bold font-mono dark:bg-neutral-100 dark:text-neutral-900">22.5° ODOMETER</span>
+              <h2 class="text-lg text-neutral-900 font-bold font-serif dark:text-neutral-100">
+                Hierarchical Combination Lock & 22.5° Sibling Ratchet
+              </h2>
+            </div>
+            <p class="text-xs text-neutral-500 font-mono dark:text-neutral-400">
+              Only active layer rotates in 22.5° clicks. Parent layers lock. Creates a unique geometric signature per settings route.
+            </p>
+          </div>
+
+          <!-- Actions -->
+          <div class="flex items-center gap-2 text-xs font-mono">
+            <button
+              type="button"
+              class="dark:bg-neutral-850 flex items-center gap-1.5 border border-neutral-300 rounded-xl bg-neutral-50 px-3 py-1.5 transition-all active:scale-95 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800"
+              :disabled="isRatchetPlaying"
+              :class="isRatchetPlaying ? 'opacity-50 cursor-not-allowed' : ''"
+              @click="playStartupRatchetSequence"
+            >
+              <div class="i-solar:play-circle-bold size-3.5" />
+              <span>{{ isRatchetPlaying ? 'Ratcheting...' : 'Play Startup Ratchet' }}</span>
+            </button>
+
+            <button
+              type="button"
+              class="dark:bg-neutral-850 border border-neutral-300 rounded-xl bg-neutral-50 px-3 py-1.5 transition-all active:scale-95 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800"
+              :class="showOdometerClean ? 'font-bold text-neutral-900 dark:text-white bg-neutral-200 dark:bg-neutral-700' : 'text-neutral-500'"
+              @click="showOdometerClean = !showOdometerClean"
+            >
+              <span>{{ showOdometerClean ? 'Show Navigator' : 'Clean Capture' }}</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- ── Main Workbench Grid ── -->
+        <div class="grid grid-cols-1 gap-6 lg:grid-cols-12">
+          <!-- ── Left / Center Column: Central Mechanism Display ── -->
+          <div :class="showOdometerClean ? 'lg:col-span-12' : 'lg:col-span-6'" class="flex flex-col items-center justify-center border border-neutral-200/80 rounded-3xl bg-white p-8 shadow-sm transition-all dark:border-neutral-800/80 dark:bg-neutral-900/80">
+            <!-- Active Breadcrumb & Glyph Badge -->
+            <div class="mb-4 w-full flex items-center justify-between text-xs font-mono">
+              <span class="rounded bg-neutral-100 px-2 py-0.5 text-neutral-600 font-bold dark:bg-neutral-800 dark:text-neutral-300">
+                ROUTE: {{ currentCategory.name }} / {{ currentSection.name }} / {{ currentField }}
+              </span>
+              <span class="rounded bg-neutral-900 px-2 py-0.5 text-white font-bold dark:bg-neutral-100 dark:text-neutral-900">
+                {{ activeOdometerPose.glyphSignature }}
+              </span>
+            </div>
+
+            <!-- Central 22.5° Quantized Odometer Specimen -->
+            <div class="my-6">
+              <QuantizedOdometerMechanism
+                :size="showOdometerClean ? 440 : 320"
+                :pose="activeOdometerPose"
+                :clean-mode="showOdometerClean"
+                :show-detent-ticks="true"
+              />
+            </div>
+
+            <!-- Layer Status Cards -->
+            <div class="grid grid-cols-3 w-full gap-2 text-xs font-mono">
+              <!-- Layer 1: Outer -->
+              <div
+                class="border rounded-xl p-2.5 text-center transition-all"
+                :class="[
+                  activeOdometerPose.layers[0].isActive
+                    ? 'border-neutral-900 bg-neutral-100/80 dark:border-neutral-100 dark:bg-neutral-800 font-bold'
+                    : activeOdometerPose.layers[0].isLocked
+                      ? 'border-neutral-300 bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-850'
+                      : 'border-neutral-200 opacity-60 dark:border-neutral-800',
+                ]"
+              >
+                <div class="flex items-center justify-between text-[10px] text-neutral-400 uppercase">
+                  <span>Layer 1 (Outer)</span>
+                  <span>{{ activeOdometerPose.layers[0].isLocked ? 'LOCKED' : (activeOdometerPose.layers[0].isActive ? 'ACTIVE' : 'IDLE') }}</span>
+                </div>
+                <strong class="mt-1 block text-sm text-neutral-900 dark:text-neutral-100">{{ activeOdometerPose.angles[0].toFixed(1) }}°</strong>
+                <span class="text-[10px] text-neutral-500">Idx: {{ odometerSelectedIndices[0] }} ({{ currentCategory.name }})</span>
+              </div>
+
+              <!-- Layer 2: Middle -->
+              <div
+                class="border rounded-xl p-2.5 text-center transition-all"
+                :class="[
+                  activeOdometerPose.layers[1].isActive
+                    ? 'border-neutral-900 bg-neutral-100/80 dark:border-neutral-100 dark:bg-neutral-800 font-bold'
+                    : activeOdometerPose.layers[1].isLocked
+                      ? 'border-neutral-300 bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-850'
+                      : 'border-neutral-200 opacity-60 dark:border-neutral-800',
+                ]"
+              >
+                <div class="flex items-center justify-between text-[10px] text-neutral-400 uppercase">
+                  <span>Layer 2 (Middle)</span>
+                  <span>{{ activeOdometerPose.layers[1].isLocked ? 'LOCKED' : (activeOdometerPose.layers[1].isActive ? 'ACTIVE' : 'IDLE') }}</span>
+                </div>
+                <strong class="mt-1 block text-sm text-neutral-900 dark:text-neutral-100">{{ activeOdometerPose.angles[1].toFixed(1) }}°</strong>
+                <span class="text-[10px] text-neutral-500">Idx: {{ odometerSelectedIndices[1] }} ({{ currentSection.name }})</span>
+              </div>
+
+              <!-- Layer 3: Inner -->
+              <div
+                class="border rounded-xl p-2.5 text-center transition-all"
+                :class="[
+                  activeOdometerPose.layers[2].isActive
+                    ? 'border-neutral-900 bg-neutral-100/80 dark:border-neutral-100 dark:bg-neutral-800 font-bold'
+                    : activeOdometerPose.layers[2].isLocked
+                      ? 'border-neutral-300 bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-850'
+                      : 'border-neutral-200 opacity-60 dark:border-neutral-800',
+                ]"
+              >
+                <div class="flex items-center justify-between text-[10px] text-neutral-400 uppercase">
+                  <span>Layer 3 (Inner)</span>
+                  <span>{{ activeOdometerPose.layers[2].isLocked ? 'LOCKED' : (activeOdometerPose.layers[2].isActive ? 'ACTIVE' : 'IDLE') }}</span>
+                </div>
+                <strong class="mt-1 block text-sm text-neutral-900 dark:text-neutral-100">{{ activeOdometerPose.angles[2].toFixed(1) }}°</strong>
+                <span class="text-[10px] text-neutral-500">Idx: {{ odometerSelectedIndices[2] }} ({{ currentField }})</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── Right Column: Hierarchical Navigation Controls ── -->
+          <div v-if="!showOdometerClean" class="lg:col-span-6 space-y-4">
+            <!-- Depth 0: Categories (Outer Square) -->
+            <div class="border border-neutral-200/80 rounded-2xl bg-white p-4 shadow-sm dark:border-neutral-800/80 dark:bg-neutral-900/80">
+              <div class="mb-2 flex items-center justify-between text-xs font-mono">
+                <span class="text-neutral-900 font-bold dark:text-white">1. DEPTH 0: ROOT CATEGORIES (OUTER SQUARE)</span>
+                <span class="text-[10px] text-neutral-400">θ1 = index × 22.5°</span>
+              </div>
+              <div class="grid grid-cols-2 gap-1.5 text-xs font-mono sm:grid-cols-3">
+                <button
+                  v-for="(cat, idx) in ODOMETER_MOCK_TREE"
+                  :key="cat.name"
+                  type="button"
+                  class="border rounded-lg p-2 text-left transition-all active:scale-95"
+                  :class="[
+                    odometerSelectedIndices[0] === idx && odometerActiveDepth >= 0
+                      ? 'border-neutral-900 bg-neutral-900 text-white font-bold dark:border-neutral-100 dark:bg-neutral-100 dark:text-neutral-900'
+                      : 'border-neutral-200 bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100',
+                  ]"
+                  @click="selectOdometerCategory(idx)"
+                >
+                  <div class="text-[10px] text-neutral-400">
+                    Idx {{ idx }} · {{ (idx * 22.5).toFixed(1) }}°
+                  </div>
+                  <div class="truncate">
+                    {{ cat.name }}
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            <!-- Depth 1: Sections / Modules (Middle Square) -->
+            <div class="border border-neutral-200/80 rounded-2xl bg-white p-4 shadow-sm dark:border-neutral-800/80 dark:bg-neutral-900/80">
+              <div class="mb-2 flex items-center justify-between text-xs font-mono">
+                <span class="text-neutral-900 font-bold dark:text-white">2. DEPTH 1: SECTIONS IN {{ currentCategory.name.toUpperCase() }} (MIDDLE SQUARE)</span>
+                <span class="text-[10px] text-neutral-400">θ2 = index × 22.5°</span>
+              </div>
+              <div class="grid grid-cols-2 gap-1.5 text-xs font-mono">
+                <button
+                  v-for="(sec, idx) in currentCategory.items"
+                  :key="sec.name"
+                  type="button"
+                  class="border rounded-lg p-2 text-left transition-all active:scale-95"
+                  :class="[
+                    odometerSelectedIndices[1] === idx && odometerActiveDepth >= 1
+                      ? 'border-neutral-900 bg-neutral-900 text-white font-bold dark:border-neutral-100 dark:bg-neutral-100 dark:text-neutral-900'
+                      : 'border-neutral-200 bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100',
+                  ]"
+                  @click="selectOdometerSection(idx)"
+                >
+                  <div class="text-[10px] text-neutral-400">
+                    Idx {{ idx }} · {{ (idx * 22.5).toFixed(1) }}°
+                  </div>
+                  <div class="truncate">
+                    {{ sec.name }}
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            <!-- Depth 2: Specific Fields / Settings (Inner Square) -->
+            <div class="border border-neutral-200/80 rounded-2xl bg-white p-4 shadow-sm dark:border-neutral-800/80 dark:bg-neutral-900/80">
+              <div class="mb-2 flex items-center justify-between text-xs font-mono">
+                <span class="text-neutral-900 font-bold dark:text-white">3. DEPTH 2: SETTINGS IN {{ currentSection.name.toUpperCase() }} (INNER SQUARE)</span>
+                <span class="text-[10px] text-neutral-400">θ3 = index × 22.5°</span>
+              </div>
+              <div class="grid grid-cols-2 gap-1.5 text-xs font-mono sm:grid-cols-3">
+                <button
+                  v-for="(fld, idx) in currentSection.fields"
+                  :key="fld"
+                  type="button"
+                  class="border rounded-lg p-2 text-left transition-all active:scale-95"
+                  :class="[
+                    odometerSelectedIndices[2] === idx && odometerActiveDepth >= 2
+                      ? 'border-neutral-900 bg-neutral-900 text-white font-bold dark:border-neutral-100 dark:bg-neutral-100 dark:text-neutral-900'
+                      : 'border-neutral-200 bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100',
+                  ]"
+                  @click="selectOdometerField(idx)"
+                >
+                  <div class="text-[10px] text-neutral-400">
+                    Idx {{ idx }} · {{ (idx * 22.5).toFixed(1) }}°
+                  </div>
+                  <div class="truncate">
+                    {{ fld }}
+                  </div>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════════════════════ -->
+      <!-- TAB 2: TRANSMISSION WAVE MECHANISM                     -->
+      <!-- ══════════════════════════════════════════════════════ -->
+      <div v-else-if="activeMainTab === 'transmission-wave'" class="space-y-6">
         <!-- Editorial Header & Toolbar -->
         <div class="flex flex-col gap-4 border-b border-neutral-200/80 pb-4 sm:flex-row sm:items-center sm:justify-between dark:border-neutral-800/80">
           <div>
@@ -530,7 +871,7 @@ function triggerBranchHop() {
       </div>
 
       <!-- ══════════════════════════════════════════════════════ -->
-      <!-- TAB 2: STATIC 4-NODE 3-SQUARE TOPOLOGY STUDY           -->
+      <!-- TAB 3: STATIC 4-NODE 3-SQUARE TOPOLOGY STUDY           -->
       <!-- ══════════════════════════════════════════════════════ -->
       <div v-else-if="activeMainTab === 'static-nodes'" class="space-y-6">
         <!-- Study Control Bar -->
@@ -602,7 +943,7 @@ function triggerBranchHop() {
 
             <div class="grid grid-cols-1 gap-8 md:grid-cols-2">
               <!-- Variant A: Explicit Hairline Squares -->
-              <div class="dark:border-neutral-855 flex flex-col items-center justify-center border border-neutral-100 rounded-2xl bg-neutral-50/50 p-6 dark:bg-neutral-950/50">
+              <div class="dark:border-neutral-850 flex flex-col items-center justify-center border border-neutral-100 rounded-2xl bg-neutral-50/50 p-6 dark:bg-neutral-950/50">
                 <span class="mb-4 text-[10px] text-neutral-400 tracking-wider font-mono uppercase">Variant A · Explicit Hairlines</span>
                 <StaticTopologyNodeStudy
                   :size="210"
@@ -615,7 +956,7 @@ function triggerBranchHop() {
               </div>
 
               <!-- Variant B: Implied Squares (Nodes Only) -->
-              <div class="dark:border-neutral-855 flex flex-col items-center justify-center border border-neutral-100 rounded-2xl bg-neutral-50/50 p-6 dark:bg-neutral-950/50">
+              <div class="dark:border-neutral-850 flex flex-col items-center justify-center border border-neutral-100 rounded-2xl bg-neutral-50/50 p-6 dark:bg-neutral-950/50">
                 <span class="mb-4 text-[10px] text-neutral-400 tracking-wider font-mono uppercase">Variant B · Implied (Nodes Only)</span>
                 <StaticTopologyNodeStudy
                   :size="210"
@@ -656,7 +997,7 @@ function triggerBranchHop() {
       </div>
 
       <!-- ══════════════════════════════════════════════════════ -->
-      <!-- TAB 3: QUANTIZED MOMENTUM CASCADE SHOWCASE             -->
+      <!-- TAB 4: QUANTIZED MOMENTUM CASCADE SHOWCASE             -->
       <!-- ══════════════════════════════════════════════════════ -->
       <div v-else-if="activeMainTab === 'momentum-cascade'" class="space-y-6">
         <!-- Sub-View Switcher (Clean Capture vs Diagnostic Workbench) -->
@@ -864,7 +1205,7 @@ function triggerBranchHop() {
       </div>
 
       <!-- ══════════════════════════════════════════════════════ -->
-      <!-- TAB 4: Integration Sketch (Experimental Canvas)       -->
+      <!-- TAB 5: Integration Sketch (Experimental Canvas)       -->
       <!-- ══════════════════════════════════════════════════════ -->
       <div v-else-if="activeMainTab === 'sketch'" class="space-y-4">
         <!-- Notice banner contextualizing the sketch -->
@@ -882,7 +1223,7 @@ function triggerBranchHop() {
       </div>
 
       <!-- ══════════════════════════════════════════════════════ -->
-      <!-- TAB 5: Orbital Escapement Lab (Machinery Workbench)   -->
+      <!-- TAB 6: Orbital Escapement Lab (Machinery Workbench)   -->
       <!-- ══════════════════════════════════════════════════════ -->
       <div v-else class="grid grid-cols-1 gap-6 lg:grid-cols-12">
         <!-- ── Left Column: Mechanical Anatomy & Dataset Toggles ── -->

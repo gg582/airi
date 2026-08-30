@@ -331,3 +331,58 @@ describe('transmission Wave Kinematic Engine', () => {
     }
   })
 })
+
+describe('22.5° Quantized Escapement Odometer Engine', () => {
+  it('computes exact 22.5° sibling steps and inverts Square ↔ Diamond every 2 steps', async () => {
+    const { computeOdometerAngle, ODOMETER_STEP_DEG } = await import('./layouts/odometer-engine')
+
+    expect(ODOMETER_STEP_DEG).toBe(22.5)
+    expect(computeOdometerAngle(0)).toBe(0) // Square
+    expect(computeOdometerAngle(1)).toBe(22.5) // Half-turned
+    expect(computeOdometerAngle(2)).toBe(45.0) // Diamond
+    expect(computeOdometerAngle(3)).toBe(67.5) // Half-turned
+    expect(computeOdometerAngle(4)).toBe(90.0) // Square again
+    expect(computeOdometerAngle(5)).toBe(112.5) // Half-turned
+  })
+
+  it('resolves full 3-layer hierarchical combination lock pose with locked parent layers', async () => {
+    const { resolveOdometerPose } = await import('./layouts/odometer-engine')
+
+    // Root level browsing (Depth 0, Index 2): Layer 1 at 45°, layers 2 & 3 parked/terminal
+    const poseDepth0 = resolveOdometerPose([2, 0, 0], 0, [4, 8, 3])
+    expect(poseDepth0.angles[0]).toBe(45.0)
+    expect(poseDepth0.layers[0].isActive).toBe(true)
+    expect(poseDepth0.layers[0].isLocked).toBe(false)
+    expect(poseDepth0.layers[1].isTerminal).toBe(true)
+
+    // Section browsing (Depth 1, Category index 0 -> Section index 5): Layer 1 locked at 0°, Layer 2 at 112.5°
+    const poseDepth1 = resolveOdometerPose([0, 5, 0], 1, [4, 8, 3])
+    expect(poseDepth1.angles[0]).toBe(0) // Locked
+    expect(poseDepth1.angles[1]).toBe(112.5) // 5 * 22.5°
+    expect(poseDepth1.layers[0].isLocked).toBe(true)
+    expect(poseDepth1.layers[1].isActive).toBe(true)
+    expect(poseDepth1.glyphSignature).toBe('[ 0.0°, 112.5°, 112.5° ]')
+
+    // Full 3-layer terminal route (Depth 2, [0, 5, 2]): [ 0°, 112.5°, 45.0° ]
+    const poseDepth2 = resolveOdometerPose([0, 5, 2], 2, [4, 8, 3])
+    expect(poseDepth2.angles[0]).toBe(0)
+    expect(poseDepth2.angles[1]).toBe(112.5)
+    expect(poseDepth2.angles[2]).toBe(45.0)
+    expect(poseDepth2.layers[0].isLocked).toBe(true)
+    expect(poseDepth2.layers[1].isLocked).toBe(true)
+    expect(poseDepth2.layers[2].isActive).toBe(true)
+    expect(poseDepth2.glyphSignature).toBe('[ 0.0°, 112.5°, 45.0° ]')
+  })
+
+  it('generates sequential section-by-section startup ratchet frames', async () => {
+    const { generateStartupRatchetSequence } = await import('./layouts/odometer-engine')
+
+    const frames = generateStartupRatchetSequence([1, 2, 1])
+    expect(frames.length).toBeGreaterThan(1)
+    // Frame 0: Initial rest
+    expect(frames[0].angles).toEqual([0, 0, 0])
+    // Final Frame: Settled at target angles [22.5°, 45.0°, 22.5°]
+    const lastFrame = frames[frames.length - 1]
+    expect(lastFrame.angles).toEqual([22.5, 45.0, 22.5])
+  })
+})
