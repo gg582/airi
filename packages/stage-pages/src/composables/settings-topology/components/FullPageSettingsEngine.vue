@@ -135,7 +135,7 @@ onUnmounted(() => {
               ]"
               @click="layoutStyle = 'combined'"
             >
-              Combined (80/20)
+              Combined (70/30)
             </button>
           </div>
         </div>
@@ -239,9 +239,6 @@ onUnmounted(() => {
             <h2 class="text-2xl text-neutral-900 font-semibold font-serif dark:text-neutral-100">
               {{ activeNode?.label }}
             </h2>
-            <span v-if="activeNode?.glyph" class="rounded bg-neutral-100 px-2 py-0.5 text-xs text-neutral-700 font-mono dark:bg-neutral-800 dark:text-neutral-300">
-              {{ activeNode.glyph }}
-            </span>
           </div>
           <p class="text-xs text-neutral-500 font-mono dark:text-neutral-400">
             Terminal Settings Node · Route: {{ activeNode?.route }}

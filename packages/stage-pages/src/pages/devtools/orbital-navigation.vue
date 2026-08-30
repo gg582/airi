@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import type {
+  AstrolabeHierarchyTier,
+  AstrolabeNode,
   EscapementPose,
   OdometerPose,
   QuantizedMomentumPose,
@@ -13,6 +15,7 @@ import type {
 
 import { computed, ref, watch } from 'vue'
 
+import AstrolabeCanopy from '../../composables/settings-topology/components/AstrolabeCanopy.vue'
 import FullPageSettingsEngine from '../../composables/settings-topology/components/FullPageSettingsEngine.vue'
 import KineticOrbitalMechanism from '../../composables/settings-topology/components/KineticOrbitalMechanism.vue'
 import QuantizedGeometryKey from '../../composables/settings-topology/components/QuantizedGeometryKey.vue'
@@ -44,13 +47,82 @@ import {
 } from '../../composables/settings-topology'
 
 // ──────────────────────────────────────────────
-// Playground Main Mode & Tabs (6 Modes)
+// Playground Main Mode & Tabs (7 Modes)
 // ──────────────────────────────────────────────
-const activeMainTab = ref<'odometer-lock' | 'transmission-wave' | 'static-nodes' | 'momentum-cascade' | 'sketch' | 'escapement-lab'>('odometer-lock')
+const activeMainTab = ref<'astrolabe-canopy' | 'odometer-lock' | 'transmission-wave' | 'static-nodes' | 'momentum-cascade' | 'sketch' | 'escapement-lab'>('astrolabe-canopy')
 const catalogTopology = computed(() => buildSettingsCatalogTopology())
 
 // ──────────────────────────────────────────────
-// 22.5° Odometer Lock Study State (Tab 1)
+// Astrolabe Canopy Study State (Tab 1 - New Primary)
+// ──────────────────────────────────────────────
+const ASTROLABE_HIERARCHY: AstrolabeHierarchyTier[] = [
+  {
+    name: 'General',
+    items: [
+      { name: 'App Appearance', items: [{ name: 'Theme Mode' }, { name: 'Accent Color' }, { name: 'Window Blur' }, { name: 'Font Scaling' }] },
+      { name: 'Language & Locale', items: [{ name: 'Language' }, { name: 'Fallback' }, { name: 'Date Format' }] },
+      { name: 'Desktop Dock', items: [{ name: 'Dock Position' }, { name: 'Auto-Hide' }, { name: 'Opacity' }] },
+      { name: 'Audio Outputs', items: [{ name: 'Default Output' }, { name: 'Master Volume' }, { name: 'Sample Rate' }] },
+    ],
+  },
+  {
+    name: 'Consciousness',
+    items: [
+      { name: 'LLM Dispatch', items: [{ name: 'Provider' }, { name: 'Model ID' }, { name: 'Temperature' }, { name: 'Top P' }, { name: 'Max Tokens' }] },
+      { name: 'Cognitive Streaming', items: [{ name: 'Stream Chunks' }, { name: 'Buffer Latency' }] },
+      { name: 'Thinking Budget', items: [{ name: 'Max Steps' }, { name: 'Grounding Search' }] },
+    ],
+  },
+  {
+    name: 'Memory',
+    items: [
+      { name: 'Short-Term Memory', items: [{ name: 'Daily Summary Window' }, { name: 'Token Budget' }, { name: 'Cadence' }] },
+      { name: 'Long-Term Text Journal', items: [{ name: 'Sacred Journal Rule' }, { name: 'Vector Threshold' }] },
+      { name: 'Lifetime Artifacts', items: [{ name: 'Auto-Provisioning' }, { name: 'Distill Passes' }, { name: 'Changelog Watermark' }] },
+      { name: 'Echo Chips', items: [{ name: 'Salience Gate' }, { name: 'Evidence Window' }] },
+    ],
+  },
+  {
+    name: 'Vessel',
+    items: [
+      { name: '3D VRM Model', items: [{ name: 'Model File' }, { name: 'LookAt Camera' }, { name: 'Blink Interval' }, { name: 'Physics' }] },
+      { name: 'Live2D Display', items: [{ name: 'Model3 JSON' }, { name: 'Motion Group' }, { name: 'Hit Zones' }] },
+      { name: 'Outfits & Wardrobe', items: [{ name: 'Active Outfit' }, { name: 'Mesh Hot-Swap' }] },
+    ],
+  },
+  {
+    name: 'Sensory',
+    items: [
+      { name: 'Vision Perception', items: [{ name: 'Salience Gate' }, { name: 'CLIP Embedding' }, { name: 'OCR Engine' }] },
+      { name: 'Audio Hearing (STT)', items: [{ name: 'Input Device' }, { name: 'Whisper Worker' }, { name: 'VAD Sensitivity' }] },
+      { name: 'Speech Synthesis (TTS)', items: [{ name: 'Voice Profile' }, { name: 'Kokoro Engine' }, { name: 'Speech Rate' }] },
+    ],
+  },
+]
+
+const astrolabeActiveIndices = ref<[number, number, number]>([1, 0, 2])
+const astrolabeShowFilaments = ref<boolean>(false)
+const astrolabeShowLines = ref<boolean>(false)
+const astrolabeCleanMode = ref<boolean>(false)
+
+const currentAstrolabeCat = computed(() => ASTROLABE_HIERARCHY[astrolabeActiveIndices.value[0]] || ASTROLABE_HIERARCHY[0])
+const currentAstrolabeSec = computed(() => currentAstrolabeCat.value.items[astrolabeActiveIndices.value[1]] || currentAstrolabeCat.value.items[0])
+const currentAstrolabeField = computed(() => currentAstrolabeSec.value.items?.[astrolabeActiveIndices.value[2]] || { name: 'Default' })
+
+function handleAstrolabeSelect(tier: 0 | 1 | 2, index: number, _node: AstrolabeNode) {
+  if (tier === 0) {
+    astrolabeActiveIndices.value = [index, 0, 0]
+  }
+  else if (tier === 1) {
+    astrolabeActiveIndices.value = [astrolabeActiveIndices.value[0], index, 0]
+  }
+  else if (tier === 2) {
+    astrolabeActiveIndices.value = [astrolabeActiveIndices.value[0], astrolabeActiveIndices.value[1], index]
+  }
+}
+
+// ──────────────────────────────────────────────
+// 22.5° Odometer Lock Study State (Tab 2)
 // ──────────────────────────────────────────────
 const ODOMETER_MOCK_TREE = [
   {
@@ -155,7 +227,7 @@ function playStartupRatchetSequence() {
 }
 
 // ──────────────────────────────────────────────
-// Transmission Wave Study State (Tab 2)
+// Transmission Wave Study State (Tab 3)
 // ──────────────────────────────────────────────
 const isTransmissionPlaying = ref(true)
 const transmissionSpeed = ref(1.0)
@@ -180,7 +252,7 @@ function resetTransmissionConfig() {
 }
 
 // ──────────────────────────────────────────────
-// Static 4-Node Topology Study State (Tab 3)
+// Static 4-Node Topology Study State (Tab 4)
 // ──────────────────────────────────────────────
 const staticVariantMode = ref<'side-by-side' | 'explicit' | 'implied'>('side-by-side')
 const staticShowLinks = ref<boolean>(true)
@@ -228,7 +300,7 @@ const STATIC_STATES: Array<{
 const geometryViewMode = ref<'clean-capture' | 'diagnostic'>('clean-capture')
 
 // ──────────────────────────────────────────────
-// RAF Momentum Motion Strip State (Tab 4)
+// RAF Momentum Motion Strip State (Tab 5)
 // ──────────────────────────────────────────────
 const isStripPlaying = ref(true)
 const stripSpeedMultiplier = ref(1.0)
@@ -257,7 +329,7 @@ function toggleSlowMo() {
 }
 
 // ──────────────────────────────────────────────
-// Escapement Lab State & Anatomy Toggles (Tab 6)
+// Escapement Lab State & Anatomy Toggles (Tab 7)
 // ──────────────────────────────────────────────
 const labSize = ref<number>(280)
 const beatMs = ref<number>(500)
@@ -421,12 +493,25 @@ function triggerBranchHop() {
             </h1>
           </div>
           <p class="mt-0.5 text-xs text-neutral-500 font-mono dark:text-neutral-400">
-            22.5° Odometer Lock · Transmission Wave · Static 4-Node topology · Momentum cascade
+            Astrolabe Canopy Tree · 22.5° Odometer Lock · Transmission Wave · Static 4-Node topology
           </p>
         </div>
 
-        <!-- Master View Switcher (6 Tabs) -->
+        <!-- Master View Switcher (7 Tabs) -->
         <div class="dark:bg-neutral-850 flex flex-wrap rounded-xl bg-neutral-200/60 p-1 backdrop-blur-sm">
+          <button
+            type="button"
+            class="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-mono transition-all"
+            :class="[
+              activeMainTab === 'astrolabe-canopy'
+                ? 'bg-white text-neutral-900 shadow-sm font-semibold dark:bg-neutral-700 dark:text-white'
+                : 'text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100',
+            ]"
+            @click="activeMainTab = 'astrolabe-canopy'"
+          >
+            <div class="i-solar:compass-bold size-3.5" />
+            <span>Astrolabe Canopy</span>
+          </button>
           <button
             type="button"
             class="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-mono transition-all"
@@ -509,9 +594,208 @@ function triggerBranchHop() {
       </div>
 
       <!-- ══════════════════════════════════════════════════════ -->
-      <!-- TAB 1: 22.5° QUANTIZED ESCAPEMENT ODOMETER LOCK        -->
+      <!-- TAB 1: ASTROLABE CANOPY TREE (NEW MASTER PROTOTYPE)   -->
       <!-- ══════════════════════════════════════════════════════ -->
-      <div v-if="activeMainTab === 'odometer-lock'" class="space-y-6">
+      <div v-if="activeMainTab === 'astrolabe-canopy'" class="space-y-6">
+        <!-- Control Header -->
+        <div class="flex flex-col gap-4 border-b border-neutral-200/80 pb-4 sm:flex-row sm:items-center sm:justify-between dark:border-neutral-800/80">
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="rounded bg-neutral-900 px-2 py-0.5 text-xs text-white font-bold font-mono dark:bg-neutral-100 dark:text-neutral-900">ASTROLABE CANOPY</span>
+              <h2 class="text-lg text-neutral-900 font-bold font-serif dark:text-neutral-100">
+                Polar Canopy Caliper Tree · North Spine & Concentric Arc Sweep
+              </h2>
+            </div>
+            <p class="text-xs text-neutral-500 font-mono dark:text-neutral-400">
+              Vertical North-South trunk with 3 concentric horizon arcs. Illuminated branch spline sweeps across active diamond beads.
+            </p>
+          </div>
+
+          <!-- Quick Controls -->
+          <div class="flex items-center gap-2 text-xs font-mono">
+            <button
+              type="button"
+              class="dark:bg-neutral-850 border border-neutral-300 rounded-xl bg-neutral-50 px-3 py-1.5 transition-all active:scale-95 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800"
+              :class="astrolabeShowLines ? 'font-bold text-neutral-900 dark:text-white' : 'text-neutral-500 opacity-60'"
+              @click="astrolabeShowLines = !astrolabeShowLines"
+            >
+              <span>{{ astrolabeShowLines ? 'Lines: On' : 'Lines: Off (Clean)' }}</span>
+            </button>
+
+            <button
+              type="button"
+              class="dark:bg-neutral-850 border border-neutral-300 rounded-xl bg-neutral-50 px-3 py-1.5 transition-all active:scale-95 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800"
+              :class="astrolabeShowFilaments ? 'font-bold text-neutral-900 dark:text-white' : 'text-neutral-500 opacity-60'"
+              @click="astrolabeShowFilaments = !astrolabeShowFilaments"
+            >
+              <span>{{ astrolabeShowFilaments ? 'Sub-Branches: On' : 'Sub-Branches: Off' }}</span>
+            </button>
+
+            <button
+              type="button"
+              class="dark:bg-neutral-850 border border-neutral-300 rounded-xl bg-neutral-50 px-3 py-1.5 transition-all active:scale-95 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800"
+              :class="astrolabeCleanMode ? 'font-bold text-neutral-900 dark:text-white bg-neutral-200 dark:bg-neutral-700' : 'text-neutral-500'"
+              @click="astrolabeCleanMode = !astrolabeCleanMode"
+            >
+              <span>{{ astrolabeCleanMode ? 'Show Navigator' : 'Clean Capture' }}</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- ── Canopy Stage & Navigator Layout ── -->
+        <div class="grid grid-cols-1 gap-6 lg:grid-cols-12">
+          <!-- ── Central Astrolabe Canopy Display ── -->
+          <div :class="astrolabeCleanMode ? 'lg:col-span-12' : 'lg:col-span-7'" class="flex flex-col items-center justify-center border border-neutral-200/80 rounded-3xl bg-white p-8 shadow-sm transition-all dark:border-neutral-800/80 dark:bg-neutral-900/80">
+            <!-- Active Breadcrumb Path Tag -->
+            <div class="mb-2 w-full flex items-center justify-between text-xs font-mono">
+              <span class="rounded bg-neutral-100 px-2 py-0.5 text-neutral-600 font-bold dark:bg-neutral-800 dark:text-neutral-300">
+                ACTIVE PATH: {{ currentAstrolabeCat.name }} / {{ currentAstrolabeSec.name }} / {{ currentAstrolabeField.name }}
+              </span>
+              <span class="rounded bg-neutral-900 px-2 py-0.5 text-white font-bold dark:bg-neutral-100 dark:text-neutral-900">
+                [ T0:{{ astrolabeActiveIndices[0] }} · T1:{{ astrolabeActiveIndices[1] }} · T2:{{ astrolabeActiveIndices[2] }} ]
+              </span>
+            </div>
+
+            <!-- The Pure Astrolabe Canopy Instrument -->
+            <div class="my-4">
+              <AstrolabeCanopy
+                :hierarchy="ASTROLABE_HIERARCHY"
+                :active-indices="astrolabeActiveIndices"
+                :width="astrolabeCleanMode ? 580 : 480"
+                :height="astrolabeCleanMode ? 480 : 400"
+                :show-filaments="astrolabeShowFilaments"
+                :show-connecting-line="astrolabeShowLines"
+                :clean-mode="astrolabeCleanMode"
+                @select-node="handleAstrolabeSelect"
+              />
+            </div>
+
+            <!-- Tier Level Labels -->
+            <div class="flex items-center justify-center gap-6 text-[10px] text-neutral-400 font-mono uppercase">
+              <span>Tier 1: Categories (Outer Arc)</span>
+              <span>•</span>
+              <span>Tier 2: Sections (Middle Arc)</span>
+              <span>•</span>
+              <span>Tier 3: Fields (Inner Arc)</span>
+            </div>
+          </div>
+
+          <!-- ── Right Column: Interactive Branch Tree Picker ── -->
+          <div v-if="!astrolabeCleanMode" class="lg:col-span-5 space-y-4">
+            <!-- Tier 0: Categories Picker -->
+            <div class="border border-neutral-200/80 rounded-2xl bg-white p-4 shadow-sm dark:border-neutral-800/80 dark:bg-neutral-900/80">
+              <div class="mb-2 flex items-center justify-between text-xs font-mono">
+                <span class="text-neutral-900 font-bold dark:text-white">1. TIER 0: ROOT CATEGORIES (TOP ARC)</span>
+                <span class="text-[10px] text-neutral-400">{{ ASTROLABE_HIERARCHY.length }} items</span>
+              </div>
+              <div class="flex flex-wrap gap-1.5 text-xs font-mono">
+                <button
+                  v-for="(cat, idx) in ASTROLABE_HIERARCHY"
+                  :key="cat.name"
+                  type="button"
+                  class="border rounded-lg px-2.5 py-1.5 text-left transition-all active:scale-95"
+                  :class="[
+                    astrolabeActiveIndices[0] === idx
+                      ? 'border-neutral-900 bg-neutral-900 text-white font-bold dark:border-neutral-100 dark:bg-neutral-100 dark:text-neutral-900'
+                      : 'border-neutral-200 bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100',
+                  ]"
+                  @click="astrolabeActiveIndices = [idx, 0, 0]"
+                >
+                  {{ cat.name }}
+                </button>
+              </div>
+            </div>
+
+            <!-- Tier 1: Sections Picker -->
+            <div class="border border-neutral-200/80 rounded-2xl bg-white p-4 shadow-sm dark:border-neutral-800/80 dark:bg-neutral-900/80">
+              <div class="mb-2 flex items-center justify-between text-xs font-mono">
+                <span class="text-neutral-900 font-bold dark:text-white">2. TIER 1: SECTIONS IN {{ currentAstrolabeCat.name.toUpperCase() }} (MIDDLE ARC)</span>
+                <span class="text-[10px] text-neutral-400">{{ currentAstrolabeCat.items.length }} items</span>
+              </div>
+              <div class="flex flex-wrap gap-1.5 text-xs font-mono">
+                <button
+                  v-for="(sec, idx) in currentAstrolabeCat.items"
+                  :key="sec.name"
+                  type="button"
+                  class="border rounded-lg px-2.5 py-1.5 text-left transition-all active:scale-95"
+                  :class="[
+                    astrolabeActiveIndices[1] === idx
+                      ? 'border-neutral-900 bg-neutral-900 text-white font-bold dark:border-neutral-100 dark:bg-neutral-100 dark:text-neutral-900'
+                      : 'border-neutral-200 bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100',
+                  ]"
+                  @click="astrolabeActiveIndices = [astrolabeActiveIndices[0], idx, 0]"
+                >
+                  {{ sec.name }}
+                </button>
+              </div>
+            </div>
+
+            <!-- Tier 2: Fields Picker -->
+            <div class="border border-neutral-200/80 rounded-2xl bg-white p-4 shadow-sm dark:border-neutral-800/80 dark:bg-neutral-900/80">
+              <div class="mb-2 flex items-center justify-between text-xs font-mono">
+                <span class="text-neutral-900 font-bold dark:text-white">3. TIER 2: FIELDS IN {{ currentAstrolabeSec.name.toUpperCase() }} (INNER ARC)</span>
+                <span class="text-[10px] text-neutral-400">{{ currentAstrolabeSec.items?.length || 0 }} items</span>
+              </div>
+              <div class="flex flex-wrap gap-1.5 text-xs font-mono">
+                <button
+                  v-for="(fld, idx) in currentAstrolabeSec.items"
+                  :key="fld.name"
+                  type="button"
+                  class="border rounded-lg px-2.5 py-1.5 text-left transition-all active:scale-95"
+                  :class="[
+                    astrolabeActiveIndices[2] === idx
+                      ? 'border-neutral-900 bg-neutral-900 text-white font-bold dark:border-neutral-100 dark:bg-neutral-100 dark:text-neutral-900'
+                      : 'border-neutral-200 bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100',
+                  ]"
+                  @click="astrolabeActiveIndices = [astrolabeActiveIndices[0], astrolabeActiveIndices[1], idx]"
+                >
+                  {{ fld.name }}
+                </button>
+              </div>
+            </div>
+
+            <!-- Preset Route Quick Jumps -->
+            <div class="border border-neutral-200/80 rounded-2xl bg-white p-4 shadow-sm dark:border-neutral-800/80 dark:bg-neutral-900/80">
+              <span class="mb-2 block text-[10px] text-neutral-400 font-mono uppercase">Quick Jump Presets</span>
+              <div class="flex flex-wrap gap-1.5 text-xs font-mono">
+                <button
+                  type="button"
+                  class="border border-neutral-200 rounded-md bg-neutral-50 px-2 py-1 transition-all dark:border-neutral-700 dark:bg-neutral-800 hover:bg-neutral-100"
+                  @click="astrolabeActiveIndices = [0, 0, 0]"
+                >
+                  Appearance → Theme
+                </button>
+                <button
+                  type="button"
+                  class="border border-neutral-200 rounded-md bg-neutral-50 px-2 py-1 transition-all dark:border-neutral-700 dark:bg-neutral-800 hover:bg-neutral-100"
+                  @click="astrolabeActiveIndices = [1, 0, 2]"
+                >
+                  LLM Dispatch → Temp
+                </button>
+                <button
+                  type="button"
+                  class="border border-neutral-200 rounded-md bg-neutral-50 px-2 py-1 transition-all dark:border-neutral-700 dark:bg-neutral-800 hover:bg-neutral-100"
+                  @click="astrolabeActiveIndices = [2, 2, 0]"
+                >
+                  Memory → Lifetime
+                </button>
+                <button
+                  type="button"
+                  class="border border-neutral-200 rounded-md bg-neutral-50 px-2 py-1 transition-all dark:border-neutral-700 dark:bg-neutral-800 hover:bg-neutral-100"
+                  @click="astrolabeActiveIndices = [3, 0, 1]"
+                >
+                  Vessel → VRM Camera
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════════════════════ -->
+      <!-- TAB 2: 22.5° QUANTIZED ESCAPEMENT ODOMETER LOCK        -->
+      <!-- ══════════════════════════════════════════════════════ -->
+      <div v-else-if="activeMainTab === 'odometer-lock'" class="space-y-6">
         <!-- Control Header & Odometer Status -->
         <div class="flex flex-col gap-4 border-b border-neutral-200/80 pb-4 sm:flex-row sm:items-center sm:justify-between dark:border-neutral-800/80">
           <div>
@@ -728,7 +1012,7 @@ function triggerBranchHop() {
       </div>
 
       <!-- ══════════════════════════════════════════════════════ -->
-      <!-- TAB 2: TRANSMISSION WAVE MECHANISM                     -->
+      <!-- TAB 3: TRANSMISSION WAVE MECHANISM                     -->
       <!-- ══════════════════════════════════════════════════════ -->
       <div v-else-if="activeMainTab === 'transmission-wave'" class="space-y-6">
         <!-- Editorial Header & Toolbar -->
@@ -871,7 +1155,7 @@ function triggerBranchHop() {
       </div>
 
       <!-- ══════════════════════════════════════════════════════ -->
-      <!-- TAB 3: STATIC 4-NODE 3-SQUARE TOPOLOGY STUDY           -->
+      <!-- TAB 4: STATIC 4-NODE 3-SQUARE TOPOLOGY STUDY           -->
       <!-- ══════════════════════════════════════════════════════ -->
       <div v-else-if="activeMainTab === 'static-nodes'" class="space-y-6">
         <!-- Study Control Bar -->
@@ -997,7 +1281,7 @@ function triggerBranchHop() {
       </div>
 
       <!-- ══════════════════════════════════════════════════════ -->
-      <!-- TAB 4: QUANTIZED MOMENTUM CASCADE SHOWCASE             -->
+      <!-- TAB 5: QUANTIZED MOMENTUM CASCADE SHOWCASE             -->
       <!-- ══════════════════════════════════════════════════════ -->
       <div v-else-if="activeMainTab === 'momentum-cascade'" class="space-y-6">
         <!-- Sub-View Switcher (Clean Capture vs Diagnostic Workbench) -->
@@ -1205,7 +1489,7 @@ function triggerBranchHop() {
       </div>
 
       <!-- ══════════════════════════════════════════════════════ -->
-      <!-- TAB 5: Integration Sketch (Experimental Canvas)       -->
+      <!-- TAB 6: Integration Sketch (Experimental Canvas)       -->
       <!-- ══════════════════════════════════════════════════════ -->
       <div v-else-if="activeMainTab === 'sketch'" class="space-y-4">
         <!-- Notice banner contextualizing the sketch -->
@@ -1223,7 +1507,7 @@ function triggerBranchHop() {
       </div>
 
       <!-- ══════════════════════════════════════════════════════ -->
-      <!-- TAB 6: Orbital Escapement Lab (Machinery Workbench)   -->
+      <!-- TAB 7: Orbital Escapement Lab (Machinery Workbench)   -->
       <!-- ══════════════════════════════════════════════════════ -->
       <div v-else class="grid grid-cols-1 gap-6 lg:grid-cols-12">
         <!-- ── Left Column: Mechanical Anatomy & Dataset Toggles ── -->

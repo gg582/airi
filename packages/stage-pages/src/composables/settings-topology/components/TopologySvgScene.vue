@@ -22,7 +22,8 @@ const emit = defineEmits<{
     :viewBox="scene.viewBox"
     :width="scene.width"
     :height="scene.height"
-    class="block h-auto max-h-[140px] w-full overflow-visible"
+    :style="{ minWidth: `${scene.width}px` }"
+    class="block h-auto max-h-[140px] overflow-visible"
   >
     <!-- ── 1. Track Guides / Rails (Hairlines) ── -->
     <g v-if="showGuides">

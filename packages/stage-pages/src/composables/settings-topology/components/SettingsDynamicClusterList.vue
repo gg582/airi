@@ -37,7 +37,9 @@ const clusterGroups = computed<ClusterGroup[]>(() => {
     if (!node)
       continue
 
-    const clusterName = (node.metadata?.clusterGroup as string) || 'GENERAL 通'
+    // Clean cluster group name (strip trailing kanji glyphs)
+    const rawClusterName = (node.metadata?.clusterGroup as string) || 'GENERAL'
+    const clusterName = rawClusterName.replace(/[\u4E00-\u9FFF\u3040-\u309F\u30A0-\u30FF]/g, '').trim() || 'GENERAL'
     if (!groupsMap.has(clusterName)) {
       groupsMap.set(clusterName, [])
     }
@@ -89,7 +91,7 @@ const clusterGroups = computed<ClusterGroup[]>(() => {
           class="group relative w-full flex items-center justify-between border border-transparent rounded-xl px-4 py-2.5 text-left transition-all duration-150 hover:border-neutral-200/90 hover:bg-neutral-100/70 dark:hover:border-neutral-800 dark:hover:bg-neutral-900/60"
           @click="emit('select', item.node.id)"
         >
-          <!-- Left side: Index, Diamond, Icon, Label & Kanji -->
+          <!-- Left side: Index, Diamond, Icon, Label -->
           <div class="z-10 flex shrink-0 items-center gap-3.5">
             <!-- 2-Digit Index -->
             <span class="text-xs text-neutral-400 font-medium font-mono dark:text-neutral-500">
@@ -105,18 +107,10 @@ const clusterGroups = computed<ClusterGroup[]>(() => {
               :class="[item.node.icon, 'text-base text-neutral-500 group-hover:text-neutral-900 dark:text-neutral-400 dark:group-hover:text-neutral-100 transition-colors']"
             />
 
-            <!-- Label + Kanji Glyph -->
-            <div class="flex items-baseline gap-2">
-              <span class="text-sm text-neutral-900 font-medium tracking-tight font-serif dark:text-neutral-100 group-hover:text-neutral-950 dark:group-hover:text-white">
-                {{ item.node.label }}
-              </span>
-              <span
-                v-if="item.node.glyph"
-                class="text-xs text-neutral-400 font-sans opacity-70 dark:text-neutral-500 group-hover:opacity-100"
-              >
-                {{ item.node.glyph }}
-              </span>
-            </div>
+            <!-- Clean Label (No Japanese Kanji) -->
+            <span class="text-sm text-neutral-900 font-medium tracking-tight font-serif dark:text-neutral-100 group-hover:text-neutral-950 dark:group-hover:text-white">
+              {{ item.node.label }}
+            </span>
           </div>
 
           <!-- Middle: Dotted Leader Rail -->

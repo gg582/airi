@@ -29,16 +29,15 @@ const scene = computed(() => createHeaderTrackScene(props.topology, props.active
   showInactiveSiblings: true,
 }))
 
-// Breadcrumb text formatted as: 設定 SETTINGS / 部 MODULES
+// Clean breadcrumb text
 const breadcrumbString = computed(() => {
   if (props.activePath.length <= 1)
-    return '設定 SETTINGS'
+    return ''
   return props.activePath
     .slice(0, -1)
     .map((id) => {
       const node = props.topology.nodesById[id]
-      const glyph = node?.glyph ? `${node.glyph} ` : ''
-      return `${glyph}${node?.shortLabel || node?.label || id}`.toUpperCase()
+      return `${node?.shortLabel || node?.label || id}`.toUpperCase()
     })
     .join('  /  ')
 })
@@ -56,10 +55,13 @@ const breadcrumbString = computed(() => {
       />
     </div>
 
-    <!-- ── Layer 2: Identity Band (Eyebrow Hairline + Title / Route / Recall / Glyph) ── -->
-    <div class="pt-1 space-y-2">
-      <!-- Centered Eyebrow Hairline Divider -->
-      <div class="flex items-center gap-3 text-xs text-neutral-400 tracking-widest font-mono uppercase dark:text-neutral-500">
+    <!-- ── Layer 2: Identity Band (Title / Route / Recall) ── -->
+    <div class="pt-1 space-y-1.5">
+      <!-- Optional Eyebrow Hairline Divider -->
+      <div
+        v-if="breadcrumbString"
+        class="flex items-center gap-3 text-xs text-neutral-400 tracking-widest font-mono uppercase dark:text-neutral-500"
+      >
         <span class="h-px flex-1 bg-neutral-200/80 dark:bg-neutral-800/80" />
         <span>{{ breadcrumbString }}</span>
         <span class="h-px flex-1 bg-neutral-200/80 dark:bg-neutral-800/80" />
@@ -88,7 +90,7 @@ const breadcrumbString = computed(() => {
           </div>
         </div>
 
-        <!-- Right: Recall Affordance & Kanji Watermark -->
+        <!-- Right: Recall Affordance (Clean, no Japanese characters) -->
         <div class="flex items-center gap-3">
           <button
             type="button"
@@ -100,15 +102,6 @@ const breadcrumbString = computed(() => {
             <span>Recall</span>
             <span class="rounded bg-neutral-200/80 px-1 py-0.2 text-[9px] text-neutral-500 font-sans dark:bg-neutral-800 dark:text-neutral-400">⌘K</span>
           </button>
-
-          <!-- Right-Aligned Kanji Character Watermark -->
-          <div
-            v-if="activeNode?.glyph"
-            class="select-none text-4xl text-neutral-800/80 font-bold tracking-widest font-serif opacity-80 dark:text-neutral-200/80"
-            :title="`Aesthetic Glyph: ${activeNode.glyph}`"
-          >
-            {{ activeNode.glyph }}
-          </div>
         </div>
       </div>
     </div>

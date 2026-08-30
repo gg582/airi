@@ -94,12 +94,6 @@ const ancestorList = computed(() => {
               <h1 class="text-2xl text-neutral-900 font-medium tracking-tight font-serif dark:text-neutral-100">
                 {{ item.label }}
               </h1>
-              <span
-                v-if="item.glyph"
-                class="rounded bg-neutral-100 px-2 py-0.5 text-xs text-neutral-600 font-medium font-mono dark:bg-neutral-800 dark:text-neutral-300"
-              >
-                {{ item.glyph }}
-              </span>
 
               <button
                 type="button"

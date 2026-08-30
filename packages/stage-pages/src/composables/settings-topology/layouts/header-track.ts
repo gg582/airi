@@ -15,10 +15,20 @@ export function createHeaderTrackScene(
   activePath: string[],
   options: HeaderTrackOptions = {},
 ): TopologyScene {
-  const width = options.width ?? 640
   const activeId = activePath[activePath.length - 1] || topology.rootId
   const activeNode = topology.nodesById[activeId] || topology.nodesById[topology.rootId]
   const hasChildTrack = !!(activeNode && activeNode.children && activeNode.children.length > 0)
+  const childCount = hasChildTrack && activeNode?.children ? activeNode.children.length : 0
+
+  const activeDepth = activePath.length - 1
+  const siblings = getSiblings(topology, activeId)
+  const siblingTotal = siblings.length
+
+  // Ensure healthy minimum spacing per sibling / child item (at least 60px per item)
+  const requiredCount = Math.max(siblingTotal, childCount, 9)
+  const minTrackWidth = requiredCount * 62 + 48
+  const width = options.width ? Math.max(options.width, minTrackWidth) : minTrackWidth
+
   const height = options.height ?? (hasChildTrack ? 74 : 40)
   const showInactiveSiblings = options.showInactiveSiblings ?? true
 
@@ -35,10 +45,6 @@ export function createHeaderTrackScene(
   const markers: LayoutNodeMarker[] = []
   const tracks: LayoutTrack[] = []
   const connectors: LayoutConnector[] = []
-
-  const activeDepth = activePath.length - 1
-  const siblings = getSiblings(topology, activeId)
-  const siblingTotal = siblings.length
 
   // Track Y positions (Tighter layout: trackY = 14, childY = 48)
   const trackY = 14
@@ -143,8 +149,8 @@ export function createHeaderTrackScene(
     if (activeMarker) {
       const childY = 48
       const childCount = activeNode.children.length
-      const childWidth = Math.min(availableWidth, Math.max(availableWidth * 0.8, childCount * 48))
-      const childStartX = Math.max(paddingX, Math.min(width - paddingX - childWidth, activeMarker.x - childWidth / 2))
+      const childStartX = paddingX
+      const childWidth = width - paddingX * 2
       const childStep = childCount > 1 ? childWidth / (childCount - 1) : 0
 
       // Stem connector from active node to child rail

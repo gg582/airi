@@ -3,9 +3,10 @@ import type { SettingsTopology, SettingsTopologyNode } from '../types'
 
 import { computed } from 'vue'
 
-import KineticOrbitalMechanism from './KineticOrbitalMechanism.vue'
+import AstrolabeCanopy from './AstrolabeCanopy.vue'
 import TopologySvgScene from './TopologySvgScene.vue'
 
+import { extractAstrolabeHierarchyFromTopology } from '../layouts/astrolabe-engine'
 import { createHeaderTrackScene } from '../layouts/header-track'
 
 const props = defineProps<{
@@ -23,34 +24,35 @@ const activeId = computed(() => props.activePath[props.activePath.length - 1] ||
 const activeNode = computed<SettingsTopologyNode | undefined>(() => props.topology.nodesById[activeId.value])
 const isRoot = computed(() => activeId.value === props.topology.rootId)
 
-// Crisp folded-track scene for the 80% left rail
+// Crisp folded-track scene with dynamic breathing room
 const trackScene = computed(() => createHeaderTrackScene(props.topology, props.activePath, {
-  width: 620,
   showLabels: true,
   showInactiveSiblings: true,
 }))
 
-// Breadcrumb text formatted as: 設定 SETTINGS / 部 MODULES
+// Astrolabe Canopy mapping for the 20% right rail
+const astrolabeData = computed(() => extractAstrolabeHierarchyFromTopology(props.topology, props.activePath))
+
+// Clean breadcrumb text (no Japanese prefix)
 const breadcrumbString = computed(() => {
   if (props.activePath.length <= 1)
-    return '設定 SETTINGS'
+    return ''
   return props.activePath
     .slice(0, -1)
     .map((id) => {
       const node = props.topology.nodesById[id]
-      const glyph = node?.glyph ? `${node.glyph} ` : ''
-      return `${glyph}${node?.shortLabel || node?.label || id}`.toUpperCase()
+      return `${node?.shortLabel || node?.label || id}`.toUpperCase()
     })
     .join('  /  ')
 })
 </script>
 
 <template>
-  <header class="border-b border-neutral-200/80 pb-2.5 pt-0.5 space-y-1.5 dark:border-neutral-800/80">
-    <!-- ── Layer 1: Combined 80/20 Split (Folded Track + Kinetic Escapement Mechanism) ── -->
-    <div class="flex items-center justify-between gap-3">
-      <!-- Left ~80%: Folded Track Rail -->
-      <div class="min-w-0 flex-1 overflow-x-auto">
+  <header class="border-b border-neutral-200/80 pb-2.5 pt-0.5 space-y-2 dark:border-neutral-800/80">
+    <!-- ── Layer 1: Combined 70/30 Split (Folded Track + Astrolabe Canopy) ── -->
+    <div class="flex items-center justify-between gap-5">
+      <!-- Left ~70-75%: Folded Track Rail -->
+      <div class="min-w-0 w-[72%] flex-[7] overflow-x-auto">
         <TopologySvgScene
           :scene="trackScene"
           :show-guides="true"
@@ -60,20 +62,26 @@ const breadcrumbString = computed(() => {
         />
       </div>
 
-      <!-- Right ~20%: Kinetic Escapement Radar Widget (Non-interactive) -->
-      <div class="h-20 w-20 flex shrink-0 items-center justify-center border-l border-neutral-200/60 pl-2 dark:border-neutral-800/60">
-        <KineticOrbitalMechanism
-          :topology="topology"
-          :active-path="activePath"
-          :size="74"
+      <!-- Right ~25-30%: Astrolabe Canopy Caliper Widget -->
+      <div class="h-24 w-[28%] flex flex-[3] shrink-0 items-center justify-center border-l border-neutral-200/70 px-3 py-1 md:h-28 dark:border-neutral-800/70">
+        <AstrolabeCanopy
+          :hierarchy="astrolabeData.hierarchy"
+          :active-indices="astrolabeData.activeIndices"
+          class="h-full max-h-28 max-w-64 w-full"
+          :show-filaments="false"
+          :show-connecting-line="false"
+          :clean-mode="true"
         />
       </div>
     </div>
 
-    <!-- ── Layer 2: Identity Band (Eyebrow Hairline + Title / Route / Recall / Glyph) ── -->
+    <!-- ── Layer 2: Identity Band (Title / Route / Recall) ── -->
     <div class="pt-0.5 space-y-1.5">
-      <!-- Centered Eyebrow Hairline Divider -->
-      <div class="flex items-center gap-3 text-xs text-neutral-400 tracking-widest font-mono uppercase dark:text-neutral-500">
+      <!-- Optional Eyebrow Hairline Divider (rendered only when nested in sub-pages) -->
+      <div
+        v-if="breadcrumbString"
+        class="flex items-center gap-3 text-xs text-neutral-400 tracking-widest font-mono uppercase dark:text-neutral-500"
+      >
         <span class="h-px flex-1 bg-neutral-200/80 dark:bg-neutral-800/80" />
         <span>{{ breadcrumbString }}</span>
         <span class="h-px flex-1 bg-neutral-200/80 dark:bg-neutral-800/80" />
@@ -102,7 +110,7 @@ const breadcrumbString = computed(() => {
           </div>
         </div>
 
-        <!-- Right: Recall Affordance & Kanji Watermark -->
+        <!-- Right: Recall Affordance (Clean, no Japanese characters) -->
         <div class="flex items-center gap-3">
           <button
             type="button"
@@ -114,15 +122,6 @@ const breadcrumbString = computed(() => {
             <span>Recall</span>
             <span class="rounded bg-neutral-200/80 px-1 py-0.2 text-[9px] text-neutral-500 font-sans dark:bg-neutral-800 dark:text-neutral-400">⌘K</span>
           </button>
-
-          <!-- Right-Aligned Kanji Character Watermark -->
-          <div
-            v-if="activeNode?.glyph"
-            class="select-none text-4xl text-neutral-800/80 font-bold tracking-widest font-serif opacity-80 dark:text-neutral-200/80"
-            :title="`Aesthetic Glyph: ${activeNode.glyph}`"
-          >
-            {{ activeNode.glyph }}
-          </div>
         </div>
       </div>
     </div>

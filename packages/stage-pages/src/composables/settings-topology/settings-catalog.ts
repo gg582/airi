@@ -103,7 +103,7 @@ export const SETTINGS_CATALOG_ITEMS: CatalogNodeItem[] = [
   },
   {
     id: 'area-modules',
-    label: 'Modules (部品)',
+    label: 'Modules',
     shortLabel: 'Modules',
     glyph: '部',
     clusterGroup: 'INTELLIGENCE 知',

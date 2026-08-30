@@ -386,3 +386,58 @@ describe('22.5° Quantized Escapement Odometer Engine', () => {
     expect(lastFrame.angles).toEqual([22.5, 45.0, 22.5])
   })
 })
+
+describe('astrolabe Canopy Topology Engine', () => {
+  it('builds valid canopy scene with 3 concentric arcs and illuminated active spline', async () => {
+    const { buildAstrolabeCanopyScene } = await import('./layouts/astrolabe-engine')
+
+    const mockHierarchy = [
+      {
+        name: 'General',
+        items: [
+          { name: 'App Appearance', items: [{ name: 'Theme' }, { name: 'Color' }] },
+          { name: 'Language', items: [{ name: 'English' }] },
+        ],
+      },
+      {
+        name: 'Consciousness',
+        items: [
+          { name: 'LLM Dispatch', items: [{ name: 'Model ID' }, { name: 'Temperature' }] },
+        ],
+      },
+    ]
+
+    const scene = buildAstrolabeCanopyScene(mockHierarchy, [0, 0, 1], { width: 500, height: 400 })
+
+    expect(scene.spine.anchors.length).toBeGreaterThanOrEqual(4)
+    expect(scene.arcs.length).toBe(3)
+    expect(scene.arcs[0].nodes.length).toBe(2) // 2 categories
+    expect(scene.arcs[1].nodes.length).toBe(2) // 2 sections in General
+    expect(scene.arcs[2].nodes.length).toBe(2) // 2 fields in Appearance
+
+    // Active path nodes
+    expect(scene.activePathNodes.length).toBe(3)
+    expect(scene.activePathNodes[0].label).toBe('General')
+    expect(scene.activePathNodes[1].label).toBe('App Appearance')
+    expect(scene.activePathNodes[2].label).toBe('Color')
+
+    // Valid SVG path strings
+    expect(scene.activeSplineD.startsWith('M ')).toBe(true)
+    expect(scene.arcs[0].pathD.startsWith('M ')).toBe(true)
+  })
+
+  it('extracts valid 3-tier Astrolabe hierarchy and active coordinates from SettingsTopology', async () => {
+    const { extractAstrolabeHierarchyFromTopology } = await import('./layouts/astrolabe-engine')
+    const { buildSettingsCatalogTopology } = await import('./settings-catalog')
+
+    const topology = buildSettingsCatalogTopology()
+    const result = extractAstrolabeHierarchyFromTopology(topology, ['hub', 'area-card'])
+
+    expect(result.hierarchy.length).toBeGreaterThan(0)
+    expect(result.activeIndices).toEqual([0, 0, 0])
+
+    const resultMemory = extractAstrolabeHierarchyFromTopology(topology, ['hub', 'area-memory', 'cat-lifetime'])
+    expect(resultMemory.hierarchy.length).toBeGreaterThan(0)
+    expect(resultMemory.activeIndices[0]).toBe(4) // area-memory is 5th child
+  })
+})
