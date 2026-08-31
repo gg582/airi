@@ -404,8 +404,8 @@ pages:
         portrait mode, focusing on the center of the scene.
   modules:
     artistry:
-      description: Generate images and visual content during conversations
-      title: Artistry
+      description: Autonomous image generation, ComfyUI studio, and memory illustrations
+      title: Artistry & Image Studio
       widget-instructions:
         label: Widget Spawning Instructions
         description: The instructions provided to the AI LLM to teach it how to use the
@@ -419,8 +419,8 @@ pages:
           widget: Standalone Widget
           bg_widget: Background & Widget (Default)
     beat_sync:
-      description: Vibe with beats from the audio source
-      title: Beat Sync
+      description: Real-time audio rhythm detection and kinetic avatar dance synchronization
+      title: Beat Sync Live2D
       sections:
         audio_source:
           actions:
@@ -465,7 +465,7 @@ pages:
               description: Whether to warm up before detecting beats for better accuracy.
               label: Warmup
     consciousness:
-      description: Personality, desired model, etc.
+      description: Personality, system prompt reasoning, and desired model baseline
       sections:
         section:
           provider-model-selection:
@@ -493,11 +493,11 @@ pages:
             show_more: Show more
             subtitle: Select a default model from the provider
             title: Model
-      title: Consciousness
+      title: Consciousness & Mind
     description: Thinking, vision, speech synthesis, gaming, etc.
     gaming-factorio:
-      description: Playing Factorio!
-      title: Factorio
+      description: Monitor production, logistics networks, and automate factory operations
+      title: Factorio Companion
       enable: Enable Factorio Integration
       enable-description: Allow AIRI to interact with Factorio game
       server-address: Server Address
@@ -510,8 +510,9 @@ pages:
       username-placeholder: Enter your Factorio username
       configured: Factorio is properly configured!
     gaming-minecraft:
-      description: Playing Minecraft!
-      title: Minecraft
+      description: Play Minecraft cooperatively with autonomous mining, building, and
+        dialogue
+      title: Minecraft Companion
       enable: Enable Minecraft Integration
       enable-description: Allow AIRI to interact with Minecraft game
       server-address: Server Address
@@ -524,8 +525,9 @@ pages:
       username-placeholder: Enter your Minecraft username
       configured: Minecraft is properly configured!
     hearing:
-      description: Configure how speech recognition works
-      title: Hearing
+      description: Microphone input, voice activity detection (VAD), and streaming
+        transcription
+      title: Hearing (STT)
       sections:
         section:
           provider-selection:
@@ -546,8 +548,9 @@ pages:
       description: Short-term memory specific settings and management
       title: Short-Term Memory
     messaging-discord:
-      description: Chat & voice chat over Discord
-      title: Discord
+      description: Discord bot gateway, slash commands, text chat, and voice channel
+        streaming
+      title: Discord Bot
       enable: Enable Discord Integration
       enable-description: Allow AIRI to interact through Discord
       token: Bot Token
@@ -590,7 +593,7 @@ pages:
         vision: Enable VLM (Vision) Image Intake
         vision-description: Allow AIRI to read and process image attachments from Discord
     speech:
-      description: Speech synthesis
+      description: Text-to-speech voice synthesis and parametric transformers
       sections:
         section:
           playground:
@@ -629,13 +632,13 @@ pages:
             use-ssml:
               description: Enable to input raw SSML instead of plain text
               label: Use Custom SSML
-      title: Speech
+      title: Speech (TTS)
     title: Modules
     vision:
-      description: Vision
-      title: Vision
+      description: Continuous background vision, OCR, and multimodal visual perception
+      title: Vision Perception (VLM)
     x:
-      description: X / Twitter browsing and usage
+      description: Autonomous social posting, timeline interactions, and companion updates
       title: X / Twitter
       enable: Enable X / Twitter Integration
       enable-description: Allow AIRI to interact with X / Twitter
@@ -653,8 +656,8 @@ pages:
       access-token-secret-placeholder: Enter your X / Twitter access token secret
       configured: X / Twitter is properly configured!
     mcp-server:
-      description: Connect and manage MCP server and tools
-      title: MCP Server
+      description: Model Context Protocol servers, stdio integration, and custom tool suites
+      title: MCP Server & Tools
       config-path: Config file path
       runtime-title: Runtime status
       tabs:
@@ -681,7 +684,12 @@ pages:
         stars: '{count} stars'
         no-results: No servers found for "{query}"
     cloud-sync:
-      title: Cloud Sync Settings
+      title: Cloud Sync (BYOS)
+      description: Active state cloud sync, S3/R2 storage, and multi-device
+        persistence outbox
+    text-to-motion:
+      title: Text to Motion
+      description: Procedural LLM keyframes, FlowMDM 3D diffusion, and VRMA compilation
   providers:
     explained:
       chat: Text generation model providers. e.g. OpenRouter, OpenAI, Ollama.

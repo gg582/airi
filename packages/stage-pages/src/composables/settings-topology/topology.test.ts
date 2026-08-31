@@ -44,8 +44,8 @@ describe('settings Topology Model & Validator', () => {
     expect(result.errors).toEqual([])
     expect(result.nodeCount).toBeGreaterThanOrEqual(45)
     expect(result.maxDepth).toBe(3) // Hub -> Providers -> Speech -> Kokoro
-    expect(catalogTopology.nodesById['mod-01-consciousness']?.glyph).toBe('意識')
-    expect(catalogTopology.nodesById['mod-01-consciousness']?.metadata?.clusterGroup).toBe('MIND 心')
+    expect(catalogTopology.nodesById['mod-consciousness']?.glyph).toBe('識')
+    expect(catalogTopology.nodesById['mod-consciousness']?.metadata?.clusterGroup).toBe('PERCEPTION & FACULTIES 感')
   })
 
   it('validates Live Settings topology projected from search index and alias map', () => {
