@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { isStageTamagotchi } from '@proj-airi/stage-shared'
 import { useAiriCardStore } from '@proj-airi/stage-ui/stores/modules/airi-card'
 import { storeToRefs } from 'pinia'
 import { computed } from 'vue'
@@ -49,8 +50,11 @@ const row1Items = computed<QuickAccessItem[]>(() => [
   },
 ])
 
+// Detection for iOS (iPad/iPhone/iPod)
+const isIOS = typeof navigator !== 'undefined' && (/iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1))
+
 // Row 2: Audio & Discovery
-const row2Items: QuickAccessItem[] = [
+const row2Items = computed<QuickAccessItem[]>(() => [
   {
     id: 'audio-studio',
     title: 'Audio Studio',
@@ -61,7 +65,9 @@ const row2Items: QuickAccessItem[] = [
     id: 'local-voice',
     title: 'Local Voice',
     icon: 'i-solar:volume-loud-bold-duotone',
-    to: '/settings/providers/speech/kokoro-local',
+    to: isStageTamagotchi()
+      ? '/settings/providers/speech/kokoro-local'
+      : '/settings/providers/speech/pocket-tts-local',
   },
   {
     id: 'local-hearing',
@@ -73,15 +79,17 @@ const row2Items: QuickAccessItem[] = [
     id: 'local-free-ai',
     title: 'Local Free AI',
     icon: 'i-solar:cpu-bolt-bold-duotone',
-    to: '/settings/providers/chat/web-llm',
+    to: isIOS
+      ? '/settings/providers/chat/apple-core-ai'
+      : '/settings/providers/chat/web-llm',
   },
   {
     id: 'discover-models',
-    title: 'Find Free Bodies',
+    title: 'Get Free Avatars',
     icon: 'i-solar:planet-3-bold-duotone',
     to: '/settings/models?action=explore',
   },
-]
+])
 
 function navigate(to: string) {
   router.push(to)

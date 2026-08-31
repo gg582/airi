@@ -23,7 +23,7 @@ export const staticIndex: SearchItem[] = [
   { id: 'page-providers', title: 'Providers', category: 'Primary Page', description: 'AI inference providers & voice engines', to: '/settings/providers', icon: 'i-solar:box-minimalistic-bold-duotone' },
   { id: 'page-system', title: 'System Settings', category: 'Primary Page', description: 'App system preferences & user identity', to: '/settings/system', icon: 'i-solar:filters-bold-duotone' },
   { id: 'page-data', title: 'Data Management', category: 'Primary Page', description: 'Backup, restore & storage tools', to: '/settings/data', icon: 'i-solar:database-bold-duotone' },
-  { id: 'page-docs', title: 'Documentation', category: 'Primary Page', description: 'In-app user guides & reference', to: '/settings/docs', icon: 'i-solar:book-open-bold-duotone' },
+  { id: 'page-docs', title: 'Documentation', category: 'Primary Page', description: 'In-app user guides & reference', to: '/settings/docs', icon: 'i-solar:book-bookmark-bold-duotone' },
 
   // ── Developer Tools ──
   {

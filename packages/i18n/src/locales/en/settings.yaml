@@ -273,14 +273,14 @@ pages:
       model: Speech / Model
       voice: Speech / Voice
     systemprompt: System Prompt
-    title: AIRI Card
+    title: AIRI Card Editor
     try_different_search: Try a different search term
     upload: Upload
     upload_desc: Click or drag file to upload
   memory:
     description: Manage active awareness context, idle summaries, episodic logs, and
       lifetime relational bonds.
-    title: Memory
+    title: Memory Systems
   docs:
     title: Documentation
     description: Learn how to use AIRI and its features
@@ -291,7 +291,7 @@ pages:
       chronicles: Chronicles
       showcase: Showcase
   data:
-    title: Data
+    title: Data Management
     description: Manage stored AIRI data, exports, and resets
     sections:
       chats:
@@ -360,7 +360,7 @@ pages:
   models:
     description: Manage physical assets, animations, and motion mappings for Live2D,
       VRM, Spine, and MMD.
-    title: Models
+    title: Companion Avatars
     sections:
       section:
         live2d:
@@ -371,8 +371,14 @@ pages:
           description: Configure 3D VRM models and settings
         scene: Scene
   scene:
-    title: Scenes
-    description: Customize the virtual environment for your characters.
+    title: Stage Backgrounds
+    description: Customize virtual backdrops and stage wallpaper images for your characters.
+  dating-sim:
+    title: Dating Sim Mode
+    description: Adjust interactive game modes, intimacy gating thresholds, and visual behavior rules
+  stage:
+    title: Floating Controls
+    description: Customize floating action strip slots, docking edge, and quick triggers
     beta_label: Scenes System
     beta_description: Each character card specifies its own preferred background
       from this gallery. Setting it here will set it as the default for the
@@ -1343,7 +1349,7 @@ pages:
           content: Apple Core AI runs models locally via the native Swift plugin,
             offloading matrix computations to the Apple Neural Engine and Metal
             GPU with near-zero WebKit memory overhead.
-    title: Providers
+    title: Inference Providers
   connection:
     description: Configure server connection and external download tokens (e.g.
       Hugging Face)
@@ -1497,7 +1503,7 @@ pages:
                 fuchsia: Fuchsia
                 magenta: Magenta
                 rose: Rose
-    title: System
+    title: System Preferences
   page:
     developers:
       open-devtools:

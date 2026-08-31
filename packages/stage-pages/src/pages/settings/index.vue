@@ -52,40 +52,28 @@ const settingsGroups = computed(() => [
     title: 'CHARACTER & SCENE',
     items: [
       {
-        title: t('settings.pages.card.title'),
+        title: t('settings.pages.card.title', 'AIRI Card Editor'),
         description: t('settings.pages.card.description'),
         icon: 'i-solar:emoji-funny-square-bold-duotone',
         to: '/settings/airi-card',
       },
       {
-        title: t('settings.pages.scene.title'),
+        title: t('settings.pages.scene.title', 'Stage Backgrounds'),
         description: t('settings.pages.scene.description'),
-        icon: 'i-solar:armchair-2-bold-duotone',
+        icon: 'i-solar:gallery-bold-duotone',
         to: '/settings/scene',
       },
       {
-        title: t('settings.pages.models.title'),
+        title: t('settings.pages.models.title', 'Companion Avatars'),
         description: t('settings.pages.models.description'),
         icon: 'i-solar:people-nearby-bold-duotone',
         to: '/settings/models',
       },
       {
-        title: t('settings.pages.memory.title'),
-        description: t('settings.pages.memory.description'),
-        icon: 'i-solar:leaf-bold-duotone',
-        to: '/settings/memory',
-      },
-      {
-        title: 'Dating Sim',
-        description: 'Adjust interactive game modes, intimacy gating thresholds, and visual behavior rules',
+        title: t('settings.pages.dating-sim.title', 'Dating Sim Mode'),
+        description: t('settings.pages.dating-sim.description', 'Adjust interactive game modes, intimacy gating thresholds, and visual behavior rules'),
         icon: 'i-solar:heart-bold-duotone',
         to: '/settings/dating-sim',
-      },
-      {
-        title: 'Control Strip',
-        description: 'Customize floating action strip slots, docking edge, and quick triggers',
-        icon: 'i-solar:widget-2-bold-duotone',
-        to: '/settings/stage',
       },
     ],
   },
@@ -95,13 +83,19 @@ const settingsGroups = computed(() => [
     title: 'INTELLIGENCE',
     items: [
       {
-        title: t('settings.pages.modules.title'),
+        title: t('settings.pages.memory.title', 'Memory Systems'),
+        description: t('settings.pages.memory.description'),
+        icon: 'i-solar:leaf-bold-duotone',
+        to: '/settings/memory',
+      },
+      {
+        title: t('settings.pages.modules.title', 'Modules'),
         description: t('settings.pages.modules.description'),
         icon: 'i-solar:layers-bold-duotone',
         to: '/settings/modules',
       },
       {
-        title: t('settings.pages.providers.title'),
+        title: t('settings.pages.providers.title', 'Inference Providers'),
         description: t('settings.pages.providers.description'),
         icon: 'i-solar:box-minimalistic-bold-duotone',
         to: '/settings/providers',
@@ -113,19 +107,25 @@ const settingsGroups = computed(() => [
     title: 'SYSTEM',
     items: [
       {
-        title: t('settings.pages.system.title'),
+        title: t('settings.pages.stage.title', 'Floating Controls'),
+        description: t('settings.pages.stage.description', 'Customize floating action strip slots, docking edge, and quick triggers'),
+        icon: 'i-solar:widget-2-bold-duotone',
+        to: '/settings/stage',
+      },
+      {
+        title: t('settings.pages.system.title', 'System Preferences'),
         description: t('settings.pages.system.description'),
         icon: 'i-solar:filters-bold-duotone',
         to: '/settings/system',
       },
       {
-        title: t('settings.pages.docs.title'),
+        title: t('settings.pages.docs.title', 'Documentation'),
         description: t('settings.pages.docs.description'),
-        icon: 'i-solar:book-open-bold-duotone',
+        icon: 'i-solar:book-bookmark-bold-duotone',
         to: '/settings/docs',
       },
       {
-        title: t('settings.pages.data.title'),
+        title: t('settings.pages.data.title', 'Data Management'),
         description: t('settings.pages.data.description'),
         icon: 'i-solar:database-bold-duotone',
         to: '/settings/data',

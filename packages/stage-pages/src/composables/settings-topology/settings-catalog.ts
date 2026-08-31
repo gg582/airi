@@ -160,7 +160,7 @@ export const SETTINGS_CATALOG_ITEMS: CatalogNodeItem[] = [
     glyph: '書',
     clusterGroup: 'SYSTEM 系',
     route: '/settings/docs',
-    icon: 'i-solar:book-open-bold-duotone',
+    icon: 'i-solar:book-bookmark-bold-duotone',
     order: 10,
     parentId: 'hub',
     kind: 'area',
