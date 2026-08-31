@@ -4,6 +4,9 @@ export interface SettingsTopologyNode {
   id: string
   label: string
   shortLabel?: string
+  titleKey?: string
+  description?: string
+  descriptionKey?: string
   route?: string
   parentId: string | null
   children: string[]

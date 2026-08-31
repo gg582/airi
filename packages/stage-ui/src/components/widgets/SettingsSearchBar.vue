@@ -4,20 +4,39 @@ import type { SearchItem } from '@proj-airi/stage-ui/constants/settings-search-i
 import { staticIndex } from '@proj-airi/stage-ui/constants/settings-search-index'
 import { useAiriCardStore } from '@proj-airi/stage-ui/stores/modules/airi-card'
 import { onClickOutside } from '@vueuse/core'
-import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 
+const route = useRoute()
 const router = useRouter()
 const cardStore = useAiriCardStore()
 
 const searchQuery = ref('')
 const isOpen = ref(false)
+const isExpandedSubPage = ref(false)
 const highlightedIndex = ref(0)
 const inputRef = ref<HTMLInputElement | null>(null)
 const containerRef = ref<HTMLDivElement | null>(null)
 
+const isRoot = computed(() => {
+  return route.path === '/settings' || route.path === '/settings/' || Boolean(route.meta?.rootOfSettings)
+})
+
+const showInput = computed(() => isRoot.value || isExpandedSubPage.value)
+
 onClickOutside(containerRef, () => {
   isOpen.value = false
+  if (!isRoot.value) {
+    isExpandedSubPage.value = false
+  }
+})
+
+watch(() => route.path, () => {
+  if (!isRoot.value) {
+    isExpandedSubPage.value = false
+  }
+  isOpen.value = false
+  searchQuery.value = ''
 })
 
 // ── Dynamic Character Card Index ──
@@ -61,14 +80,25 @@ const searchResults = computed(() => {
   }).slice(0, 12)
 })
 
+function handleExpand() {
+  isExpandedSubPage.value = true
+  isOpen.value = true
+  nextTick(() => {
+    inputRef.value?.focus()
+  })
+}
+
 function handleSelect(item: SearchItem) {
   isOpen.value = false
+  if (!isRoot.value) {
+    isExpandedSubPage.value = false
+  }
   searchQuery.value = ''
   router.push(item.to)
 }
 
 function handleKeyDown(e: KeyboardEvent) {
-  if (!isOpen.value)
+  if (!isOpen.value && !showInput.value)
     return
 
   if (e.key === 'ArrowDown') {
@@ -92,12 +122,18 @@ function handleKeyDown(e: KeyboardEvent) {
   }
   else if (e.key === 'Escape') {
     isOpen.value = false
+    if (!isRoot.value) {
+      isExpandedSubPage.value = false
+    }
   }
 }
 
 function handleGlobalShortcut(e: KeyboardEvent) {
   if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
     e.preventDefault()
+    if (!isRoot.value) {
+      isExpandedSubPage.value = true
+    }
     isOpen.value = true
     nextTick(() => {
       inputRef.value?.focus()
@@ -119,9 +155,21 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div ref="containerRef" class="relative max-w-sm min-w-[200px] w-full lg:max-w-md">
-    <!-- Search Input Bar -->
+  <div ref="containerRef" :class="[showInput ? 'relative w-full min-w-[200px] max-w-sm lg:max-w-md' : 'shrink-0']">
+    <!-- Compact Icon Button (Sub-pages default state) -->
+    <button
+      v-if="!showInput"
+      type="button"
+      class="shadow-2xs h-9 w-9 flex items-center justify-center border border-neutral-200/80 rounded-xl bg-white/70 text-neutral-600 backdrop-blur-md transition-all active:scale-95 dark:border-neutral-800/80 hover:border-primary-500/50 dark:bg-neutral-900/70 dark:text-neutral-300 hover:text-primary-500 dark:hover:text-primary-400"
+      title="Search settings (⌘K)"
+      @click="handleExpand"
+    >
+      <div class="i-solar:magnifer-bold-duotone text-base" />
+    </button>
+
+    <!-- Expanded Search Input Bar -->
     <div
+      v-else
       :class="[
         'group relative flex items-center rounded-xl px-3 py-2 transition-all duration-200',
         'border border-neutral-200/80 bg-white/70 shadow-2xs backdrop-blur-md',
@@ -161,7 +209,7 @@ onUnmounted(() => {
 
     <!-- Autocomplete Dropdown Overlay -->
     <div
-      v-if="isOpen && searchResults.length > 0"
+      v-if="showInput && isOpen && searchResults.length > 0"
       :class="[
         'absolute right-0 left-0 sm:left-auto sm:w-[420px] top-full z-[9999] mt-1.5 max-h-88 overflow-y-auto p-1.5',
         'border rounded-2xl shadow-2xl backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150',

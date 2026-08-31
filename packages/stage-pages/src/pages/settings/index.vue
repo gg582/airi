@@ -10,6 +10,8 @@ import { useRoute, useRouter } from 'vue-router'
 
 import SettingsQuickAccess from './components/SettingsQuickAccess.vue'
 
+import { SETTINGS_CATALOG_ITEMS } from '../../composables/settings-topology/settings-catalog'
+
 const router = useRouter()
 const route = useRoute()
 const { t } = useI18n()
@@ -45,93 +47,37 @@ watch(
   { immediate: true },
 )
 
-const settingsGroups = computed(() => [
-  {
-    id: 'character',
-    title: 'CHARACTER & SCENE',
-    items: [
-      {
-        title: t('settings.pages.card.title', 'AIRI Card Editor'),
-        description: t('settings.pages.card.description'),
-        icon: 'i-solar:emoji-funny-square-bold-duotone',
-        to: '/settings/airi-card',
-      },
-      {
-        title: t('settings.pages.scene.title', 'Stage Backgrounds'),
-        description: t('settings.pages.scene.description'),
-        icon: 'i-solar:gallery-bold-duotone',
-        to: '/settings/scene',
-      },
-      {
-        title: t('settings.pages.models.title', 'Companion Avatars'),
-        description: t('settings.pages.models.description'),
-        icon: 'i-solar:people-nearby-bold-duotone',
-        to: '/settings/models',
-      },
-      {
-        title: t('settings.pages.dating-sim.title', 'Dating Sim Mode'),
-        description: t('settings.pages.dating-sim.description', 'Adjust interactive game modes, intimacy gating thresholds, and visual behavior rules'),
-        icon: 'i-solar:heart-bold-duotone',
-        to: '/settings/dating-sim',
-      },
-    ],
-  },
+/**
+ * Data-driven Settings Groups derived from the canonical settings-catalog topology.
+ * Grouped dynamically by clusterGroup into CHARACTER & SCENE, INTELLIGENCE, and SYSTEM.
+ */
+const settingsGroups = computed(() => {
+  const hubItems = SETTINGS_CATALOG_ITEMS.filter(item => item.parentId === 'hub')
+  const groupsMap = new Map<string, { id: string, title: string, items: Array<{ title: string, description: string, icon: string, to: string }> }>()
 
-  {
-    id: 'intelligence',
-    title: 'INTELLIGENCE',
-    items: [
-      {
-        title: t('settings.pages.memory.title', 'Memory Systems'),
-        description: t('settings.pages.memory.description'),
-        icon: 'i-solar:leaf-bold-duotone',
-        to: '/settings/memory',
-      },
-      {
-        title: t('settings.pages.modules.title', 'Modules'),
-        description: t('settings.pages.modules.description'),
-        icon: 'i-solar:layers-bold-duotone',
-        to: '/settings/modules',
-      },
-      {
-        title: t('settings.pages.providers.title', 'Inference Providers'),
-        description: t('settings.pages.providers.description'),
-        icon: 'i-solar:box-minimalistic-bold-duotone',
-        to: '/settings/providers',
-      },
-    ],
-  },
-  {
-    id: 'system',
-    title: 'SYSTEM',
-    items: [
-      {
-        title: t('settings.pages.stage.title', 'Floating Controls'),
-        description: t('settings.pages.stage.description', 'Customize floating action strip slots, docking edge, and quick triggers'),
-        icon: 'i-solar:widget-2-bold-duotone',
-        to: '/settings/stage',
-      },
-      {
-        title: t('settings.pages.system.title', 'System Preferences'),
-        description: t('settings.pages.system.description'),
-        icon: 'i-solar:filters-bold-duotone',
-        to: '/settings/system',
-      },
-      {
-        title: t('settings.pages.docs.title', 'Documentation'),
-        description: t('settings.pages.docs.description'),
-        icon: 'i-solar:book-bookmark-bold-duotone',
-        to: '/settings/docs',
-      },
-      {
-        title: t('settings.pages.data.title', 'Data Management'),
-        description: t('settings.pages.data.description'),
-        icon: 'i-solar:database-bold-duotone',
-        to: '/settings/data',
-      },
-    ],
-  },
-])
+  for (const item of hubItems) {
+    const rawCluster = item.clusterGroup || 'SYSTEM'
+    const cleanTitle = rawCluster.replace(/[\u4E00-\u9FFF\u3040-\u309F\u30A0-\u30FF]/g, '').trim() || 'SYSTEM'
+    const groupId = cleanTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-')
+
+    if (!groupsMap.has(groupId)) {
+      groupsMap.set(groupId, {
+        id: groupId,
+        title: cleanTitle,
+        items: [],
+      })
+    }
+
+    groupsMap.get(groupId)!.items.push({
+      title: item.titleKey ? t(item.titleKey, item.label) : item.label,
+      description: item.descriptionKey ? t(item.descriptionKey, item.description || '') : (item.description || ''),
+      icon: item.icon || 'i-solar:settings-bold-duotone',
+      to: item.route || '/settings',
+    })
+  }
+
+  return Array.from(groupsMap.values())
+})
 
 function isActive(to: string) {
   const currentPath = route.path.replace(/\/$/, '')

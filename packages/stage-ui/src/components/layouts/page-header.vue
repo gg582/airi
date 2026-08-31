@@ -1,6 +1,7 @@
 <script setup lang="ts">
+import { isStageTamagotchi } from '@proj-airi/stage-shared'
 import { useMotion } from '@vueuse/motion'
-import { nextTick, onMounted, onUnmounted, ref, useAttrs, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, useAttrs, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
 import SettingsSearchBar from '../widgets/SettingsSearchBar.vue'
@@ -26,9 +27,23 @@ const emit = defineEmits<{
 const route = useRoute()
 const attrs = useAttrs()
 
+const isRootOfSettings = computed(() => {
+  return route.path === '/settings' || route.path === '/settings/' || Boolean(route.meta?.rootOfSettings)
+})
+
+// In Electron desktop settings window, hide the back button at root since settings is a standalone window
+// In Web stage, preserve back button so users can return to the desktop stage canvas (/)
+const shouldShowBackButton = computed(() => {
+  if (isStageTamagotchi() && isRootOfSettings.value)
+    return false
+  if (props.disableBackButton || finalizedDisableBackButton.value)
+    return false
+  return props.showBackButton
+})
+
 function handleBack() {
   console.log('[PageHeader] handleBack clicked. attrs.onBack:', Boolean(attrs.onBack), 'history.state:', window.history.state)
-  if (finalizedDisableBackButton.value)
+  if (!shouldShowBackButton.value)
     return
 
   emit('back')
@@ -55,7 +70,7 @@ onUnmounted(async () => {
   finalizedDisableBackButton.value = true
 })
 
-watch([() => props.title, () => props.subtitle, route], async () => {
+watch([() => props.title, () => props.subtitle, () => props.disableBackButton, route], async () => {
   await apply('leave')
   await nextTick()
 
@@ -81,15 +96,18 @@ watch([() => props.title, () => props.subtitle, route], async () => {
     flex="~ row items-center justify-between gap-2"
     bg="$bg-color"
   >
-    <div flex="~ row items-center gap-2" shrink-0>
-      <button @click="handleBack()">
+    <div flex="~ row items-center gap-2" min-w-0 shrink-0>
+      <button
+        v-if="shouldShowBackButton"
+        type="button"
+        class="flex items-center justify-center transition-transform active:scale-90"
+        @click="handleBack()"
+      >
         <div
-          v-if="!finalizedDisableBackButton"
           i-solar:alt-arrow-left-line-duotone text-2xl
-          :class="{ 'pointer-events-none op-0': !showBackButton }"
         />
       </button>
-      <h1 relative>
+      <h1 relative min-w-0>
         <div v-if="subtitle" absolute left-0 top-0 translate-y="[-80%]">
           <span text="neutral-300 dark:neutral-500" text-nowrap>{{ subtitle }}</span>
         </div>

@@ -13,11 +13,14 @@ const CATEGORY_PARENT_MAP: Record<string, string> = {
   'Providers (Chat)': 'prov-cat-chat',
   'Providers (Speech)': 'prov-cat-speech',
   'Providers (Transcription)': 'prov-cat-stt',
+  'Providers (Hearing)': 'prov-cat-stt',
   'Providers (Artistry)': 'prov-cat-artistry',
   'Providers (Motion)': 'prov-cat-motion',
   'Providers (Cloud)': 'prov-cat-cloud',
+  'System Preferences': 'page-system',
+  'System Settings': 'page-system',
   'System': 'page-system',
-  'Developer Tools': 'sys-developer',
+  'Developer Tools': 'page-developer-options',
 }
 
 /**

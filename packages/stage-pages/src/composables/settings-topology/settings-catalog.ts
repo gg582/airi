@@ -4,6 +4,9 @@ export interface CatalogNodeItem {
   id: string
   label: string
   shortLabel?: string
+  titleKey?: string
+  description?: string
+  descriptionKey?: string
   glyph?: string
   clusterGroup?: string
   route?: string
@@ -16,9 +19,9 @@ export interface CatalogNodeItem {
 /**
  * Canonical Exhaustive Settings Catalog definition.
  * 3 Top-Level Hub Groups:
- *  1. CHARACTER & SCENE 姿 (AIRI Card, Scenes, Models, Dating Sim)
- *  2. INTELLIGENCE 知 (Memory Systems, Modules, Providers)
- *  3. SYSTEM 系 (Control Strip, System Preferences, Documentation, Data Management)
+ *  1. CHARACTER & SCENE 姿 (AIRI Card, Stage Backgrounds, Companion Avatars, Dating Sim)
+ *  2. INTELLIGENCE 知 (Memory Systems, Modules, Inference Providers)
+ *  3. SYSTEM 系 (Floating Controls, System Preferences, Documentation, Data Management)
  */
 export const SETTINGS_CATALOG_ITEMS: CatalogNodeItem[] = [
   // ── Root Hub ──
@@ -26,6 +29,7 @@ export const SETTINGS_CATALOG_ITEMS: CatalogNodeItem[] = [
     id: 'hub',
     label: 'Settings Hub',
     shortLabel: 'Hub',
+    titleKey: 'settings.title',
     glyph: '設定',
     route: '/settings',
     icon: 'i-solar:settings-bold-duotone',
@@ -41,6 +45,9 @@ export const SETTINGS_CATALOG_ITEMS: CatalogNodeItem[] = [
     id: 'area-card',
     label: 'AIRI Card Editor',
     shortLabel: 'Card',
+    titleKey: 'settings.pages.card.title',
+    descriptionKey: 'settings.pages.card.description',
+    description: 'Create, edit, and manage character cards, import custom presets, or discover new ones online.',
     glyph: '姿',
     clusterGroup: 'CHARACTER & SCENE 姿',
     route: '/settings/airi-card',
@@ -51,20 +58,26 @@ export const SETTINGS_CATALOG_ITEMS: CatalogNodeItem[] = [
   },
   {
     id: 'area-scene',
-    label: 'Scenes',
-    shortLabel: 'Scene',
+    label: 'Stage Backgrounds',
+    shortLabel: 'Backgrounds',
+    titleKey: 'settings.pages.scene.title',
+    descriptionKey: 'settings.pages.scene.description',
+    description: 'Customize virtual backdrops and stage wallpaper images for your characters.',
     glyph: '景',
     clusterGroup: 'CHARACTER & SCENE 姿',
     route: '/settings/scene',
-    icon: 'i-solar:armchair-2-bold-duotone',
+    icon: 'i-solar:gallery-bold-duotone',
     order: 2,
     parentId: 'hub',
     kind: 'area',
   },
   {
     id: 'area-models',
-    label: 'Display Models',
-    shortLabel: 'Models',
+    label: 'Companion Avatars',
+    shortLabel: 'Avatars',
+    titleKey: 'settings.pages.models.title',
+    descriptionKey: 'settings.pages.models.description',
+    description: 'Manage physical assets, animations, and motion mappings for Live2D, VRM, Spine, and MMD.',
     glyph: '体',
     clusterGroup: 'CHARACTER & SCENE 姿',
     route: '/settings/models',
@@ -77,6 +90,9 @@ export const SETTINGS_CATALOG_ITEMS: CatalogNodeItem[] = [
     id: 'area-dating-sim',
     label: 'Dating Sim Mode',
     shortLabel: 'Dating',
+    titleKey: 'settings.pages.dating-sim.title',
+    descriptionKey: 'settings.pages.dating-sim.description',
+    description: 'Adjust interactive game modes, intimacy gating thresholds, and visual behavior rules.',
     glyph: '愛',
     clusterGroup: 'CHARACTER & SCENE 姿',
     route: '/settings/dating-sim',
@@ -93,6 +109,9 @@ export const SETTINGS_CATALOG_ITEMS: CatalogNodeItem[] = [
     id: 'area-memory',
     label: 'Memory Systems',
     shortLabel: 'Memory',
+    titleKey: 'settings.pages.memory.title',
+    descriptionKey: 'settings.pages.memory.description',
+    description: 'Review short-term summaries, text journals, lifetime archives, and echo chips.',
     glyph: '憶',
     clusterGroup: 'INTELLIGENCE 知',
     route: '/settings/memory',
@@ -105,6 +124,9 @@ export const SETTINGS_CATALOG_ITEMS: CatalogNodeItem[] = [
     id: 'area-modules',
     label: 'Modules',
     shortLabel: 'Modules',
+    titleKey: 'settings.pages.modules.title',
+    descriptionKey: 'settings.pages.modules.description',
+    description: 'Configure perception sensors, speech, hearing, consciousness, and integrations.',
     glyph: '部',
     clusterGroup: 'INTELLIGENCE 知',
     route: '/settings/modules',
@@ -117,6 +139,9 @@ export const SETTINGS_CATALOG_ITEMS: CatalogNodeItem[] = [
     id: 'area-providers',
     label: 'Inference Providers',
     shortLabel: 'Providers',
+    titleKey: 'settings.pages.providers.title',
+    descriptionKey: 'settings.pages.providers.description',
+    description: 'Set up LLM brains, speech synthesis engines, and transcription providers.',
     glyph: '供',
     clusterGroup: 'INTELLIGENCE 知',
     route: '/settings/providers',
@@ -131,8 +156,11 @@ export const SETTINGS_CATALOG_ITEMS: CatalogNodeItem[] = [
   // ══════════════════════════════════════════════
   {
     id: 'area-stage',
-    label: 'Control Strip Stage',
-    shortLabel: 'Stage',
+    label: 'Floating Controls',
+    shortLabel: 'Controls',
+    titleKey: 'settings.pages.stage.title',
+    descriptionKey: 'settings.pages.stage.description',
+    description: 'Customize floating action strip slots, docking edge, and quick triggers.',
     glyph: '盤',
     clusterGroup: 'SYSTEM 系',
     route: '/settings/stage',
@@ -145,6 +173,9 @@ export const SETTINGS_CATALOG_ITEMS: CatalogNodeItem[] = [
     id: 'area-system',
     label: 'System Preferences',
     shortLabel: 'System',
+    titleKey: 'settings.pages.system.title',
+    descriptionKey: 'settings.pages.system.description',
+    description: 'Customize app language, 24-color theme palette, vibrancy, and user identity.',
     glyph: '系',
     clusterGroup: 'SYSTEM 系',
     route: '/settings/system',
@@ -157,6 +188,9 @@ export const SETTINGS_CATALOG_ITEMS: CatalogNodeItem[] = [
     id: 'area-docs',
     label: 'Documentation',
     shortLabel: 'Docs',
+    titleKey: 'settings.pages.docs.title',
+    descriptionKey: 'settings.pages.docs.description',
+    description: 'Access tutorials, architectural overviews, API guides, and manual reference.',
     glyph: '書',
     clusterGroup: 'SYSTEM 系',
     route: '/settings/docs',
@@ -169,6 +203,9 @@ export const SETTINGS_CATALOG_ITEMS: CatalogNodeItem[] = [
     id: 'area-data',
     label: 'Data Management',
     shortLabel: 'Data',
+    titleKey: 'settings.pages.data.title',
+    descriptionKey: 'settings.pages.data.description',
+    description: 'Backup, restore, and clear cached assets or IndexedDB persistence stores.',
     glyph: '庫',
     clusterGroup: 'SYSTEM 系',
     route: '/settings/data',
@@ -534,6 +571,9 @@ export function buildSettingsCatalogTopology(): SettingsTopology {
       id: item.id,
       label: item.label,
       shortLabel: item.shortLabel || item.label.slice(0, 6),
+      titleKey: item.titleKey,
+      description: item.description,
+      descriptionKey: item.descriptionKey,
       glyph: item.glyph,
       route: item.route,
       parentId: item.parentId,
