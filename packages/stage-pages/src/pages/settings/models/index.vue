@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { HackerPanel, LHackerPanel, ModelSettings } from '@proj-airi/stage-ui/components/scenarios/settings/model-settings'
+import { ModelSettings } from '@proj-airi/stage-ui/components/scenarios/settings/model-settings'
 import { useAiriCardStore } from '@proj-airi/stage-ui/stores/modules/airi-card'
 import { Vibrant } from 'node-vibrant/browser'
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
@@ -63,16 +63,12 @@ onBeforeUnmount(async () => {
 </script>
 
 <template>
-  <div flex class="relative h-full flex-col-reverse md:flex-row">
+  <div class="relative h-[calc(100dvh-100px-56px)] w-full overflow-hidden">
     <ModelSettings
       ref="modelSettingsRef"
-      settings-class="w-100% md:w-40% lg:w-40% xl:w-25% 2xl:w-30% h-fit sm:max-h-80dvh overflow-y-scroll relative"
-      live-2d-scene-class="absolute max-h-[calc(100dvh-100px-56px)] w-full h-full"
-      vrm-scene-class="absolute max-h-[calc(100dvh-100px-56px)] w-full h-full"
-      :palette="palette" @extract-colors-from-model="extractColorsFromModel"
+      :palette="palette"
+      @extract-colors-from-model="extractColorsFromModel"
     />
-    <HackerPanel />
-    <LHackerPanel />
   </div>
 
   <div
