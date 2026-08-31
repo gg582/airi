@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { DiscoveredMeshNode } from '@proj-airi/stage-ui-three'
 
+import type { ExpressionCategory } from '../../../../libs/character/expression-noise-gate'
 import type { AiriOutfit } from '../../../../stores/modules/airi-card'
 
 import { useLive2d } from '@proj-airi/stage-ui-live2d/stores'
@@ -13,8 +14,10 @@ import { storeToRefs } from 'pinia'
 import { computed, ref, toRaw, watch } from 'vue'
 import { toast } from 'vue-sonner'
 
+import ExpressionCurationModal from '../../dialogs/ExpressionCurationModal.vue'
 import WardrobeMeshTreeNode from './components/WardrobeMeshTreeNode.vue'
 
+import { classifyExpression, isTrackingNoise } from '../../../../libs/character/expression-noise-gate'
 import { DisplayModelFormat, useDisplayModelsStore } from '../../../../stores/display-models'
 import { useAiriCardStore } from '../../../../stores/modules/airi-card'
 import { useSettingsControlStrip } from '../../../../stores/settings/control-strip'
@@ -87,6 +90,7 @@ interface UnifiedExpression {
   isFavorite: boolean
   isVisible: boolean
   category?: string
+  expressionCategory?: ExpressionCategory
 }
 
 interface UnifiedMotion {
@@ -262,6 +266,7 @@ const rawExpressions = computed<UnifiedExpression[]>(() => {
       actMapping: mappings[key],
       isFavorite: favorites.includes(key),
       isVisible: !hidden.includes(key),
+      expressionCategory: classifyExpression(key),
     }))
   }
   if (mType === 'vrm') {
@@ -273,6 +278,7 @@ const rawExpressions = computed<UnifiedExpression[]>(() => {
       isFavorite: favorites.includes(key),
       isVisible: !hidden.includes(key),
       category: key === key.toUpperCase() ? 'preset' : 'custom',
+      expressionCategory: classifyExpression(key),
     }))
   }
   if (mType === 'mmd') {
@@ -283,6 +289,7 @@ const rawExpressions = computed<UnifiedExpression[]>(() => {
       actMapping: mappings[key],
       isFavorite: favorites.includes(key),
       isVisible: !hidden.includes(key),
+      expressionCategory: classifyExpression(key),
     }))
   }
   if (mType === 'spine') {
@@ -307,6 +314,7 @@ const rawExpressions = computed<UnifiedExpression[]>(() => {
         actMapping: mappings[key],
         isFavorite: favorites.includes(key),
         isVisible: !hidden.includes(key),
+        expressionCategory: classifyExpression(key),
       }
     })
   }
@@ -395,9 +403,28 @@ const rawMotions = computed<UnifiedMotion[]>(() => {
 // Filter states
 const activeTab = ref<'expressions' | 'motions' | 'outfits'>('expressions')
 const showHidden = ref(false)
+const hideTrackingNoise = ref(true)
 const filterRenamedOnly = ref(false)
 const editingKey = ref<string | null>(null)
 const editingValue = ref('')
+
+const noiseFilteredCount = computed(() => {
+  return rawExpressions.value.filter(e => e.expressionCategory && isTrackingNoise(e.expressionCategory)).length
+})
+
+const showCurationModal = ref(false)
+
+async function onCurationApplied() {
+  if (!props.modelId)
+    return
+  const model = await displayModelsStore.getDisplayModel(props.modelId)
+  if (model) {
+    applyModelMappings(model)
+  }
+  const caps = await displayModelsStore.getOrLoadModelCapabilities(props.modelId)
+  cachedExpressions.value = caps.expressions
+  cachedMotions.value = caps.motions
+}
 
 // === Inline Wardrobe Builder State ===
 const isElectron = computed(() => typeof window !== 'undefined' && !!(window as any).electron)
@@ -637,10 +664,23 @@ function toggleSlotVisibility(slot: AiriOutfit) {
 }
 
 const expressionsToRender = computed(() => {
-  let list = showHidden.value ? rawExpressions.value : rawExpressions.value.filter(e => e.isVisible)
+  let list = rawExpressions.value
+
+  // Noise Gate: Filter low-level ARKit, visemes, procedural eye/gaze/blinks, and neutral noise
+  if (hideTrackingNoise.value) {
+    list = list.filter(e => !e.expressionCategory || !isTrackingNoise(e.expressionCategory))
+  }
+
+  // Hidden Flag Filter
+  if (!showHidden.value) {
+    list = list.filter(e => e.isVisible)
+  }
+
+  // Renamed Filter
   if (filterRenamedOnly.value) {
     list = list.filter(e => e.displayName !== e.key)
   }
+
   return list
 })
 
@@ -664,12 +704,6 @@ watch([expressionsToRender, motionsToRender], () => {
     motions: Object.values(motionsToRender.value).flat().map(m => m.displayName),
   })
 }, { deep: true, immediate: true })
-
-// Warnings detection
-const hasTechnicalKeys = computed(() => {
-  const technicalRegex = /(\.json|\.vmd|expression_|morph_|\d)/i
-  return rawExpressions.value.some(e => e.isVisible && technicalRegex.test(e.key) && e.displayName === e.key)
-})
 
 // Trigger Click-to-Effectuate on Stage
 function triggerExpressionEffect(key: string) {
@@ -844,15 +878,28 @@ function toggleMotionCycle(key: string) {
     </div>
 
     <template v-else>
-      <!-- Labeling Warning Helper -->
-      <div v-if="hasTechnicalKeys" class="mb-3 border border-primary-200/40 rounded-xl bg-primary-500/5 p-3 text-xs text-primary-700 dark:border-primary-900/40 dark:text-primary-400">
-        <div class="flex items-center gap-1 font-semibold">
-          <div class="i-solar:info-square-bold-duotone text-base" />
-          Technical Keys Detected
+      <!-- Labeling Helper & AI Auto-Curate Banner (2-Row Layout) -->
+      <div v-if="activeTab === 'expressions'" class="mb-3 border border-primary-200/40 rounded-xl bg-primary-500/5 p-3 text-xs text-primary-700 dark:border-primary-900/40 dark:text-primary-400">
+        <div>
+          <div class="flex items-center gap-1.5 text-neutral-900 font-semibold dark:text-neutral-100">
+            <div class="i-solar:magic-stick-3-bold-duotone text-base text-primary-500" />
+            <span>AI Expression Curation</span>
+          </div>
+          <p class="mt-1 text-[11px] text-neutral-500 leading-relaxed dark:text-neutral-400">
+            Translate foreign morphs, assign ACT emotion tokens, and generate character acting directives.
+          </p>
         </div>
-        <p class="mt-1 text-[11px] leading-relaxed">
-          Some expressions use system names. Click **Rename (✎)** on each item below to rename them to simple words (e.g., `happy`, `sad`) so the AI can use them.
-        </p>
+        <div class="mt-2.5 flex justify-end">
+          <button
+            class="cursor-pointer rounded-lg bg-primary-500 px-3.5 py-1.5 text-xs text-white font-semibold shadow-sm transition-all active:scale-95 hover:bg-primary-600"
+            @click="showCurationModal = true"
+          >
+            <div class="inline-flex items-center gap-1.5">
+              <div class="i-solar:magic-stick-3-bold text-sm" />
+              <span>Auto-Curate (AI)</span>
+            </div>
+          </button>
+        </div>
       </div>
 
       <!-- Segment Toggle: Emotions / Motions / Outfits -->
@@ -865,7 +912,7 @@ function toggleMotionCycle(key: string) {
               : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300'"
             @click="activeTab = 'expressions'"
           >
-            Emotions ({{ rawExpressions.length }})
+            Emotions ({{ expressionsToRender.length }}{{ hideTrackingNoise && noiseFilteredCount > 0 ? ` / ${rawExpressions.length}` : '' }})
           </button>
           <button
             v-if="rawMotions.length > 0"
@@ -901,7 +948,21 @@ function toggleMotionCycle(key: string) {
         <span class="text-[10px] text-neutral-400 font-bold tracking-wider uppercase">
           Filters
         </span>
-        <div class="flex gap-1">
+        <div class="flex items-center gap-1">
+          <button
+            v-if="activeTab === 'expressions' && noiseFilteredCount > 0"
+            class="cursor-pointer rounded-md px-2 py-0.5 text-[10px] transition-colors"
+            :class="hideTrackingNoise
+              ? 'bg-primary-500/10 text-primary-600 dark:text-primary-400 font-medium'
+              : 'bg-neutral-100 text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-700'"
+            :title="hideTrackingNoise ? 'Showing clean expressive morphs only (tracking & visemes hidden)' : 'Showing all blendshapes including tracking noise'"
+            @click="hideTrackingNoise = !hideTrackingNoise"
+          >
+            <div class="inline-flex items-center gap-1">
+              <div :class="hideTrackingNoise ? 'i-solar:shield-check-bold-duotone' : 'i-solar:shield-cross-bold-duotone'" />
+              <span>{{ hideTrackingNoise ? `Noise Filtered (${noiseFilteredCount})` : 'Show Raw Noise' }}</span>
+            </div>
+          </button>
           <button
             class="cursor-pointer rounded-md px-2 py-0.5 text-[10px] transition-colors"
             :class="showHidden
@@ -1497,5 +1558,14 @@ function toggleMotionCycle(key: string) {
         </div>
       </Transition>
     </Teleport>
+    <!-- AI Expression Curation Modal (3-Step Wizard) -->
+    <ExpressionCurationModal
+      v-model="showCurationModal"
+      :model-id="props.modelId"
+      :model-format="modelType"
+      :visible-expressions="expressionsToRender"
+      :all-expressions="rawExpressions"
+      @applied="onCurationApplied"
+    />
   </div>
 </template>

@@ -1,0 +1,165 @@
+woow
+＞＿＜
+INA-new2_INA-ver2_clown
+31.□２
+XI
+オフセットショルダーset
+上三角嘴
+方形嘴
+Blank Face
+DeadEyes
+- -
+MTH_Sankaku
+MTH_Maru
+Shiitake
+earsback
+-_-a
+eee
+AAA
+OOO
+earsroll
+earsside
+earsfront
+earsdown
+earsup
+earstanosi
+earsupn
+earsikari
+earsbiku
+earsbikun
+earsyure
+earskanasi
+earsbase
+oa
+sheep
+眼泪汪汪
+Correction01
+Correction02
+-35prefab 6other MouthS
+-37prefab 6other Sareyes
+-40prefab 6other O O
+-42prefab 6other  -v-
+-43prefab 7other  o
+-44prefab 7other  o🔺
+-45prefab 7other carelessly
+-46prefab 7other  -S-
+-47prefab 7other  white Eyes
+SeraDefualt
+Slant
+Calm
+Hachu Eye
+HorrorChild !
+Oh1
+Mouth Side Hydration
+HeadbandL
+HeadbandR
+0.up
+1.down
+10.中
+2.right
+24.怪訝右
+25.怪訝左
+27.上L
+28.上R
+3.left
+30.下L
+31.下R
+42.淫邪
+电
+恶魔化
+Pero
+Grgr
+钱多多
+猫咪特效
+猫爪
+Lamp
+口罩
+AA2
+LampOnly
+睡觉眼
+三角嘴
+咧嘴笑
+换泳衣
+EXT01
+-face black
+-face red
+-pupil s
+-highlightoff1
+-highlightoff2
+-white eyes
+- -_-
+- anxious
+- mesugaki1
+- mesugaki2
+-complacent
+- oo
+- ？
+- Beaneye
+- drunk
+- cachinnation
+- titter
+→圈圈瞳 Roundpupil 丸瞳
+嘴拉长 mouthstretch 口広げ
+嘴收缩 mouthshrink 口縮む
+嗯 nn ん
+嗯2 nn2 ん2
+眉变宽 eyebrowstretch 眉広げ
+眉上  eyebrow up   眉上げ
+眉下  eyebrow down   眉下げ
+wa1
+鼓腮 cheekPuff ふまん
+得意 complace ふむ
+闭眼1 Blink1 まばたき1
+闭眼2 Blink2 まばたき2
+#呆住 dumbfound あぼれ
+#呆住2 dumbfound2 あぼれ2
+#鼓腮 cheekPuff ふまん
+# ^
+-08prefab 2positive -D-
+-10prefab 2positive Tiger Tooth
+-11prefab 2positive :ω
+-35prefab 5other ??
+-38prefab 5other @_@
+-39prefab 5other WaveMouth
+-34-5other drunk
+-43prefab 6other koharu1
+-44prefab 6other koharu2
+nun
+-29 5other Sulk
+-35-5other drunk
+Part-ShoeOff
+Part-PantyhoseOn
+Foot_heel
+Foot_heel2
+mouth_H_1
+mouth_pero_1
+mouth_pero_3
+vrc.blink 
+vrc.looking_down
+vrc.looking_up
+owo
+uhh
+uwu
+11+
+qaq
+blendShape1.bl_N_L
+blendShape1.bl_N_LR
+blendShape1.bl_N_R
+blendShape1.bl_S_L
+blendShape1.bl_S_LR
+blendShape1.bl_S_R
+blendShape1.em_eye_paz
+blendShape1.em_mouth_paz
+blendShape1.mv_eye_down
+blendShape1.mv_eye_left
+blendShape1.mv_eye_right
+blendShape1.mv_eye_up
+bl_02
+blendShape1.bl_01
+blendShape1.bl_01_L
+blendShape1.bl_01_R
+blendShape1.bl_02
+blendShape1.bl_02_L
+blendShape1.bl_02_R
+blendShape1.em_hanme
+em_hanme
