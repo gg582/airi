@@ -27,6 +27,22 @@ const { allAudioSpeechProvidersMetadata } = storeToRefs(providersStore)
 const activeProfileId = ref<string>('')
 const activeProfile = computed(() => savedVoiceProfiles.value.find(p => p.id === activeProfileId.value))
 
+// Voice library search filter
+const searchQuery = ref('')
+const filteredVoiceProfiles = computed(() => {
+  const query = searchQuery.value.trim().toLowerCase()
+  const list = savedVoiceProfiles.value.filter(p => p.id !== 'voice_profile_auto_preview')
+  if (!query)
+    return list
+
+  return list.filter((p) => {
+    const name = (p.name || '').toLowerCase()
+    const provider = (p.baseProvider || '').toLowerCase()
+    const voice = (p.baseVoice || '').toLowerCase()
+    return name.includes(query) || provider.includes(query) || voice.includes(query)
+  })
+})
+
 // UI Form State representing the active profile
 const form = ref<VoiceProfile>({
   id: '',
@@ -339,9 +355,28 @@ onUnmounted(() => {
         </button>
       </div>
 
+      <!-- Search Filter Input -->
+      <div class="relative flex items-center">
+        <div class="i-solar:magnifer-linear pointer-events-none absolute left-3 text-xs text-neutral-400 dark:text-neutral-500" />
+        <input
+          v-model="searchQuery"
+          type="text"
+          placeholder="Filter voice profiles..."
+          class="w-full border border-neutral-200/80 rounded-xl bg-white/80 py-1.5 pl-8 pr-7 text-xs text-neutral-800 outline-none transition-colors dark:border-neutral-800/80 focus:border-primary-500 dark:bg-neutral-900/80 dark:text-neutral-200 dark:focus:border-primary-500"
+        >
+        <button
+          v-if="searchQuery"
+          class="absolute right-2.5 rounded p-0.5 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200"
+          title="Clear search"
+          @click="searchQuery = ''"
+        >
+          <div class="i-solar:close-circle-bold text-xs" />
+        </button>
+      </div>
+
       <div class="max-h-[350px] flex flex-col gap-2 overflow-y-auto lg:max-h-[500px]">
         <div
-          v-for="profile in savedVoiceProfiles.filter(p => p.id !== 'voice_profile_auto_preview')"
+          v-for="profile in filteredVoiceProfiles"
           :key="profile.id"
           class="group flex cursor-pointer items-center justify-between border rounded-xl p-3 transition-all duration-200"
           :class="[
@@ -370,6 +405,10 @@ onUnmounted(() => {
               <div i-solar:trash-bin-trash-bold-duotone class="text-sm text-red-500" />
             </button>
           </div>
+        </div>
+
+        <div v-if="filteredVoiceProfiles.length === 0" class="py-6 text-center text-xs text-neutral-400 dark:text-neutral-500">
+          No voice profiles found matching "{{ searchQuery }}"
         </div>
       </div>
     </div>

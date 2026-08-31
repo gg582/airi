@@ -75,10 +75,12 @@ watch(() => voiceForm.value.baseProvider, async (newProvider) => {
         name: p.name,
         gender: 'saved profile',
       }))
-    if (selectedProviderVoices.value.length > 0) {
-      if (!voiceForm.value.baseVoice || !selectedProviderVoices.value.some(v => v.id === voiceForm.value.baseVoice)) {
-        voiceForm.value.baseVoice = selectedProviderVoices.value[0].id
-      }
+    const matchingVoice = selectedProviderVoices.value.find(v => v.id === voiceForm.value.baseVoice || v.name === voiceForm.value.baseVoice)
+    if (matchingVoice) {
+      voiceForm.value.baseVoice = matchingVoice.id
+    }
+    else if (selectedProviderVoices.value.length > 0) {
+      voiceForm.value.baseVoice = selectedProviderVoices.value[0].id
     }
     else {
       voiceForm.value.baseVoice = ''
@@ -275,9 +277,9 @@ async function playVoicePreview() {
 <template>
   <DialogRoot :open="modelValue" @update:open="emit('update:modelValue', $event)">
     <DialogPortal>
-      <DialogOverlay class="fixed inset-0 z-[10001] bg-black/60 backdrop-blur-md data-[state=closed]:animate-fadeOut data-[state=open]:animate-fadeIn" />
+      <DialogOverlay class="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-md data-[state=closed]:animate-fadeOut data-[state=open]:animate-fadeIn" />
       <DialogContent
-        class="fixed left-1/2 top-1/2 z-[10001] m-0 max-h-[90vh] max-w-xl w-[90vw] flex flex-col overflow-hidden border border-neutral-200 rounded-2xl bg-white shadow-2xl -translate-x-1/2 -translate-y-1/2 data-[state=closed]:animate-contentHide data-[state=open]:animate-contentShow dark:border-neutral-700 dark:bg-neutral-900"
+        class="fixed left-1/2 top-1/2 z-[10000] m-0 max-h-[90vh] max-w-xl w-[90vw] flex flex-col overflow-hidden border border-neutral-200 rounded-2xl bg-white shadow-2xl -translate-x-1/2 -translate-y-1/2 data-[state=closed]:animate-contentHide data-[state=open]:animate-contentShow dark:border-neutral-700 dark:bg-neutral-900"
         @pointer-down-outside.prevent
       >
         <!-- Header -->

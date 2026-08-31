@@ -239,7 +239,7 @@ export const useSpeechStore = defineStore('speech', () => {
 
     const isVirtual = providerId === 'virtual-audio-studio' || !!voiceProfileId
     const targetVoiceId = voiceProfileId || activeSpeechVoiceId.value
-    const profile = isVirtual ? savedVoiceProfiles.value.find(p => p.id === targetVoiceId) : null
+    const profile = isVirtual ? savedVoiceProfiles.value.find(p => p.id === targetVoiceId || p.name === targetVoiceId) : null
 
     if (!profile || !profile.ust.enabled) {
       return text
@@ -401,7 +401,7 @@ export const useSpeechStore = defineStore('speech', () => {
     voice: string,
     providerConfig: Record<string, any> = {},
   ): Promise<ArrayBuffer> {
-    const profile = savedVoiceProfiles.value.find(p => p.id === voice)
+    const profile = savedVoiceProfiles.value.find(p => p.id === voice || p.name === voice)
 
     let targetProvider = provider
     let targetModel = model

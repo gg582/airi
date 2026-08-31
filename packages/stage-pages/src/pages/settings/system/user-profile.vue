@@ -3,9 +3,11 @@ import { useSpeechStore } from '@proj-airi/stage-ui/stores/modules/speech'
 import { useSettingsUserProfile } from '@proj-airi/stage-ui/stores/settings/user-profile'
 import { Button, Select } from '@proj-airi/ui'
 import { computed, ref } from 'vue'
+import { useRouter } from 'vue-router'
 
 import VoiceCreatorModal from '../airi-card/components/VoiceCreatorModal.vue'
 
+const router = useRouter()
 const userProfileStore = useSettingsUserProfile()
 const speechStore = useSpeechStore()
 
@@ -22,6 +24,17 @@ const voiceOptions = computed(() => {
     })
   return list
 })
+
+const selectedVoiceProfile = computed(() => {
+  const id = userProfileStore.voiceProfileId
+  if (!id)
+    return null
+  return speechStore.savedVoiceProfiles.find(p => p.id === id || p.name === id) || null
+})
+
+function openAudioStudio() {
+  router.push('/settings/providers/speech/virtual-audio-studio')
+}
 </script>
 
 <template>
@@ -71,17 +84,27 @@ const voiceOptions = computed(() => {
     <!-- Speech Vocal Profile Select -->
     <div class="flex flex-col gap-2">
       <label class="text-sm text-neutral-700 font-bold dark:text-neutral-300">Speech Voice Profile</label>
-      <div class="flex items-center gap-2">
-        <Select v-model="userProfileStore.voiceProfileId" :options="voiceOptions" class="flex-1" />
+      <div class="flex flex-wrap items-center gap-2">
+        <Select v-model="userProfileStore.voiceProfileId" :options="voiceOptions" class="min-w-[200px] flex-1" />
         <Button
           variant="secondary"
           type="button"
           class="h-[38px] flex items-center gap-1.5 border border-neutral-200 px-3 text-xs font-bold dark:border-neutral-700"
-          title="Create custom voice profile"
+          title="Manage voice profiles in Audio Studio"
+          @click.prevent="openAudioStudio"
+        >
+          <span class="i-solar:slider-vertical-bold-duotone text-sm text-primary-500" />
+          Audio Studio
+        </Button>
+        <Button
+          variant="secondary"
+          type="button"
+          class="h-[38px] flex items-center gap-1.5 border border-neutral-200 px-3 text-xs font-bold dark:border-neutral-700"
+          :title="userProfileStore.voiceProfileId ? 'Edit current voice profile' : 'Configure custom voice profile'"
           @click.prevent="showVoiceCreator = true"
         >
           <span class="i-solar:music-notes-bold-duotone text-sm" />
-          Create Custom Voice
+          {{ userProfileStore.voiceProfileId ? 'Edit Voice' : 'Configure Voice' }}
         </Button>
       </div>
       <p class="text-[10px] text-neutral-400 italic">
@@ -106,6 +129,9 @@ const voiceOptions = computed(() => {
     <VoiceCreatorModal
       v-model="showVoiceCreator"
       character-name="User"
+      :initial-provider="selectedVoiceProfile ? 'virtual-audio-studio' : undefined"
+      :initial-voice="selectedVoiceProfile ? selectedVoiceProfile.id : (userProfileStore.voiceProfileId || undefined)"
+      :initial-model="selectedVoiceProfile ? 'virtual' : undefined"
       @save="(payload) => {
         userProfileStore.voiceProfileId = typeof payload === 'string' ? payload : payload.baseVoice
       }"

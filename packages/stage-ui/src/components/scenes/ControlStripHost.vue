@@ -107,7 +107,6 @@ const { data: sessionUpdate } = useBroadcastChannel<any, any>({ name: 'airi-chat
 const actorColors = new Map<string, string>()
 const parserActorId = ref<string>('default')
 const playbackActorId = ref<string>('default')
-let lastActivatedActorId: string | null = null
 
 function getActorColor(id: string): string {
   try {
@@ -189,15 +188,6 @@ const speechRuntimeStore = useSpeechRuntimeStore()
 const discordStore = useDiscordStore()
 const artistryAutonomousStore = useAutonomousArtistryStore()
 const displayModelsStore = useDisplayModelsStore()
-const { data: stageModelReadySignal } = useBroadcastChannel<string, string>({ name: 'airi-stage-model-ready' })
-let stageModelReadyResolver: (() => void) | null = null
-
-watch(stageModelReadySignal, (val) => {
-  if (val === 'ready' && stageModelReadyResolver) {
-    stageModelReadyResolver()
-    stageModelReadyResolver = null
-  }
-})
 
 const resizeStateEventName = useElectronWindowResizeStateEvent()
 const isWindowResizing = ref(false)
@@ -605,50 +595,10 @@ async function playFunction(item: Parameters<Parameters<typeof createPlaybackMan
     if (actorId) {
       debug('[Stage:Playback] Actor swap token reached playback, activating concept:', actorId)
 
-      const cardStore = useAiriCardStore()
-      const currentActiveConcepts = cardStore.activeCard?.extensions?.airi?.active_concepts || []
-      const isAlreadyActive = lastActivatedActorId === actorId || currentActiveConcepts[currentActiveConcepts.length - 1] === actorId
-
-      const actorChanged = !isAlreadyActive
-      lastActivatedActorId = actorId
       playbackActorId.value = actorId
 
       // Trigger concept activation
       void artistryAutonomousStore.activateConcept(actorId)
-
-      if (actorChanged) {
-        // Wait for airi-stage-model-ready signal with 5s timeout fallback
-        await new Promise<void>((resolve) => {
-          const onAbort = () => {
-            if (stageModelReadyResolver === resolve) {
-              stageModelReadyResolver = null
-            }
-            resolve()
-          }
-          if (signal.aborted) {
-            resolve()
-            return
-          }
-          signal.addEventListener('abort', onAbort, { once: true })
-
-          stageModelReadyResolver = () => {
-            signal.removeEventListener('abort', onAbort)
-            resolve()
-          }
-
-          setTimeout(() => {
-            if (stageModelReadyResolver) {
-              debug('[Stage:Playback] Timeout waiting for model ready signal for actor:', actorId)
-              stageModelReadyResolver()
-            }
-          }, 5000)
-        })
-
-        // Deliberate theatrical pacing delay between different actors (1.2s)
-        if (!signal.aborted) {
-          await new Promise(resolve => setTimeout(resolve, 1200))
-        }
-      }
 
       // Update the global speechStore settings so voice indicators, pitch, rate, etc. update precisely on speaking start
       const resolvedSpeech = artistryAutonomousStore.resolveSpeechConfigForActor(actorId)
@@ -711,7 +661,7 @@ async function playFunction(item: Parameters<Parameters<typeof createPlaybackMan
   }
 
   if (provider === 'virtual-audio-studio' && voice) {
-    const profile = speechStore.savedVoiceProfiles.find(p => p.id === voice.id)
+    const profile = speechStore.savedVoiceProfiles.find(p => p.id === voice.id || p.name === voice.id)
     if (profile) {
       const effectsResult = applyVoiceProfileEffects(audioContext, source, profile.effects)
       lastNode = effectsResult.lastNode
@@ -877,7 +827,7 @@ async function generateSpeechBuffered(request: TtsRequest, signal: AbortSignal):
   }
 
   if (targetProviderId === 'virtual-audio-studio' && targetVoice) {
-    const profile = speechStore.savedVoiceProfiles.find(p => p.id === targetVoice?.id)
+    const profile = speechStore.savedVoiceProfiles.find(p => p.id === targetVoice?.id || p.name === targetVoice?.id)
     if (profile) {
       targetProviderId = profile.baseProvider
       targetModel = profile.baseModel
