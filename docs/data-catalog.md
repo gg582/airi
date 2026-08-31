@@ -790,6 +790,7 @@ interface StoredCustomVrmAnimation {
 | :--- | :--- | :--- | :--- |
 | `settings/theme/colors/hue` | `number` | `220.44` | `stores/settings/theme.ts` |
 | `settings/theme/colors/hue-dynamic` | `boolean` | `false` | `stores/settings/theme.ts` |
+| `settings/theme/colors/chroma-multiplier` | `number` | `1.0` | `stores/settings/theme.ts` |
 | `settings/theme/background/gallery-options` | `Record<string, { id, blur }>` | — | `packages/stage-layouts/src/stores/background.ts` |
 | `settings/theme/background/gallery-active` | `string` | — | `packages/stage-layouts/src/stores/background.ts` |
 

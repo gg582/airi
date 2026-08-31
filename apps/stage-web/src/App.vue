@@ -74,8 +74,15 @@ watch(settings.language, () => {
   i18n.locale.value = settings.language.value
 })
 
-watch(settings.themeColorsHue, () => {
-  document.documentElement.style.setProperty('--chromatic-hue', settings.themeColorsHue.value.toString())
+watch([settings.themeColorsHue, settings.themeColorsChromaMultiplier], ([hue, multiplier]) => {
+  const currentHue = hue ?? 220.44
+  const currentMultiplier = multiplier ?? 1.0
+  const baseChroma = 0.18 + Math.cos((currentHue * Math.PI) / 180) * 0.04
+  const effectiveChroma = baseChroma * currentMultiplier
+
+  document.documentElement.style.setProperty('--chromatic-hue', currentHue.toString())
+  document.documentElement.style.setProperty('--chromatic-chroma-multiplier', currentMultiplier.toString())
+  document.documentElement.style.setProperty('--chromatic-chroma', effectiveChroma.toString())
 }, { immediate: true })
 
 watch(settings.themeColorsHueDynamic, () => {

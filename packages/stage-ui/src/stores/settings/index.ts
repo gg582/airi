@@ -98,6 +98,7 @@ export const useSettings = defineStore('settings', () => {
     // Theme settings
     themeColorsHue: toRef(theme, 'themeColorsHue'),
     themeColorsHueDynamic: toRef(theme, 'themeColorsHueDynamic'),
+    themeColorsChromaMultiplier: toRef(theme, 'themeColorsChromaMultiplier'),
 
     // UI settings
     allowVisibleOnAllWorkspaces: toRef(controlsIsland, 'allowVisibleOnAllWorkspaces'),
@@ -130,6 +131,7 @@ export const useSettings = defineStore('settings', () => {
 
     // Methods
     setThemeColorsHue: theme.setThemeColorsHue,
+    setThemeColorsChromaMultiplier: theme.setThemeColorsChromaMultiplier,
     applyPrimaryColorFrom: theme.applyPrimaryColorFrom,
     isColorSelectedForPrimary: theme.isColorSelectedForPrimary,
     initializeStageModel: stageModel.initializeStageModel,

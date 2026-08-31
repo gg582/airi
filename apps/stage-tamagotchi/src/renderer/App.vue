@@ -62,7 +62,7 @@ const { isDark: dark } = useTheme()
 const i18n = useI18n()
 const contextBridgeStore = useContextBridgeStore()
 const settingsStore = useSettings()
-const { language, themeColorsHue, themeColorsHueDynamic } = storeToRefs(settingsStore)
+const { language, themeColorsHue, themeColorsHueDynamic, themeColorsChromaMultiplier } = storeToRefs(settingsStore)
 const serverChannelSettingsStore = useServerChannelSettingsStore()
 const onboardingStore = useOnboardingStore()
 const router = useRouter()
@@ -306,8 +306,15 @@ onMounted(async () => {
   }, { immediate: true })
 })
 
-watch(themeColorsHue, () => {
-  document.documentElement.style.setProperty('--chromatic-hue', themeColorsHue.value.toString())
+watch([themeColorsHue, themeColorsChromaMultiplier], ([hue, multiplier]) => {
+  const currentHue = hue ?? 220.44
+  const currentMultiplier = multiplier ?? 1.0
+  const baseChroma = 0.18 + Math.cos((currentHue * Math.PI) / 180) * 0.04
+  const effectiveChroma = baseChroma * currentMultiplier
+
+  document.documentElement.style.setProperty('--chromatic-hue', currentHue.toString())
+  document.documentElement.style.setProperty('--chromatic-chroma-multiplier', currentMultiplier.toString())
+  document.documentElement.style.setProperty('--chromatic-chroma', effectiveChroma.toString())
 }, { immediate: true })
 
 watch(themeColorsHueDynamic, () => {
