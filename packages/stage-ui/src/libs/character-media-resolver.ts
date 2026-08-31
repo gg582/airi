@@ -1,5 +1,5 @@
 import { useBackgroundStore } from '../stores/background'
-import { useDisplayModelsStore } from '../stores/display-models'
+import { DisplayModelFormat, useDisplayModelsStore } from '../stores/display-models'
 
 // Global memory caches to avoid duplicate zip parsing or canvas computation
 export const iconCache = new Map<string, string>()
@@ -26,17 +26,33 @@ export async function extractModelIcon(displayModelId: string): Promise<string |
   }
 
   const displayModelsStore = useDisplayModelsStore()
-  const model = await displayModelsStore.getDisplayModel(displayModelId)
+  const model = displayModelsStore.displayModels.find(m => m.id === displayModelId)
   if (!model)
     return null
 
+  // If the model already has authorIcon in metadata, return it directly
+  if (model.authorIcon) {
+    iconCache.set(displayModelId, model.authorIcon)
+    return model.authorIcon
+  }
+
+  // Fast skip for non-zip models (VRM, PMD, etc.) which never contain zip icon.png
+  if (model.format !== DisplayModelFormat.Live2dZip && model.format !== DisplayModelFormat.SpineZip && model.format !== DisplayModelFormat.PMXZip) {
+    iconCache.set(displayModelId, '')
+    return null
+  }
+
   try {
+    const fullModel = await displayModelsStore.getDisplayModel(displayModelId)
+    if (!fullModel)
+      return null
+
     let zipData: Blob | File | null = null
-    if (model.type === 'file') {
-      zipData = model.file || null
+    if (fullModel.type === 'file') {
+      zipData = fullModel.file || null
     }
-    else if (model.type === 'url') {
-      const res = await fetch(model.url)
+    else if (fullModel.type === 'url') {
+      const res = await fetch(fullModel.url)
       zipData = await res.blob()
     }
 
@@ -48,10 +64,15 @@ export async function extractModelIcon(displayModelId: string): Promise<string |
         return lower.endsWith('icon.png') || lower.endsWith('icon.jpg')
       })
       if (iconFileName) {
-        const fileData = await zip.files[iconFileName].async('blob')
-        const url = URL.createObjectURL(fileData)
-        iconCache.set(displayModelId, url)
-        return url
+        const fileData = await zip.files[iconFileName].async('base64')
+        const mime = iconFileName.toLowerCase().endsWith('.jpg') ? 'image/jpeg' : 'image/png'
+        const rawDataUrl = `data:${mime};base64,${fileData}`
+
+        // Cache in memory and model metadata so this tax is never paid again
+        iconCache.set(displayModelId, rawDataUrl)
+        model.authorIcon = rawDataUrl
+        void displayModelsStore.syncMetadataCacheFromMemory()
+        return rawDataUrl
       }
     }
     iconCache.set(displayModelId, '')

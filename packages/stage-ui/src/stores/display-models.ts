@@ -38,6 +38,7 @@ export interface DisplayModelCloud {
   format: DisplayModelFormat
   type: 'cloud'
   name: string
+  authorIcon?: string
   previewImage?: string
   importedAt: number
   nsfw?: boolean
@@ -73,6 +74,7 @@ export interface DisplayModelFile {
   type: 'file'
   file?: File
   name: string
+  authorIcon?: string
   previewImage?: string
   importedAt: number
   nsfw?: boolean
@@ -95,6 +97,7 @@ export interface DisplayModelURL {
   type: 'url'
   url: string
   name: string
+  authorIcon?: string
   previewImage?: string
   importedAt: number
   nsfw?: boolean
@@ -112,8 +115,8 @@ export interface DisplayModelURL {
 }
 
 const displayModelsPresets: DisplayModel[] = [
-  { id: 'preset-live2d-1', format: DisplayModelFormat.Live2dZip, type: 'url', url: presetLive2dProUrl, name: 'Hiyori (Pro)', previewImage: presetLive2dPreview, importedAt: 1733113886840 },
-  { id: 'preset-live2d-2', format: DisplayModelFormat.Live2dZip, type: 'url', url: presetLive2dFreeUrl, name: 'Hiyori (Free)', previewImage: presetLive2dPreview, importedAt: 1733113886840 },
+  { id: 'preset-live2d-1', format: DisplayModelFormat.Live2dZip, type: 'url', url: presetLive2dProUrl, name: 'Hiyori (Pro)', authorIcon: presetLive2dPreview, previewImage: presetLive2dPreview, importedAt: 1733113886840 },
+  { id: 'preset-live2d-2', format: DisplayModelFormat.Live2dZip, type: 'url', url: presetLive2dFreeUrl, name: 'Hiyori (Free)', authorIcon: presetLive2dPreview, previewImage: presetLive2dPreview, importedAt: 1733113886840 },
   { id: 'preset-vrm-1', format: DisplayModelFormat.VRM, type: 'url', url: presetVrmAvatarAUrl, name: 'AvatarSample_A', previewImage: presetVrmAvatarAPreview, importedAt: 1733113886840 },
   { id: 'preset-vrm-2', format: DisplayModelFormat.VRM, type: 'url', url: presetVrmAvatarBUrl, name: 'AvatarSample_B', previewImage: presetVrmAvatarBPreview, importedAt: 1733113886840 },
 ]
@@ -262,6 +265,7 @@ export const useDisplayModelsStore = defineStore('display-models', () => {
         .map(async (m) => {
           const rawM = toRaw(m)
           const compressedPreview = await compressPreviewDataUrl(rawM.previewImage)
+          const compressedAuthorIcon = rawM.authorIcon ? await compressPreviewDataUrl(rawM.authorIcon, 256, 0.9) : undefined
           return {
             id: rawM.id,
             format: rawM.format,
@@ -269,6 +273,7 @@ export const useDisplayModelsStore = defineStore('display-models', () => {
             file: undefined,
             name: rawM.name,
             importedAt: rawM.importedAt || Date.now(),
+            authorIcon: compressedAuthorIcon,
             previewImage: compressedPreview,
             nsfw: rawM.nsfw,
             groups: rawM.groups,
@@ -345,6 +350,7 @@ export const useDisplayModelsStore = defineStore('display-models', () => {
             if (val) {
               const modelName = val.name || val.file?.name || key
               const compressedPreview = await compressPreviewDataUrl(val.previewImage)
+              const compressedAuthorIcon = val.authorIcon ? await compressPreviewDataUrl(val.authorIcon, 256, 0.9) : undefined
               const itemMeta: DisplayModelFile = {
                 id: key,
                 format: val.format,
@@ -352,6 +358,7 @@ export const useDisplayModelsStore = defineStore('display-models', () => {
                 file: undefined,
                 name: modelName,
                 importedAt: val.importedAt || Date.now(),
+                authorIcon: compressedAuthorIcon,
                 previewImage: compressedPreview,
                 nsfw: val.nsfw,
                 groups: val.groups,
@@ -1043,10 +1050,35 @@ export const useDisplayModelsStore = defineStore('display-models', () => {
       }
     }
 
+    async function extractAuthorIconFromZip(targetFile: Blob | File): Promise<string | undefined> {
+      try {
+        const JSZipModule = (await import('jszip')).default
+        const zip = await JSZipModule.loadAsync(targetFile)
+        const iconFileName = Object.keys(zip.files).find((name) => {
+          const lower = name.toLowerCase()
+          return lower.endsWith('icon.png') || lower.endsWith('icon.jpg')
+        })
+        if (iconFileName) {
+          const fileData = await zip.files[iconFileName].async('base64')
+          const mime = iconFileName.toLowerCase().endsWith('.jpg') ? 'image/jpeg' : 'image/png'
+          const rawDataUrl = `data:${mime};base64,${fileData}`
+          return await compressPreviewDataUrl(rawDataUrl, 256, 0.9)
+        }
+      }
+      catch (e) {
+        console.warn('[DisplayModels] Failed to extract author icon from zip:', e)
+      }
+      return undefined
+    }
+
     const newDisplayModel: DisplayModelFile = { id: `display-model-${nanoid()}`, format, type: 'file', file, name: file.name, importedAt: Date.now() }
 
     if (format === DisplayModelFormat.Live2dZip) {
       try {
+        const authorIcon = await extractAuthorIconFromZip(file)
+        if (authorIcon) {
+          newDisplayModel.authorIcon = authorIcon
+        }
         const previewImage = await loadLive2DModelPreview(file)
         newDisplayModel.previewImage = previewImage
       }
@@ -1065,6 +1097,10 @@ export const useDisplayModelsStore = defineStore('display-models', () => {
     }
     else if (format === DisplayModelFormat.SpineZip) {
       try {
+        const authorIcon = await extractAuthorIconFromZip(file)
+        if (authorIcon) {
+          newDisplayModel.authorIcon = authorIcon
+        }
         const previewImage = await generateSpinePreview(file)
         newDisplayModel.previewImage = previewImage
       }
@@ -1888,5 +1924,7 @@ export const useDisplayModelsStore = defineStore('display-models', () => {
     fetchRemoteCatalog,
     fetchRemoteDisplayModelsCatalog,
     removeLocalCopy,
+
+    syncMetadataCacheFromMemory,
   }
 })

@@ -18,18 +18,19 @@ import { Button, InputFile } from '@proj-airi/ui'
 import { Select } from '@proj-airi/ui/components/form'
 import { storeToRefs } from 'pinia'
 import { safeParse } from 'valibot'
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
 
 import cardExportFrameUrl from './card-export-frame.png?url'
-import CardCreationDialog from './components/CardCreationDialog.vue'
-import CardDetailDialog from './components/CardDetailDialog.vue'
-import CardImportWizard from './components/CardImportWizard.vue'
 import CardListItem from './components/CardListItem.vue'
-import CreateModeSelectorDialog from './components/CreateModeSelectorDialog.vue'
-import DeleteCardDialog from './components/DeleteCardDialog.vue'
+
+const CardCreationDialog = defineAsyncComponent(() => import('./components/CardCreationDialog.vue'))
+const CardDetailDialog = defineAsyncComponent(() => import('./components/CardDetailDialog.vue'))
+const CardImportWizard = defineAsyncComponent(() => import('./components/CardImportWizard.vue'))
+const CreateModeSelectorDialog = defineAsyncComponent(() => import('./components/CreateModeSelectorDialog.vue'))
+const DeleteCardDialog = defineAsyncComponent(() => import('./components/DeleteCardDialog.vue'))
 
 const { t } = useI18n()
 const cardStore = useAiriCardStore()
@@ -1159,11 +1160,28 @@ function getDisplayModelId(id: string) {
 
     <!-- Responsive card layout (2 columns for portrait, 4 columns for landscape) -->
     <div
-      class="mt-4"
-      :class="{ 'grid grid-cols-2 md:grid-cols-4 gap-4': cards.size > 0 }"
+      class="grid grid-cols-2 mt-4 gap-4 md:grid-cols-4"
     >
+      <!-- Shimmer Skeleton Loading State -->
+      <template v-if="cardsLoading">
+        <div
+          v-for="i in 4"
+          :key="i"
+          class="relative h-[280px] flex flex-col animate-pulse overflow-hidden border-2 border-neutral-100 rounded-xl bg-neutral-200/40 dark:border-neutral-800/25 dark:bg-neutral-800/40"
+        >
+          <div class="aspect-square w-full bg-neutral-300/40 dark:bg-neutral-700/40" />
+          <div class="flex flex-1 flex-col justify-between p-3">
+            <div class="h-4 w-3/4 rounded bg-neutral-300/50 dark:bg-neutral-700/50" />
+            <div class="flex items-center justify-between">
+              <div class="h-3 w-1/4 rounded bg-neutral-300/40 dark:bg-neutral-700/40" />
+              <div class="h-3 w-1/3 rounded bg-neutral-300/40 dark:bg-neutral-700/40" />
+            </div>
+          </div>
+        </div>
+      </template>
+
       <!-- Card Items -->
-      <template v-if="cards.size > 0">
+      <template v-else-if="cards.size > 0">
         <CardListItem
           v-for="item in sortedFilteredCards"
           :id="item.id"
@@ -1187,7 +1205,7 @@ function getDisplayModelId(id: string) {
 
       <!-- No cards message -->
       <div
-        v-if="cards.size === 0"
+        v-else
         class="col-span-full rounded-xl p-8 text-center"
         border="~ neutral-200/50 dark:neutral-700/30"
         bg="neutral-50/50 dark:neutral-900/50"
@@ -1197,7 +1215,7 @@ function getDisplayModelId(id: string) {
       </div>
 
       <!-- No search results -->
-      <Alert v-if="searchQuery && sortedFilteredCards.length === 0" type="warning" class="col-span-full">
+      <Alert v-if="!cardsLoading && searchQuery && sortedFilteredCards.length === 0" type="warning" class="col-span-full">
         <template #title>
           {{ t('settings.pages.card.no_results') }}
         </template>
@@ -1210,6 +1228,7 @@ function getDisplayModelId(id: string) {
 
   <!-- Delete confirmation dialog -->
   <DeleteCardDialog
+    v-if="showDeleteConfirm"
     v-model="showDeleteConfirm"
     :card-name="cardToDelete ? cardStore.getCard(cardToDelete)?.name : ''"
     @confirm="handleDeleteConfirm"
@@ -1218,6 +1237,7 @@ function getDisplayModelId(id: string) {
 
   <!-- Card detail dialog -->
   <CardDetailDialog
+    v-if="isCardDialogOpen"
     v-model="isCardDialogOpen"
     :card-id="selectedCardId"
     :initial-tab="initialTab"
@@ -1226,6 +1246,7 @@ function getDisplayModelId(id: string) {
 
   <!-- Card creation/edit dialog -->
   <CardCreationDialog
+    v-if="isCardCreationDialogOpen"
     v-model="isCardCreationDialogOpen"
     :card-id="editingCardId"
     @studio="handleOpenStudio"
@@ -1233,6 +1254,7 @@ function getDisplayModelId(id: string) {
 
   <!-- Mode Selector Dialog -->
   <CreateModeSelectorDialog
+    v-if="isCreateModePromptOpen"
     v-model="isCreateModePromptOpen"
     @wizard="handleWizardMode"
     @guided="handleGuidedMode"
@@ -1241,6 +1263,7 @@ function getDisplayModelId(id: string) {
 
   <!-- Card import wizard dialog -->
   <CardImportWizard
+    v-if="isImportWizardOpen"
     v-model="isImportWizardOpen"
     :card-data="importedCardData"
     @imported="handleSelectCard"

@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { useDisplayModelsStore } from '@proj-airi/stage-ui/stores/display-models'
+import { DisplayModelFormat, useDisplayModelsStore } from '@proj-airi/stage-ui/stores/display-models'
 import { computed, ref, watch } from 'vue'
 
 import {
+  colorCache,
   extractComplementaryColors,
   extractModelIcon,
   getLatestSelfie,
+  iconCache,
 } from '../../libs/character-media-resolver'
 
 const props = withDefaults(defineProps<{
@@ -28,51 +30,89 @@ const props = withDefaults(defineProps<{
 })
 
 const displayModelsStore = useDisplayModelsStore()
-const iconUrl = ref<string | null>(null)
 const dynamicBackground = ref<{ light: string, dark: string } | null>(null)
+const lazyExtractedIcon = ref<string | null>(null)
 
+// 1. User's intent (Custom stage selfie)
 const latestSelfie = computed(() => getLatestSelfie(props.cardId))
 
-watch(
-  [() => props.displayModelId, () => displayModelsStore.displayModels],
-  async ([id]) => {
-    if (!id) {
-      iconUrl.value = null
-      dynamicBackground.value = null
-      return
-    }
+// 2. In-memory model metadata (0ms synchronous lookup)
+const displayModel = computed(() => {
+  if (!props.displayModelId)
+    return null
+  return displayModelsStore.displayModels.find(m => m.id === props.displayModelId) || null
+})
 
-    // Extract Zip Icon
-    iconUrl.value = await extractModelIcon(id)
-
-    // Extract Background Colors from preview image if this is the 2nd tier
-    const model = displayModelsStore.displayModels.find(m => m.id === id)
-    if (model?.previewImage) {
-      dynamicBackground.value = await extractComplementaryColors(model.previewImage)
-    }
-    else {
-      dynamicBackground.value = null
-    }
-  },
-  { immediate: true },
-)
-
+// 3. Priority Chain:
+// Tier 1: User Selfie
+// Tier 2: Author Icon (authorIcon from zip or cached icon)
+// Tier 3: Engine 3D Canvas Snapshot (previewImage)
+// Tier 4: Initial Letter
 const portraitInfo = computed(() => {
   if (latestSelfie.value)
     return { url: latestSelfie.value, source: 'selfie' }
 
-  if (iconUrl.value)
-    return { url: iconUrl.value, source: 'icon' }
-
-  if (!props.displayModelId)
+  const model = displayModel.value
+  if (!model)
     return { url: null, source: null }
 
-  const model = displayModelsStore.displayModels.find(m => m.id === props.displayModelId)
-  return { url: model?.previewImage || null, source: model?.previewImage ? 'preview' : null }
+  // Check model authorIcon from metadata or in-memory cache
+  const authorIcon = model.authorIcon || iconCache.get(model.id) || lazyExtractedIcon.value
+  if (authorIcon)
+    return { url: authorIcon, source: 'author-icon' }
+
+  // Check dynamic canvas preview image
+  if (model.previewImage)
+    return { url: model.previewImage, source: 'preview' }
+
+  return { url: null, source: null }
 })
 
 const portrait = computed(() => portraitInfo.value.url)
 const portraitSource = computed(() => portraitInfo.value.source)
+
+// Non-blocking background watcher:
+// - Extracts complementary colors from cache/canvas asynchronously
+// - For zip models without authorIcon, lazily triggers a single background extract
+watch(
+  () => props.displayModelId,
+  (id) => {
+    if (!id) {
+      dynamicBackground.value = null
+      lazyExtractedIcon.value = null
+      return
+    }
+
+    const model = displayModelsStore.displayModels.find(m => m.id === id)
+    if (!model)
+      return
+
+    const previewUrl = model.previewImage
+    if (previewUrl) {
+      if (colorCache.has(previewUrl)) {
+        dynamicBackground.value = colorCache.get(previewUrl) || null
+      }
+      else {
+        void extractComplementaryColors(previewUrl).then((colors) => {
+          dynamicBackground.value = colors
+        })
+      }
+    }
+    else {
+      dynamicBackground.value = null
+    }
+
+    // Lazy migration for legacy models without authorIcon
+    if (!model.authorIcon && (model.format === DisplayModelFormat.Live2dZip || model.format === DisplayModelFormat.SpineZip || model.format === DisplayModelFormat.PMXZip)) {
+      void extractModelIcon(id).then((url) => {
+        if (url) {
+          lazyExtractedIcon.value = url
+        }
+      })
+    }
+  },
+  { immediate: true },
+)
 
 // Dynamically compute the inline background style or colors
 const backgroundStyle = computed(() => {
