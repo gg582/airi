@@ -458,4 +458,38 @@ describe('astrolabe Canopy Topology Engine', () => {
     expect(poseSpeech.layers[0].isLocked).toBe(true)
     expect(poseSpeech.layers[1].isActive).toBe(true)
   })
+
+  it('correctly resolves hierarchical parent routes for settings back navigation', async () => {
+    const { resolveSettingsBackRoute } = await import('./path-resolver')
+
+    // 1. Root of settings
+    expect(resolveSettingsBackRoute('/settings', { isDesktop: true })).toBe(null)
+    expect(resolveSettingsBackRoute('/settings', { isDesktop: false })).toBe('/')
+    expect(resolveSettingsBackRoute('/settings/', { isDesktop: false })).toBe('/')
+
+    // 2. System Subpages
+    expect(resolveSettingsBackRoute('/settings/system/connection', { isDesktop: true })).toBe('/settings/system')
+    expect(resolveSettingsBackRoute('/settings/system/user-profile', { isDesktop: true })).toBe('/settings/system')
+    expect(resolveSettingsBackRoute('/settings/system/general', { isDesktop: true })).toBe('/settings/system')
+    expect(resolveSettingsBackRoute('/settings/system/color-scheme', { isDesktop: true })).toBe('/settings/system')
+    expect(resolveSettingsBackRoute('/settings/system/chat', { isDesktop: true })).toBe('/settings/system')
+    expect(resolveSettingsBackRoute('/settings/system/window-shortcuts', { isDesktop: true })).toBe('/settings/system')
+    expect(resolveSettingsBackRoute('/settings/system/developer', { isDesktop: true })).toBe('/settings/system')
+
+    // 3. System Hub -> Root
+    expect(resolveSettingsBackRoute('/settings/system', { isDesktop: true })).toBe('/settings')
+    expect(resolveSettingsBackRoute('/settings/system', { isDesktop: false })).toBe('/settings')
+
+    // 4. Provider Subpages -> Tab Hash
+    expect(resolveSettingsBackRoute('/settings/providers/speech/pocket-tts-local')).toBe('/settings/providers#speech')
+    expect(resolveSettingsBackRoute('/settings/providers/chat/ollama')).toBe('/settings/providers#chat')
+    expect(resolveSettingsBackRoute('/settings/providers/artistry/comfyui')).toBe('/settings/providers#artistry')
+    expect(resolveSettingsBackRoute('/settings/providers')).toBe('/settings')
+
+    // 5. Modules & Memory
+    expect(resolveSettingsBackRoute('/settings/modules/text-to-motion')).toBe('/settings/modules')
+    expect(resolveSettingsBackRoute('/settings/modules')).toBe('/settings')
+    expect(resolveSettingsBackRoute('/settings/memory/stmm')).toBe('/settings/memory')
+    expect(resolveSettingsBackRoute('/settings/memory')).toBe('/settings')
+  })
 })

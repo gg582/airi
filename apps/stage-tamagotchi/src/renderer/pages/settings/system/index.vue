@@ -1,81 +1,48 @@
 <script setup lang="ts">
-import { IconItem } from '@proj-airi/stage-ui/components'
+import { SETTINGS_CATALOG_ITEMS } from '@proj-airi/stage-pages/composables/settings-topology'
+import { isStageTamagotchi } from '@proj-airi/stage-shared'
+import { IconItem, RippleGrid } from '@proj-airi/stage-ui/components'
+import { useRippleGridState } from '@proj-airi/stage-ui/composables/use-ripple-grid-state'
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
+const { lastClickedIndex, setLastClickedIndex } = useRippleGridState()
 
-const settings = computed(() => [
-  {
-    title: 'User Profile',
-    description: 'Manage your global name, visual prompt tags, and personal TTS voice profile',
-    icon: 'i-solar:user-bold-duotone',
-    to: '/settings/system/user-profile',
-  },
-  {
-    title: t('settings.pages.system.general.title'),
-    description: t('settings.pages.system.general.description'),
-    icon: 'i-solar:emoji-funny-square-bold-duotone',
-    to: '/settings/system/general',
-  },
-  {
-    title: t('settings.pages.system.color-scheme.title'),
-    description: t('settings.pages.system.color-scheme.description'),
-    icon: 'i-solar:pallete-2-bold-duotone',
-    to: '/settings/system/color-scheme',
-  },
-  {
-    title: t('tamagotchi.settings.pages.system.window-shortcuts.title'),
-    description: t('tamagotchi.settings.pages.system.window-shortcuts.description'),
-    icon: 'i-solar:keyboard-bold-duotone',
-    to: '/settings/system/window-shortcuts',
-  },
-  {
-    title: t('tamagotchi.settings.pages.system.dock-mode.title'),
-    description: t('tamagotchi.settings.pages.system.dock-mode.description'),
-    icon: 'i-solar:magnet-bold-duotone',
-    to: '/settings/system/dock-mode',
-  },
-  {
-    title: t('settings.pages.system.developer.title'),
-    description: t('settings.pages.system.developer.description'),
-    icon: 'i-solar:code-bold-duotone',
-    to: '/settings/system/developer',
-  },
-  {
-    title: t('settings.pages.chat.title'),
-    description: t('settings.pages.chat.description'),
-    icon: 'i-solar:chat-round-dots-bold-duotone',
-    to: '/settings/system/chat',
-  },
-  {
-    title: t('settings.pages.connection.title'),
-    description: t('settings.pages.connection.description'),
-    icon: 'i-solar:wi-fi-router-bold-duotone',
-    to: '/settings/system/connection',
-  },
-])
+const settings = computed(() => {
+  return SETTINGS_CATALOG_ITEMS
+    .filter(item => item.parentId === 'area-system')
+    .filter(item => isStageTamagotchi() || !item.desktopOnly)
+    .sort((a, b) => a.order - b.order)
+    .map(item => ({
+      title: item.titleKey ? t(item.titleKey, item.label) : item.label,
+      description: item.descriptionKey ? t(item.descriptionKey, item.description || '') : (item.description || ''),
+      icon: item.icon || 'i-solar:settings-bold-duotone',
+      to: item.route || '/settings/system',
+    }))
+})
 </script>
 
 <template>
   <div flex="~ col gap-4" font-normal>
     <div />
-    <div flex="~ col gap-4">
-      <IconItem
-        v-for="(setting, index) in settings"
-        :key="setting.to"
-        v-motion
-        :initial="{ opacity: 0, y: 10 }"
-        :enter="{ opacity: 1, y: 0 }"
-        :duration="250"
-        :style="{
-          transitionDelay: `${index * 50}ms`, // delay between each item, unocss doesn't support dynamic generation of classes now
-        }"
-        :title="setting.title"
-        :description="setting.description"
-        :icon="setting.icon"
-        :to="setting.to"
-      />
+    <div flex="~ col gap-4" pb-12>
+      <RippleGrid
+        :items="settings"
+        :get-key="item => item.to"
+        :columns="1"
+        :origin-index="lastClickedIndex"
+        @item-click="({ globalIndex }) => setLastClickedIndex(globalIndex)"
+      >
+        <template #item="{ item }">
+          <IconItem
+            :title="item.title"
+            :description="item.description"
+            :icon="item.icon"
+            :to="item.to"
+          />
+        </template>
+      </RippleGrid>
     </div>
     <div
       v-motion

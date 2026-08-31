@@ -1,5 +1,7 @@
 import type { SettingsTopology, SettingsTopologyNode, TopologyTransition } from './types'
 
+import { buildSettingsCatalogTopology } from './settings-catalog'
+
 /**
  * Resolves the unique root-to-node path of node IDs.
  */
@@ -160,4 +162,62 @@ export function getSiblingPosition(topology: SettingsTopology, nodeId: string): 
     index: index >= 0 ? index : 0,
     total: siblings.length,
   }
+}
+
+/**
+ * Resolves the hierarchical parent route to navigate "Back" to.
+ * 1. If at root (/settings or rootOfSettings): returns '/' for web or null for desktop.
+ * 2. If inside providers (/settings/providers/category/providerId): returns `/settings/providers#${category}`.
+ * 3. Uses canonical topology tree to find parent node's route.
+ * 4. Falls back to path slice (e.g. /settings/a/b -> /settings/a).
+ */
+export function resolveSettingsBackRoute(
+  routePath: string,
+  options?: {
+    isDesktop?: boolean
+    topology?: SettingsTopology
+  },
+): string | null {
+  const normalizedRoute = routePath.replace(/\/$/, '') || '/'
+
+  // 1. Root of settings
+  if (normalizedRoute === '/settings') {
+    return options?.isDesktop ? null : '/'
+  }
+
+  // 2. Special case for providers category tabs
+  if (normalizedRoute.startsWith('/settings/providers/')) {
+    const segments = normalizedRoute.split('/').filter(Boolean)
+    const category = segments[2]
+    const hash = category && category !== 'chat' ? `#${category}` : '#chat'
+    return `/settings/providers${hash}`
+  }
+
+  // 3. Topology lookup
+  const topology = options?.topology || buildSettingsCatalogTopology()
+  const { nodeId, path } = resolvePathFromRoute(topology, normalizedRoute)
+  const matchedNode = topology.nodesById[nodeId]
+
+  // If the route is a subpage of a known topology node (prefix match, not exact),
+  // navigate back to that matched parent node.
+  if (matchedNode?.route && matchedNode.route !== normalizedRoute && normalizedRoute.startsWith(matchedNode.route)) {
+    return matchedNode.route
+  }
+
+  // If exact match on a topology node, navigate to its tree parent.
+  if (path.length > 1) {
+    const parentNodeId = path[path.length - 2]
+    const parentNode = topology.nodesById[parentNodeId]
+    if (parentNode?.route) {
+      return parentNode.route
+    }
+  }
+
+  // 4. URL path hierarchy fallback
+  const segments = normalizedRoute.split('/').filter(Boolean)
+  if (segments.length > 1) {
+    return `/${segments.slice(0, -1).join('/')}`
+  }
+
+  return '/settings'
 }

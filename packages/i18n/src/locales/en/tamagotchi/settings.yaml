@@ -19,10 +19,12 @@ pages:
         install: Install
       messages:
         opened: Opened configuration file at {path}
-        restarted: 'Restart complete: {started} started, {failed} failed, {skipped} skipped.'
+        restarted: 'Restart complete: {started} started, {failed} failed, {skipped}
+          skipped.'
       guidance:
         title: How to use these tools
-        note: 'To execute an MCP action, simply ask the AI: "Please use the mcp_tool_call capability to run the {tool} tool..."'
+        note: 'To execute an MCP action, simply ask the AI: "Please use the
+          mcp_tool_call capability to run the {tool} tool..."'
       dashboard:
         server-list: Server Registry
         no-servers: No servers configured.
@@ -56,8 +58,9 @@ pages:
         window-shortcuts:
           title: Keyboard Shortcuts
     window-shortcuts:
-      description: Modify the window shortcuts.
-      title: Window Shortcuts
+      description: System-wide keyboard shortcuts to summon chat, toggle stage
+        visibility, and push-to-talk
+      title: Global Shortcuts
       toggle-move:
         label: Toggle Move
       toggle-resize:
@@ -89,13 +92,16 @@ devtools:
 screen-capture:
   permissions-prompt:
     title: Screen Capture
-    description: To capture screens or windows, screen and system audio recording permissions are required.
+    description: To capture screens or windows, screen and system audio recording
+      permissions are required.
     open-preferences: Open System Preferences
     dismiss: Dismiss
     instructions:
       step-1: Open "System Preferences", select "Privacy & Security" from the sidebar.
-      step-2: In the "Screen & System Audio Recording" and "System Audio Recording Only" sections, turn on the switches for AIRI.
-      step-2-note: If AIRI is not listed, please add it manually by clicking the "+" button and selecting AIRI from the Applications folder.
+      step-2: In the "Screen & System Audio Recording" and "System Audio Recording
+        Only" sections, turn on the switches for AIRI.
+      step-2-note: If AIRI is not listed, please add it manually by clicking the "+"
+        button and selecting AIRI from the Applications folder.
 dock-mode:
   select-window: Select target window
   refresh-windows: Refresh

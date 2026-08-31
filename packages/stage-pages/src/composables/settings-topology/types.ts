@@ -14,6 +14,7 @@ export interface SettingsTopologyNode {
   kind?: NodeKind
   glyph?: string
   icon?: string
+  desktopOnly?: boolean
   disabled?: boolean
   hidden?: boolean
   metadata?: Record<string, unknown>

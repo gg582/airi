@@ -145,9 +145,9 @@ groups:
     title: Intelligence
 pages:
   chat:
-    title: Chat
-    description: Tune how chat messages are sent and how long streaming can stay
-      idle before it is cancelled.
+    title: Chat Settings & Input
+    description: Send key combinations, streaming response timeouts, and message
+      bubble behavior
     send-mode:
       title: Send Mode
       description: Choose the key combination to send messages.
@@ -375,7 +375,8 @@ pages:
     description: Customize virtual backdrops and stage wallpaper images for your characters.
   dating-sim:
     title: Dating Sim Mode
-    description: Adjust interactive game modes, intimacy gating thresholds, and visual behavior rules
+    description: Adjust interactive game modes, intimacy gating thresholds, and
+      visual behavior rules
   stage:
     title: Floating Controls
     description: Customize floating action strip slots, docking edge, and quick triggers
@@ -1351,8 +1352,8 @@ pages:
             GPU with near-zero WebKit memory overhead.
     title: Inference Providers
   connection:
-    description: Configure server connection and external download tokens (e.g.
-      Hugging Face)
+    description: Configure server endpoints, local channel gateway, and model
+      download credentials (e.g. Hugging Face)
     title: Connection & Downloads
     websocket-url:
       label: WebSocket URL
@@ -1383,14 +1384,17 @@ pages:
         the network. If empty, the gateway will not require authentication.
   system:
     color-scheme:
-      description: Change the color scheme of the stage.
-      title: Color Scheme
+      description: 24-color spectrum palette, vibrancy adjustments, light/dark
+        styling, and window blur
+      title: Color Scheme & Themes
     developer:
-      description: Some developer options.
-      title: Developers
+      description: Diagnostic instruments, traffic inspector, orbital navigation
+        playground, and benchmarks
+      title: Developer Laboratory
     general:
-      description: Dark theme, languages, etc.
-      title: General
+      description: Interface language, date formats, fallback localization, and
+        application startup defaults
+      title: General Preferences
     description: Customize your stage!
     sections:
       section:
@@ -1460,7 +1464,8 @@ pages:
                 description: VRM expressions + TTS lip sync playground
         theme-presets:
           title: Accent Color Presets
-          description: Pick from a curated 24-color spectrum grid or customize the hue and vibrancy above.
+          description: Pick from a curated 24-color spectrum grid or customize the hue and
+            vibrancy above.
           reset: Reset to Signature Cyan
           presets:
             warm:

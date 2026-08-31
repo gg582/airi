@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { resolveSettingsBackRoute } from '@proj-airi/stage-pages/composables/settings-topology'
 import { PageHeader } from '@proj-airi/stage-ui/components'
 import { useProvidersStore } from '@proj-airi/stage-ui/stores/providers'
 import { computed, ref, watchEffect } from 'vue'
@@ -17,21 +18,13 @@ const scrollContainer = ref<HTMLElement>()
 useRestoreScroll(scrollContainer)
 
 function handleBack() {
-  // Declarative back: never navigate 'up' out of the settings surface. The router
-  // guard and `disableBackButton` already gate this, but early-return so that a
-  // direct call can't fall through to the Control Strip.
   if (route.meta?.rootOfSettings)
     return
 
-  if (route.path.startsWith('/settings/providers/')) {
-    const segments = route.path.split('/').filter(Boolean)
-    const category = segments[2]
-    const hash = category && category !== 'chat' ? `#${category}` : '#chat'
-    router.push(`/settings/providers${hash}`)
-    return
+  const targetRoute = resolveSettingsBackRoute(route.path, { isDesktop: true })
+  if (targetRoute) {
+    router.push(targetRoute)
   }
-
-  router.push('/settings')
 }
 
 const routeMeta = computed(() => route.meta as {

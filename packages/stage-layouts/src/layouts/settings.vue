@@ -91,6 +91,13 @@ function handleBack() {
     return
   }
 
+  // Hierarchical back navigation: step up one level in the URL path hierarchy
+  const segments = route.path.split('/').filter(Boolean)
+  if (segments.length > 2) {
+    router.push(`/${segments.slice(0, -1).join('/')}`)
+    return
+  }
+
   // Every other settings sub-route backs up to the settings root.
   router.push('/settings')
 }
