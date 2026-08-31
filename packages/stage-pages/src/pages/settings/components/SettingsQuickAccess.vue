@@ -97,80 +97,67 @@ function navigate(to: string) {
 </script>
 
 <template>
-  <div class="flex flex-col gap-2">
-    <!-- Header -->
-    <div
-      :class="[
-        'flex items-center justify-between px-4',
-        'text-xs font-bold uppercase tracking-wider',
-        'text-neutral-400 dark:text-neutral-500',
-      ]"
-    >
-      <span>Quick Shortcuts</span>
-      <span class="text-[10px] text-neutral-400/80 font-normal normal-case">Deep links</span>
+  <div class="flex flex-col gap-1.5">
+    <!-- Row 1: Core & Services -->
+    <div class="grid grid-cols-5 gap-1.5">
+      <button
+        v-for="item in row1Items"
+        :key="item.id"
+        :class="[
+          'group relative flex flex-col items-center justify-center overflow-hidden rounded-xl px-1 py-2 min-h-19 text-center transition-all duration-300',
+          'border border-neutral-200/80 bg-white/70 shadow-2xs',
+          'dark:border-neutral-800/80 dark:bg-neutral-900/60',
+          'hover:border-primary-500/40 dark:hover:border-primary-400/40',
+          'hover:bg-primary-500/8 dark:hover:bg-primary-500/15',
+          'hover:-translate-y-0.5 hover:shadow-sm',
+        ]"
+        @click="navigate(item.to)"
+      >
+        <div
+          :class="[
+            'h-7 w-7 flex shrink-0 items-center justify-center rounded-lg transition-all duration-300',
+            'bg-primary-500/10 text-primary-500',
+            'dark:bg-primary-500/15 dark:text-primary-400',
+            'group-hover:bg-primary-500/20 dark:group-hover:bg-primary-500/30 group-hover:scale-110',
+          ]"
+        >
+          <div :class="item.icon" class="text-base" />
+        </div>
+        <span class="line-clamp-2 mt-1 w-full text-[10px] text-neutral-800 font-medium leading-3 transition-colors duration-300 dark:text-neutral-100 group-hover:text-primary-600 dark:group-hover:text-primary-300">
+          {{ item.title }}
+        </span>
+      </button>
     </div>
 
-    <!-- 2-Row Grid (Taller cards: Icon top, Multi-line Title bottom) -->
-    <div class="flex flex-col gap-1.5">
-      <!-- Row 1: Core & Services -->
-      <div class="grid grid-cols-5 gap-1.5">
-        <button
-          v-for="item in row1Items"
-          :key="item.id"
+    <!-- Row 2: Audio & Discovery -->
+    <div class="grid grid-cols-5 gap-1.5">
+      <button
+        v-for="item in row2Items"
+        :key="item.id"
+        :class="[
+          'group relative flex flex-col items-center justify-center overflow-hidden rounded-xl px-1 py-2 min-h-19 text-center transition-all duration-300',
+          'border border-neutral-200/80 bg-white/70 shadow-2xs',
+          'dark:border-neutral-800/80 dark:bg-neutral-900/60',
+          'hover:border-primary-500/40 dark:hover:border-primary-400/40',
+          'hover:bg-primary-500/8 dark:hover:bg-primary-500/15',
+          'hover:-translate-y-0.5 hover:shadow-sm',
+        ]"
+        @click="navigate(item.to)"
+      >
+        <div
           :class="[
-            'group flex flex-col items-center justify-center rounded-xl px-1 py-2 min-h-19 text-center transition-all duration-200',
-            'border border-neutral-200/80 bg-white/70 shadow-xs',
-            'dark:border-neutral-800/80 dark:bg-neutral-900/60',
-            'hover:border-primary-500/50 hover:bg-white hover:-translate-y-0.5 hover:shadow-md',
-            'dark:hover:border-primary-500/50 dark:hover:bg-neutral-850',
+            'h-7 w-7 flex shrink-0 items-center justify-center rounded-lg transition-all duration-300',
+            'bg-primary-500/10 text-primary-500',
+            'dark:bg-primary-500/15 dark:text-primary-400',
+            'group-hover:bg-primary-500/20 dark:group-hover:bg-primary-500/30 group-hover:scale-110',
           ]"
-          @click="navigate(item.to)"
         >
-          <div
-            :class="[
-              'h-7 w-7 flex shrink-0 items-center justify-center rounded-lg transition-transform',
-              'bg-primary-500/10 text-primary-500',
-              'dark:bg-primary-500/15 dark:text-primary-400',
-              'group-hover:scale-110',
-            ]"
-          >
-            <div :class="item.icon" class="text-base" />
-          </div>
-          <span class="line-clamp-2 mt-1 w-full text-[10px] text-neutral-800 font-medium leading-3 dark:text-neutral-100 group-hover:text-primary-600 dark:group-hover:text-primary-400">
-            {{ item.title }}
-          </span>
-        </button>
-      </div>
-
-      <!-- Row 2: Audio & Discovery -->
-      <div class="grid grid-cols-5 gap-1.5">
-        <button
-          v-for="item in row2Items"
-          :key="item.id"
-          :class="[
-            'group flex flex-col items-center justify-center rounded-xl px-1 py-2 min-h-19 text-center transition-all duration-200',
-            'border border-neutral-200/80 bg-white/70 shadow-xs',
-            'dark:border-neutral-800/80 dark:bg-neutral-900/60',
-            'hover:border-primary-500/50 hover:bg-white hover:-translate-y-0.5 hover:shadow-md',
-            'dark:hover:border-primary-500/50 dark:hover:bg-neutral-850',
-          ]"
-          @click="navigate(item.to)"
-        >
-          <div
-            :class="[
-              'h-7 w-7 flex shrink-0 items-center justify-center rounded-lg transition-transform',
-              'bg-primary-500/10 text-primary-500',
-              'dark:bg-primary-500/15 dark:text-primary-400',
-              'group-hover:scale-110',
-            ]"
-          >
-            <div :class="item.icon" class="text-base" />
-          </div>
-          <span class="line-clamp-2 mt-1 w-full text-[10px] text-neutral-800 font-medium leading-3 dark:text-neutral-100 group-hover:text-primary-600 dark:group-hover:text-primary-400">
-            {{ item.title }}
-          </span>
-        </button>
-      </div>
+          <div :class="item.icon" class="text-base" />
+        </div>
+        <span class="line-clamp-2 mt-1 w-full text-[10px] text-neutral-800 font-medium leading-3 transition-colors duration-300 dark:text-neutral-100 group-hover:text-primary-600 dark:group-hover:text-primary-300">
+          {{ item.title }}
+        </span>
+      </button>
     </div>
   </div>
 </template>

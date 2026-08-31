@@ -3,14 +3,21 @@ import { useMotion } from '@vueuse/motion'
 import { nextTick, onMounted, onUnmounted, ref, useAttrs, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
+import SettingsSearchBar from '../widgets/SettingsSearchBar.vue'
+import SettingsThemeHeaderWidget from '../widgets/SettingsThemeHeaderWidget.vue'
+
 const props = withDefaults(defineProps<{
   title: string
   subtitle?: string
   showBackButton?: boolean
   disableBackButton?: boolean
+  showSearch?: boolean
+  showThemeControls?: boolean
 }>(), {
   showBackButton: true,
   disableBackButton: false,
+  showSearch: true,
+  showThemeControls: true,
 })
 
 const emit = defineEmits<{
@@ -71,23 +78,33 @@ watch([() => props.title, () => props.subtitle, route], async () => {
       left: 'env(safe-area-inset-left, 0px)',
     }"
     sticky inset-x-0 top-0 z-99 w-full pb-6 pt-10
-    flex="~ row items-center gap-2"
+    flex="~ row items-center justify-between gap-2"
     bg="$bg-color"
   >
-    <button @click="handleBack()">
-      <div
-        v-if="!finalizedDisableBackButton"
-        i-solar:alt-arrow-left-line-duotone text-2xl
-        :class="{ 'pointer-events-none op-0': !showBackButton }"
-      />
-    </button>
-    <h1 relative>
-      <div v-if="subtitle" absolute left-0 top-0 translate-y="[-80%]">
-        <span text="neutral-300 dark:neutral-500" text-nowrap>{{ subtitle }}</span>
-      </div>
-      <div text-nowrap text-3xl font-normal>
-        {{ title }}
-      </div>
-    </h1>
+    <div flex="~ row items-center gap-2" shrink-0>
+      <button @click="handleBack()">
+        <div
+          v-if="!finalizedDisableBackButton"
+          i-solar:alt-arrow-left-line-duotone text-2xl
+          :class="{ 'pointer-events-none op-0': !showBackButton }"
+        />
+      </button>
+      <h1 relative>
+        <div v-if="subtitle" absolute left-0 top-0 translate-y="[-80%]">
+          <span text="neutral-300 dark:neutral-500" text-nowrap>{{ subtitle }}</span>
+        </div>
+        <div text-nowrap text-3xl font-normal>
+          {{ title }}
+        </div>
+      </h1>
+    </div>
+
+    <!-- Actions / Search & Theme Controls -->
+    <div flex="~ row items-center gap-2.5 sm:gap-3" min-w-0 flex-1 justify-end>
+      <slot name="actions">
+        <SettingsSearchBar v-if="showSearch" />
+        <SettingsThemeHeaderWidget v-if="showThemeControls" shrink-0 />
+      </slot>
+    </div>
   </div>
 </template>
