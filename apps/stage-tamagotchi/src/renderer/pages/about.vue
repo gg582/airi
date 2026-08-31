@@ -25,9 +25,9 @@ const isLatestVersion = computed(() => updateState.value.status === 'idle' && !u
 const isError = computed(() => updateState.value.status === 'error')
 
 const links = [
-  { label: 'Home', href: 'https://airi.moeru.ai/docs/', icon: 'i-solar:home-smile-outline' },
-  { label: 'Documentations', href: 'https://airi.moeru.ai/docs/en/docs/overview/', icon: 'i-solar:document-add-outline' },
-  { label: 'GitHub', href: 'https://github.com/moeru-ai/airi', icon: 'i-simple-icons:github' },
+  { label: 'Documentation', href: 'https://dasilva333.github.io/airi/en/docs/overview/', icon: 'i-solar:document-add-outline' },
+  { label: 'Web Stage', href: 'https://dasilva333.github.io/airi/web-stage/', icon: 'i-solar:globe-outline' },
+  { label: 'GitHub', href: 'https://github.com/dasilva333/airi', icon: 'i-simple-icons:github' },
 ]
 
 const showChangelog = ref(false)
