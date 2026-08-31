@@ -1,6 +1,6 @@
 # AIRI Fork: Core Feature Report
 
-> **Provenance**: Revised against commits through `fb1a8a4ab` (2026-08-19, post `v0.9.25-stable.20260818`). Previous revisions: `ca618d5b3` (2026-08-18), `6d5cf8467` (2026-07-18, 34-feature catalog) and `b6917fe4c` (2026-07-10). Sections marked **(NEW)** were added in this revision; bullets marked *new* extend a pre-existing section.
+> **Provenance**: Revised against commits through `b2fc29edd` (2026-08-30, post `v0.9.27-stable.20260824` & `v0.9.26-stable.20260820`). Previous revisions: `e681bc255` (2026-08-20), `fb1a8a4ab` (2026-08-19), `ca618d5b3` (2026-08-18), `6d5cf8467` (2026-07-18, 34-feature catalog) and `b6917fe4c` (2026-07-10). Sections marked **(NEW)** were added in this revision; bullets marked *new* extend a pre-existing section.
 
 This document tracks the high-level, user-facing features and architectural shifts that define this fork. It serves as a living reference for the project's evolution beyond the baseline implementation.
 
@@ -34,6 +34,9 @@ Focuses on immersion, transparency, and reducing the "black box" nature of AI in
 - **Context-Width Inheritance**: Automatic global default mapping (via `localStorage`) that links `providerId` and `modelName` to a user-defined `contextWidth`, ensuring characters inherit stable token limits even if not explicitly configured.
 - **Atomic Session Rebuilds**: A context-aware "Rebuild" logic that semantically **compacts long-running conversations** into a clean state while preserving the last 3 days of continuity.
 - **Configurable Send Key**: User-selectable chat submission hotkey (e.g., Enter vs. Ctrl+Enter) via General Settings.
+- **In-Flight Turn Cancellation (Stop Button)** *(new)*: First-class user-facing stop/cancel control (`sessionStore.cancelCurrentGeneration()`) that cleanly halts active SSE LLM text streams, drains the TTS speech queue, and cancels pending tool invocations without leaving dangling reactive states.
+- **Composer Typing Soft Gate** *(new)*: Proactivity heartbeats and background vision commentaries automatically enter a quiet hold while the user is actively typing in the composer (`isComposerTyping` mutex), preventing the avatar from interrupting mid-thought.
+- **Dynamic Workspace Window Titles** *(new)*: Desktop Electron window titles update reactively with the active character soul and workspace mode (e.g. `AIRI - Lain [Director's Monitor]`).
 - **Generation Stats Popover** *(new)*: Per-turn generation statistics (tokens, timing, output-limit controls) surfaced inline on messages, so cost/length behavior is inspectable without devtools.
 - **Pre-Flight Grounding Panel** *(new)*: The four context blocks injected on every send — `[ENVIRONMENTAL AWARENESS]`, `[GROUNDED LONG-TERM MEMORIES]`, `[RECENT TOPICS]`, `[VISUAL STATE BOARD]` — are composed and previewable *before* the prompt leaves the machine, making "what does she actually see?" a first-class UI question.
 - **Unified Event Ledger** *(new)*: A workspace-wide audit stream (`stores/event-log.ts`, spec `docs/project-unified-eventlog.md`) that records live user ingestion, assistant responses, voice STT, tool results, and text/image-journal writes — a replayable paper trail decoupled from the chat transcript.
@@ -42,6 +45,8 @@ Focuses on immersion, transparency, and reducing the "black box" nature of AI in
 The floating interaction hub for the desktop experience.
 
 - **Glassmorphic Control Island**: A floating, draggable UI component using `backdrop-blur-xl` and semi-transparent backgrounds, following an iOS-style **"island" pattern**.
+- **Universal Head-Tethered Stage Radial Menu** *(new)*: A floating pie/radial interaction menu (`RadialMenu.vue`) tethered to the character's head across VRM, Live2D, MMD, and Spine runtimes for quick stage actions and mood tweaks.
+- **Direct Window Dragging & Center-Mascot Action** *(new)*: Direct stage-window dragging semantics and a 1-click center-mascot action in the stage config overlay, replacing legacy corner position toggles.
 - **Control Island Mutual Exclusion**: Main and Gemini/Module islands now auto-collapse each other, ensuring the desktop always remains clean and only one interaction hub is active at a time.
 - **Gemini Control Island UX Refinements**: New button interaction patterns (Toggle/Action buttons auto-hide the island; Cycle buttons remain persistent) to match the premium "Main" island experience.
 - **Emotion Picker Sub-Menu**: Direct access to **8 emotion triggers** (Happy, Sad, Angry, Surprised, Neutral, Think, Cool, Random) from the Control Island drawer.
@@ -65,6 +70,7 @@ A full-featured card creation, configuration, and portability layer.
 
 - **Per-Character LLM Generation Settings**: Each AIRI card can override the global LLM provider, model, temperature, top-p, and max tokens via a dedicated **Generation** tab. Designed with future SillyTavern preset import compatibility in mind.
 - **V-Hack / Mutation Studio**: A native in-app "V-Hack" style surface for live VRM binary capture, texture decks, and AI-assisted mutation workflows — extending character cards from configuration into runtime visual experimentation.
+- **Audio Studio & Vocal Profile Embedding** *(new)*: Complete end-to-end user vocal profile selection, display model binding in user profiles, and embedding virtual voice profiles directly into character card setups.
 - **AIRI JSON Export**: A full-fidelity native JSON format (`airi-card` v1) that preserves all extensions (modules, artistry, acting, heartbeats). **Does not include personal chat history or private data** — only the configured character settings, ensuring cards are safe to share.
 - **Background Bundling on Export**: The character's currently active background/scene is exported **with the card**, so anyone who imports it gets the background automatically applied.
 - **SillyTavern PNG Import/Export**: Full `chara_card_v2` compatibility, allowing users to **import existing community cards** and export AIRI cards as shareable PNGs with embedded metadata and a framed portrait preview.
@@ -135,6 +141,7 @@ A sophisticated multi-layered storage system designed for multi-day, consistent 
 A complete redesign of the image generation pipeline, focusing on performance and user creative control.
 
 - **Native ComfyUI API Support**: Direct, high-speed HTTP integration with any local or network **ComfyUI instance**. No middleware, CLI bridges, or WSL requirements.
+- **Production Studio (Director Modular Visual Assets)** *(new)*: First-class visual asset production workflow allowing the AI director to select, combine, and manifest scene elements and props dynamically.
 - **Replicate Cloud Support**: First-class integration with **Replicate's API** as a remote generation provider. Pricing transparency is built into the UI — models are sorted with cost-per-generation visible, and starting at **$5 for ~1,600 images** on their cheapest models, it's a great option for users who can't render locally.
 - **Interactive Gallery Widget**: A premium "Flip Card" display with **front-face** image preview, **back-face** generation metadata (Prompt, Remix ID, Render Time), and one-click **"Set as Background"**.
 - **NanoBanana Provider Support**: Added **NanoBanana** as another first-class artistry backend alongside Replicate and ComfyUI, widening the generation and mutation toolset available to AIRI.
@@ -155,7 +162,13 @@ Decoupled Vision-Language Model (VLM) support — not present in the upstream pr
 - **Drag-and-Drop / Paste Attachments**: Image attachment support via **drag-and-drop** and **clipboard paste** in both the Desktop and Web chat areas, with a preview strip above the input.
 - **Image-Aware Chat History**: Attached images are tracked in the chat history as `image_url` content parts, allowing the AI to reference previously shared images in context.
 - **Local & Remote VLM Inference**: Supports **Ollama** and **LM Studio** for fully local VLM inference, plus **OpenAI**, **OpenRouter**, and **Native Gemini SDK** for cloud-based vision.
-- **24/7 Attention Ecology** *(new)*: continuous background vision built as a **cascaded salience gate** — pHash dedupe → CLIP vision embedding → WASM OCR / RWKV-7 gate → VLM forwarder — so only genuinely novel screen content pays for a VLM call. Includes privacy app-exclusion filters, live desktop + ASCII terminal dashboards, a devtools inspector, and an "0-cost WebGPU guard" tier.
+- **Ambient Screenwatching Daemon & 4-Stage Cascaded Gate** *(new)*: Continuous background screen observation (`screenwatcher-daemon.ts`) with real-time push reaction dispatching directly to the avatar:
+    - **Stage 0 (pHash Deduplication)**: Fast $160 \times 90$ perceptual hash deduplication dropping identical screen frames at 0 cost.
+    - **Stage 1 (Vision Embeddings)**: Lightweight CLIP vision embeddings for coarse visual change detection.
+    - **Stage 2 (WASM OCR & Interest Matching)**: On-device OCR (`PP-OCRv6_tiny_rec_onnx`) with bounded Levenshtein interest matching against user-configured tags (e.g. IDE code, game HUD, video titles).
+    - **Stage 3 (Decoupled VLM Forwarder)**: Moondream or cloud VLM forwarder for deep semantic comprehension and commentary synthesis.
+    - **Observation Buffer & Speech Fallback**: Rolling observation buffer with speech commentary chunking, enlarged speech bubbles, and speech-noop fallback to prevent audio stutter during fast-paced screen events.
+    - **One-Click Screen Watching Toggle**: Direct toggle in the desktop chat options menu for enabling/disabling continuous perception.
 
 ---
 
@@ -183,7 +196,7 @@ Custom provider integrations not present in the upstream project.
     - **Kyutai Pocket-TTS**: Local CPU neural TTS with a neural flow sampling engine, 26 cataloged voices, language-filtered dropdowns, voice cloning, and predefined voice presets.
     - **MOSS-TTS-Nano**: Local low-resource TTS with an optimized voice-cloning pipeline and `prompt_audio_codes` caching.
     - **Whisper WebGPU STT** (`whisper-local`): VRAM specs, single-tenant cache enforcement, and VRAM reclaim on model switch.
-- **Multi-Instance Provider Studio** *(new)*: the provider registry is decomposed into modular registry/store/lifecycle families supporting **multiple configured instances per provider**, with instance-aware credential gating, 1-click active-model activation for the current character, and a Provider Studio UI overhaul + model browser (paginated, cached, searchable cloud catalogs).
+- **Monolithic Provider Store Restructuring** *(new)*: The provider registry is decomposed into modular registry/store/lifecycle families supporting **multiple configured instances per provider**, with instance-aware credential gating, generic default base URLs, reactive model browsing, and composite instance key resolution.
 
 ---
 
@@ -207,7 +220,7 @@ Upstream shipped Discord as a detached sidecar process with limited, text-only f
 - **Generation 2 — Voice & Native Commands**:
     - **Voice Call Engines** (`/voicecall`): **Gemini** (raw Discord VC audio piped directly to a Gemini Live WebSocket for full-duplex, no-text-first voice, with session-ownership routing of transcriptions to the active Discord text channel) and **Classic TTS** (STT → LLM → TTS with 24kHz mono PCM resampling and custom WAV chunk-merging for chat voice notes).
     - **Voice Modes** (`/voicemode`): `puppet` (desktop speakers), `voicenote` (Discord audio attachments), or `none` (muted) — remote-controlling where her speech comes out.
-    - **Native Slash Command Registry**: `/status`, `/imagine`, `/director`, `/character`, `/new`, `/history`, `/chatmode`, `/timelines`, `/summon`, `/leave`, `/journalmoment`, `/voicecall` — REST-registered with native autocomplete; long ops show "AIRI is thinking…" via interaction deferral.
+    - **Native Slash Command Registry**: `/status`, `/imagine`, `/director`, `/character`, `/new`, `/history`, `/chatmode`, `/timelines`, `/summon`, `/leave`, `/journalmoment`, `/voicecall`, `/vision`, `/selfie` — REST-registered with native autocomplete; long ops show "AIRI is thinking…" via interaction deferral.
     - **Interactive Message Widgets**: button-driven `/timelines` (select/fork/paginate), `/characters` (switch/details), and `/manage` (voice mode / voice-call engine / chat mode / module toggles) dashboards.
     - **Full Tool Calls**: LLM-driven tools (journal create/search, artistry) execute natively and render as premium results in Discord responses instead of raw JSON dumps; inline artistry images return as native attachments.
 - **Generation 3 — Cloud Relay ("Vercel for Characters")**: when you close the desktop app entirely, the character keeps talking on Discord. A stateless **Cloudflare Worker** hosted on **your own Cloudflare account** answers interaction webhooks, reads the live character prompt + rolling conversation from **Cloudflare KV**, calls your LLM, and replies — 24/7, zero-custody, no AIRI backend. The desktop client acts as the control plane and even *deploys* this Worker for you via Cloudflare OAuth, then can switch execution between the local gateway and the edge. Full architecture, deployment flow, and the BYOS/Edge-Vault sync story live in **§19 Cloud Relay & Zero-Custody Sync**.
@@ -233,6 +246,8 @@ A game layer on top of the Actor Stage (Amagami-inspired), plus experimental gam
 A full caption subsystem: what the character says/hears, rendered in real time.
 
 - **Floating Caption Window**: A dedicated Electron overlay window over the stage relay — the STT transcript flow and TTS/LLM response flow are overlaid via a `BroadcastChannel('airi-caption-overlay')` streaming protocol. Includes follow-stage visibility/position sync (docking top/bottom or free-floating) and configurable settings.
+- **Multi-Model Kinetic Head Anchoring Parity** *(new)*: Head-tethered comic bubble captions anchored to 3D head/neck bone matrices across VRM 3D, MMD/PMX (`MMDScene.vue`), and Spine 2D (`SpineScene.vue`), with viewport edge clamping.
+- **Decoupled Caption Sentiment Analyzer** *(new)*: Dedicated sentiment store (`stores/captions.ts`) processing emotional valence in real-time to drive reactive bubble borders and 4-channel particle FX independently of the main rendering loop.
 - **Head-Tethered Caption Plank**: An in-scene caption bubble anchored to the character's head (PIXI container child in Live2D, 3D overlay in VRM/MMD), with **viewport edge clamping**, a seamless single-path vector bubble with tail, and rich telemetry on head anchors.
 - **4-Channel FX Engine**: A parametric vector-bubble path builder + 4-channel FX (star blooms, vector hearts, teardrop rain, scanlines, rim stars) driven by a sentence-trigger parser — i.e. caption decoration reacts to content.
 - **Sentence Sync Protocol**: Captions track LLM sentence boundaries with actor outline color accents and state persistence, keeping text, audio, and visuals in lockstep.
@@ -277,6 +292,7 @@ Standardizing the 2D/3D model experiences to match the premium VRM feature set.
 - **Live2D Expression Mapping**: A **"Hold-to-Map"** interaction — long-press any expression in the grid to bind it to a standard ACT emotion token (Happy, Sad, Angry, etc.).
 - **Compact UI Optimization**: A specialized **compact mode** for tabbed navigation with shortened terminology (e.g., "Head & Face" → "Face") for 100% visibility in narrow side-panels.
 - **AiriCard Integration**: All Live2D customization data — expressions, motions, and emotion mappings — persists inside the character's `AiriCard`, ensuring total portability.
+- **Live2D Mobile POS Pinch-to-Scale** *(new)*: Native two-finger pinch-to-scale gesture support for Live2D models in mobile POS mode (`apps/stage-pocket`).
 - **Live2D Scripting DSL VM** *(new)*: a custom scripting virtual machine (`packages/live2d-runtime`) driving models' native script layer — `start_mtn`, `clear_exp` commands, a VarFloats heap with automatic declaration tracking, motion group dispatch, costume hot-swaps (`change_cos`) with state preservation, and intimacy store harnesses; covered by a headless DSL test harness (42+/52+/67+ passing scenario suites) and a `/playground/live2d` web playground.
 - **Multi-File Import Queue** *(new)*: bulk Live2D imports run as a queue with progress toasts and macOS ZIP-artifact cleanup.
 
@@ -322,6 +338,7 @@ Running AIRI is no longer desktop-only. The core experience (`packages/stage-ui`
     - **`stage-tamagotchi`** — the flagship Electron desktop app: multi-window overlays (Stage, Chat, Caption, Customizer, Widgets…), tray integration, Control Strip, tool bridges, and screen-capture hooks.
     - **`stage-web`** — a browser-native web surface backed by the same `stage-ui`: unified header across all breakpoints, viewport cycling with opposite-edge docking and a cursor icon, plus the streamlining of the chat action bar for the web layout.
     - **`stage-pocket`** — the Capacitor hybrid app for **iOS + Android** (with a `dev:web` Vite target), carrying the same composer/chat core as the desktop with mobile-first gesture chrome.
+- **Automated Headless Mobile Release Pipeline** *(new)*: Fully automated headless iOS IPA build and release scripts for Capacitor in `apps/stage-pocket`, plus Android release signing and microphone/audio permissions configuration in `AndroidManifest.xml`.
 - **Mobile Sheet Architecture**: `WhisperDock` was decomposed into a shared `WhisperComposerBar` + `MobileWhisperSheet`, introducing **4 distinct sheet postures** (with mouse-drag and quick-action collapse/expand controls), producer guidance + choice bubbles wired into the composer (`ProducerGuidanceModal` / `ProducerChoiceBubble`), and an unconfigured-safety modal when the persona isn't set up.
 - **Mobile Native Stage**: an overhauled mobile stage with a **story timeline switcher** in the header, pure-Vue popovers, an ambient floating-hearts layer, and a theme-aware frosted Control Strip. A full-screen **Control Strip customizer** supports edge-notch docking and drag positioning, unconstrained on mobile.
 - **Mobile Landscape**: dedicated layout support so the experience holds up when the device rotates (with an updated mobile revamp architecture spec).
@@ -369,6 +386,9 @@ A native desktop "pet" engine — **Unity 6000.2.6f2** (`apps/stage-mate`) — t
 
 - **Workspace Overlay Architecture**: `unity-src/` (version-controlled custom code) is deterministically overlaid onto the upstream `mate-engine/` clone via `scripts/setup.ts` only. `mate-engine/` is a gitignored upstream clone that must stay clean; `Patches/` mirrors `MATE ENGINE - Scripts/` to override upstream scripts, `ProjectSettings/` pins the standalone build target. `pnpm -F ... run engine:setup` / `engine:clean` manage the overlay and reset. This keeps the upstream engine upgradeable while all AIRI-side hand-off is reviewable.
 - **A Subtractive `StageMateBridge` Runtime**: a C# sidecar (`Core/StageMateBridge.cs`, `StageMateSocket.cs`, `StageMateStateSync.cs`) connects AIRI and the engine over a **`ws://localhost:6171`** WebSocket, driving UniWindowController + VRMLoader + telemetry. It sets platform window config (macOS hit-test disabled, Windows opacity threshold), unlocks the tutorial gate, and suppresses standalone menus in sidecar mode.
+- **Gunslinger Combat Mod & 4-Way Control Strip Stance Cycler** *(new)*: Full integration of the Gunslinger mod (`project-gunslinger-sidecar-mod.md`) with 4 distinct stances (Dual Revolvers, Single Revolver, Cat Gun variant, Unarmed) controllable from the AIRI desktop Control Strip popover. Streams global mouse and click telemetry over WebSocket (`ws://localhost:6171`) with procedural cartoon bullet holes and screen tear decals (`BulletHoleEffect.cs`).
+- **Locomotion, Docking & Screen Edge Peeking** *(new)*: Dynamic screen edge docking, window ledge snapping thresholds, and peek-a-boo hiding behaviors, paired with a head-focus mode with automatic locomotion suppression and macOS process discovery / media player dance detection.
+- **Live Speech Caption & Expression Bridging** *(new)*: Live TTS speech streaming directly bridged to Unity dialogue bubbles with custom typewriter text pacing, plus fixed and transient expression synchronization with DELAY token heuristics.
 - **Dynamic VRM Loading & Model Cache**: the Electron-side service (`main/services/airi/stage-mate/`) dispatches `stage:vrm:load` / receives `stage:vrm:ready` over the `ws://localhost:6171` socket, with a dynamic model-cache gate (cache HIT / on-disk size check / cache-and-dispatch) so repeated swaps don't re-transfer. Sway physics drive the model, and AIRI can fire expressions, tactile events, and prop changes (e.g. the macaron snack) over the socket. A mock WebSocket **harness** (`harness/`, port 6171) lets the engine develop/test without the full Electron app.
 - **Interactive Companion Surface**: a standalone **radial pie-menu** (with dynamic root UI activation on open), **companion floaties and snack props** surfaced in the AIRI Control Strip as a popover with featured presets and a custom recipe builder, an interactive TUI harness for expression triggers, two-tier positioning persistence, and customizer viewport modes managed in tandem with the desktop Control Strip.
 - **Post-handshake state sync & MEClothes**: after connect, AIRI and the sidecar reconcile state (post-handshake sync), and **MEClothes dynamic sidecar injection on VRM load** keeps wardrobe parity. The `WindowAPI`/`MenuActions` scene-hierarchy is patched active by the overlay.
@@ -379,12 +399,13 @@ A native desktop "pet" engine — **Unity 6000.2.6f2** (`apps/stage-mate`) — t
 ## 21. Platform & Operations
 Internal hardening so the app remains a stable, performant "daily driver" across targets.
 
+- **Lazy Renderer & Background Window Initialization** *(new)*: Replaced eager startup window initialization with lazy on-demand renderer hydration across all rendering targets, dramatically lowering initial RAM footprint and application launch times.
 - **Windows ZIP + NSIS distribution**: the Electron release builds both an NSIS installer and a ZIP distribution target, with `node_modules` size pruning in the file filter — plus a renderer build shim and Capacitor Android sync, so users get a reasonably clean out-of-the-box runtime.
 - **Windows StageMate packaging**: the Electron-builder config now ships the Stage-Mate sidecar artifacts alongside the desktop package (see §20).
 - **WebLLM static-worker bundling**: web-llm is statically bundled into the web worker to resolve runtime module-specifier errors, keeping the WebGPU provider working in packaged builds.
 - **Dev-loop Hygiene**: `ELECTRON_RUN_AS_NODE` is explicitly cleared in dev scripts, `start_airi.sh` resolves turbo/electron-vite + checks dependencies automatically.
 - **Production Electron Sandbox**: full Chromium sandbox is enabled for the Electron environment, a meaningful security improvement for web-forwarded provider integrations.
-- **Release Provenance**: published releases follow a `v0.9.x-stable.YYYYMMDD` tag (e.g., `v0.9.25-stable.20260818`, `v0.9.24-stable.20260813`, `v0.9.23-stable.20260808`), giving community users a stable pull point.
+- **Release Provenance**: published releases follow a `v0.9.x-stable.YYYYMMDD` tag (e.g., `v0.9.27-stable.20260824`, `v0.9.26-stable.20260820`, `v0.9.25-stable.20260818`, `v0.9.24-stable.20260813`, `v0.9.23-stable.20260808`), giving community users a stable pull point.
 - **Operations Skills Catalog**: 56 specialized AIRI skill files + a Rosetta-Stone governing index (`ae3025738`, `35c7fd580`) document subsystem contracts and failure modes, keeping contributors and agents in sync with shipping reality.
 
 ### Retained Legacy Hardening
