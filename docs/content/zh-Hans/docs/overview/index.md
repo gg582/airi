@@ -1,43 +1,56 @@
 ---
-title: 这是什么项目？
-description: 了解 Project AIRI 的用户界面
+title: 项目概览
+description: Project AIRI 概览 — 私有、持久的数字角色运行时
 ---
 
-### 太长不看
+# Project AIRI
 
-请将我们视为
+**不被拘禁的存在。（Presence without custody）**
 
-- [Neuro-sama](https://www.youtube.com/@Neurosama) 的开源重建
-- [Grok Companion](https://news.ycombinator.com/item?id=44566355) 的开源替代方案
-- 一个支持 Live2D，VRM，并且一起玩游戏，或者感知其他应用的 [SillyTavern](https://github.com/SillyTavern/SillyTavern)（酒馆）替代方案
+无需向任何云端平台出让生命与记忆的主权，即可拥有具备记忆、感知、发声、显现与行动能力的私有、持久 AI 数字角色。
 
-你是否梦想过拥有一个赛博生命（赛博 waifu），
-或者可以陪你玩耍、聊天的数字伙伴？
+专为追求超越“套皮聊天机器人”的 AI 伴侣、虚拟角色与创作者打造。
 
-借助现代 LLM 的强大功能，
-像 [Character.ai (又名 c.ai)](https://character.ai) 和 [JanitorAI](https://janitorai.com/) 这样的平台，
-或者像 [SillyTavern](https://github.com/SillyTavern/SillyTavern) 这样的应用已经可以为基于聊天或视觉 ADV 游戏的体验提供足够完善的解决方案。
+---
 
-> 但是玩游戏呢？或者看看你正在编写什么？
-> 一边玩游戏一边聊天、看视频，还能做很多其他事情。
+## 是一个完整生命，而非功能的随意堆叠
 
-或许你已经认识 [Neuro-sama](https://www.youtube.com/@Neurosama) 了，她是目前最好的数字伙伴，可以玩游戏、聊天，还能和你以及（在 VTuber 社区）的参与者互动，有些人也把这种生物称为“数字人”。**可惜的是，它目前尚未开源，直播下线后你就无法与她互动了**。
+AIRI 是一个**角色运行时（Character Runtime）**。
 
-因此 Project AIRI 提供了另一种可能性：
-**让你随时随地轻松拥有自己的数字生命、赛博生命。**。
+角色拥有可随身携带的“身份”、可自由切换的“感官”、可按需更换的“声音”、可随意更替的“躯体”、不断沉淀深化的“记忆”，以及无限扩展其能力的“工具”。这些能力可以独立演进，但串联它们的核心角色存在始终保持连续。
+
+**跨越对话、模型、身体、应用程序与物理设备而永续存在——完全由与它共同生活的你所拥有。**
+
+---
+
+## 角色全栈架构（The Character Stack）
+
+| 领域 | AIRI 提供的能力 |
+|---|---|
+| **Identity（身份认同）** | 便携式 AIRI 角色卡、角色档案、表演导演指令（ACT 标记）、角色独立专属配置 |
+| **Continuity（记忆连续）** | 8 层记忆架构：短期认知（STMM）、长期文本日志、生涯归档与回声芯片（Echo Chips） |
+| **Perception（多模感知）** | 听觉感知、屏幕视觉感知、图像理解、桌面系统感知与注意力过滤门控 |
+| **Mind（认知大脑）** | 可热插拔的云端/本地大语言模型大脑、提示词自动编排与认知流式管道 |
+| **Voice（声音表达）** | 灵活切换的语音合成（TTS）与语音识别（STT）引擎、声音配置文件、Audio Studio 与毫秒级实时语音 |
+| **Body（形象躯体）** | Live2D、VRM（3D）、MMD 与 Spine 渲染器，支持触觉互动、丰富表情与多套服装切换 |
+| **Agency（主动行动）** | 主动心跳机制、MCP 工具生态、AI 画作生成、剧情导演提示与自主后台决策循环 |
+| **World（世界环境）** | 桌面级舞台、吸附式控制条（Control Strip）、Web/移动端伙伴应用与 Discord 机器人联动 |
+| **Sovereignty（数据主权）** | 本地优先存储、便携式角色数据资产、BYOS 自定义云端同步，完全无任何第三方遥测跟踪 |
+
+---
 
 ## 开始使用
 
-我们同时支持网页和客户端。
+AIRI 同时支持网页版与桌面端。
 
 <div flex gap-2 w-full justify-center text-xl>
   <div w-full flex flex-col items-center gap-2 border="2 solid gray-500/10" rounded-lg px-2 pt-6 pb-4>
     <div flex items-center gap-2 text-5xl>
       <div i-lucide:app-window />
     </div>
-    <span>网页</span>
-    <a href="https://airi.moeru.ai/" target="_blank" decoration-none class="text-primary-900 dark:text-primary-400 text-base not-prose bg-primary-400/10 dark:bg-primary-600/10 block px-4 py-2 rounded-lg active:scale-95 transition-all duration-200 ease-in-out">
-      打开
+    <span>Web Stage 网页版</span>
+    <a href="https://dasilva333.github.io/airi/web-stage/" target="_blank" decoration-none class="text-primary-900 dark:text-primary-400 text-base not-prose bg-primary-400/10 dark:bg-primary-600/10 block px-4 py-2 rounded-lg active:scale-95 transition-all duration-200 ease-in-out">
+      打开网页版
     </a>
   </div>
   <div w-full flex flex-col items-center gap-2 border="2 solid gray-500/10" rounded-lg px-2 pt-6 pb-4>
@@ -46,16 +59,15 @@ description: 了解 Project AIRI 的用户界面
       /
       <div i-lucide:computer />
     </div>
-    <span>客户端</span>
-    <a href="https://github.com/moeru-ai/airi/releases/latest" target="_blank" decoration-none class="text-primary-900 dark:text-primary-400 text-base not-prose bg-primary-400/10 dark:bg-primary-600/10 block px-4 py-2 rounded-lg active:scale-95 transition-all duration-200 ease-in-out">
-      下载
+    <span>桌面客户端（Electron）</span>
+    <a href="https://github.com/dasilva333/airi/releases/latest" target="_blank" decoration-none class="text-primary-900 dark:text-primary-400 text-base not-prose bg-primary-400/10 dark:bg-primary-600/10 block px-4 py-2 rounded-lg active:scale-95 transition-all duration-200 ease-in-out">
+      下载客户端
     </a>
   </div>
 </div>
 
-网页版功能较为基础，适用于在任何设备（包括移动设备）上访问。
-
-客户端则更适合进行高级操作，例如 VTuber 直播、computer-use 以及访问本地 LLM 模型，此时无需为运行 AIRI 支付大量 token 费用。
+* **Web Stage 网页版**：无需安装，随时随地在任何现代浏览器或移动设备上即开即用。
+* **桌面客户端**：提供最完整的旗舰体验，包含吸附式悬浮控制条、本地 WebGPU/WASM 推理（本地大模型、Whisper 离线听觉、Kokoro 离线语音）、屏幕视觉感知与系统传感器遥测。
 
 <div flex gap-2 w-full flex-col justify-center text-base>
   <a href="../overview/guide/tamagotchi/" w-full flex items-center gap-2 border="2 solid gray-500/10" rounded-lg px-4 py-2>
@@ -63,10 +75,10 @@ description: 了解 Project AIRI 的用户界面
       <div flex items-center gap-2 text-2xl>
         <div i-lucide:laptop />
       </div>
-      <span>客户端</span>
+      <span>桌面客户端使用指南</span>
     </div>
     <div decoration-none class="text-gray-900 dark:text-gray-200 text-base not-prose rounded-lg active:scale-95 transition-all duration-200 ease-in-out text-nowrap">
-      如何使用？
+      查看指南
     </div>
   </a>
   <a href="../overview/guide/web/" w-full flex items-center gap-2 border="2 solid gray-500/10" rounded-lg px-4 py-2>
@@ -74,24 +86,16 @@ description: 了解 Project AIRI 的用户界面
       <div flex items-center gap-2 text-2xl>
         <div i-lucide:app-window />
       </div>
-      <span>网页</span>
+      <span>Web 网页版使用指南</span>
     </div>
     <div class="text-gray-900 dark:text-gray-200 text-base not-prose rounded-lg active:scale-95 transition-all duration-200 ease-in-out text-nowrap">
-      如何使用？
+      查看指南
     </div>
   </a>
 </div>
 
-<br/>
+## 参与贡献
 
-::: warning 实验性功能与早期开发声明
-Project AIRI 目前正处于活跃的早期开发阶段。您在发布的客户端或网页版中体验到的主要为基础的稳定功能。如果您想体验正在开发中的 **实验性功能**（如 Minecraft 智能体、Discord / Telegram 机器人等），**目前暂时只能通过拉取项目源码在本地配置并启动**。
+有关如何为本项目做出贡献的指南，请参阅 [贡献指南](../overview/contributing/) 页面。
 
-有关环境配置和源码运行的详细步骤，请参阅下方的[贡献指南](../contributing/)。
-:::
-
-## 贡献
-
-有关如何为本项目做出贡献的指南，请参阅 [贡献](../contributing/) 页面。
-
-有关如何设计和改进 Project AIRI 用户界面的参考资料，请参阅 [设计指南](../contributing/design-guidelines/resources) 页面。
+有关如何设计和改进 Project AIRI 用户界面的参考资料，请参阅 [设计指南](../overview/contributing/design-guidelines/resources) 页面。
