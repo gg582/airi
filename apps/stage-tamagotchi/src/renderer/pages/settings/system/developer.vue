@@ -1,208 +1,156 @@
 <script setup lang="ts">
 import { useElectronEventaInvoke } from '@proj-airi/electron-vueuse'
-import { ButtonBar, CheckBar, IconItem } from '@proj-airi/stage-ui/components'
+import { SETTINGS_CATALOG_ITEMS } from '@proj-airi/stage-pages/composables/settings-topology'
+import { isStageTamagotchi } from '@proj-airi/stage-shared'
+import { CheckBar, IconItem, RippleGrid } from '@proj-airi/stage-ui/components'
+import { useRippleGridState } from '@proj-airi/stage-ui/composables/use-ripple-grid-state'
 import { useSettings } from '@proj-airi/stage-ui/stores/settings'
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useRouter } from 'vue-router'
 
-import { electronOpenDevtoolsWindow, electronOpenMainDevtools } from '../../../../shared/eventa'
+import { electronOpenMainDevtools } from '../../../../shared/eventa'
 
 const { t } = useI18n()
 const settings = useSettings()
-const router = useRouter()
-
-const menu = computed(() => [
-  {
-    title: 'Orbital Navigation Playground',
-    description: 'Data-driven settings topology renderer & motion playground (Eiki spec)',
-    icon: 'i-solar:planet-bold-duotone',
-    to: '/devtools/orbital-navigation',
-  },
-  {
-    title: t('settings.pages.system.sections.section.developer.sections.section.use-magic-keys.title'),
-    description: t('settings.pages.system.sections.section.developer.sections.section.use-magic-keys.description'),
-    icon: 'i-solar:sledgehammer-bold-duotone',
-    to: '/devtools/use-magic-keys',
-  },
-  {
-    title: t('tamagotchi.settings.pages.system.developer.sections.section.use-window-mouse.title'),
-    description: t('tamagotchi.settings.pages.system.developer.sections.section.use-window-mouse.description'),
-    icon: 'i-solar:sledgehammer-bold-duotone',
-    to: '/devtools/use-window-mouse',
-  },
-  {
-    title: 'Displays',
-    description: 'Visualize connected displays and cursor position',
-    icon: 'i-solar:sledgehammer-bold-duotone',
-    to: '/devtools/use-electron-all-displays',
-  },
-  {
-    title: 'Widgets Calling',
-    description: 'Spawn overlay widgets and test component props',
-    icon: 'i-solar:sledgehammer-bold-duotone',
-    to: '/devtools/widgets-calling',
-  },
-  {
-    title: t('tamagotchi.settings.devtools.pages.context-flow.title'),
-    description: 'Inspect incoming context updates and outgoing chat stream events',
-    icon: 'i-solar:chat-square-call-bold-duotone',
-    to: '/devtools/context-flow',
-  },
-  {
-    title: 'Relative Mouse',
-    description: 'Get mouse position relative to the window',
-    icon: 'i-solar:sledgehammer-bold-duotone',
-    to: '/devtools/use-electron-relative-mouse',
-  },
-  {
-    title: 'Aliyun Real-time Transcriber',
-    description: 'Stream microphone audio to Aliyun NLS and inspect live transcripts',
-    icon: 'i-solar:sledgehammer-bold-duotone',
-    to: '/devtools/providers-transcription-realtime-aliyun-nls',
-  },
-  {
-    title: 'Beat Sync Visualizer',
-    description: 'Plot V-motion targets, trajectory, and scalar Y/Z over time',
-    icon: 'i-solar:chart-bold-duotone',
-    to: '/devtools/beat-sync',
-  },
-  {
-    title: 'WebSocket Inspector',
-    description: 'Inspect raw WebSocket traffic',
-    icon: 'i-solar:transfer-horizontal-bold-duotone',
-    to: '/devtools/websocket-inspector',
-  },
-  {
-    title: 'Plugin Host Debug',
-    description: 'Inspect discovered/enabled/loaded plugins and control load/unload lifecycle',
-    icon: 'i-solar:bug-bold-duotone',
-    to: '/devtools/plugin-host',
-  },
-  {
-    title: 'Screen Capture',
-    description: 'Capture screen or window as video and/or audio streams',
-    icon: 'i-solar:screen-share-bold-duotone',
-    to: '/devtools/screen-capture',
-  },
-  {
-    title: 'Vision & Attention Ecology Inspector',
-    description: 'Real-time 5-workload VLM ticker, 0-cost salience gate, and context publisher',
-    icon: 'i-solar:eye-bold-duotone',
-    to: '/devtools/vision',
-  },
-  {
-    title: 'Live2D DSL Playground',
-    description: 'Isolated Live2D .zip runner with real-time VarFloats inspector & intimacy sandbox',
-    icon: 'i-solar:sledgehammer-bold-duotone',
-    to: '/devtools/live2d',
-  },
-])
+const { lastClickedIndex, setLastClickedIndex } = useRippleGridState()
 
 const openDevTools = useElectronEventaInvoke(electronOpenMainDevtools)
-const openDevtoolsWindow = useElectronEventaInvoke(electronOpenDevtoolsWindow)
+
+interface ToolItem {
+  id: string
+  title: string
+  description: string
+  icon: string
+  to: string
+}
+
+interface ToolGroup {
+  id: string
+  title: string
+  items: ToolItem[]
+}
+
+const toolGroups = computed<ToolGroup[]>(() => {
+  const items = SETTINGS_CATALOG_ITEMS
+    .filter(item => item.parentId === 'sys-developer')
+    .filter(item => isStageTamagotchi() || !item.desktopOnly)
+    .sort((a, b) => a.order - b.order)
+
+  const groupsMap = new Map<string, ToolGroup>()
+
+  for (const item of items) {
+    const rawCluster = item.clusterGroup || 'RUNTIME & NEURAL LABS'
+    const cleanTitle = rawCluster.replace(/[\u4E00-\u9FFF\u3040-\u309F\u30A0-\u30FF]/g, '').trim() || 'DIAGNOSTICS'
+    const groupId = cleanTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-')
+
+    if (!groupsMap.has(groupId)) {
+      groupsMap.set(groupId, {
+        id: groupId,
+        title: cleanTitle,
+        items: [],
+      })
+    }
+
+    groupsMap.get(groupId)!.items.push({
+      id: item.id,
+      title: item.titleKey ? t(item.titleKey, item.label) : item.label,
+      description: item.descriptionKey ? t(item.descriptionKey, item.description || '') : (item.description || ''),
+      icon: item.icon || 'i-solar:code-bold-duotone',
+      to: item.route || '/settings/system/developer',
+    })
+  }
+
+  return Array.from(groupsMap.values())
+})
 </script>
 
 <template>
-  <ButtonBar
-    v-model="settings.disableTransitions"
-    v-motion
-    mb-2
-    icon="i-solar:settings-minimalistic-outline"
-    text="settings.pages.page.developers.open-devtools.title"
-    :initial="{ opacity: 0, y: 10 }"
-    :enter="{ opacity: 1, y: 0 }"
-    :duration="250 + (19 * 10)"
-    :delay="1 * 50"
-    transition="all ease-in-out duration-250"
-    @click="() => openDevTools()"
-  >
-    {{ t('settings.pages.page.developers.open-devtools.button') }}
-  </ButtonBar>
-  <ButtonBar
-    v-motion
-    mb-2
-    icon="i-solar:code-bold-duotone"
-    :text="t('tamagotchi.settings.devtools.pages.markdown-stress.title')"
-    :initial="{ opacity: 0, y: 10 }"
-    :enter="{ opacity: 1, y: 0 }"
-    :duration="250 + (19 * 10)"
-    :delay="2 * 50"
-    transition="all ease-in-out duration-250"
-    @click="() => openDevtoolsWindow({ route: '/devtools/markdown-stress' })"
-  >
-    {{ t('tamagotchi.settings.devtools.pages.markdown-stress.title') }}
-  </ButtonBar>
-  <ButtonBar
-    v-motion
-    mb-2
-    icon="i-solar:chart-square-bold-duotone"
-    :text="t('tamagotchi.settings.devtools.pages.lag-visualizer.title')"
-    :initial="{ opacity: 0, y: 10 }"
-    :enter="{ opacity: 1, y: 0 }"
-    :duration="250 + (19 * 10)"
-    :delay="3 * 50"
-    transition="all ease-in-out duration-250"
-    @click="() => router.push('/devtools/performance-visualizer')"
-  >
-    {{ t('tamagotchi.settings.devtools.pages.lag-visualizer.title') }}
-  </ButtonBar>
-  <CheckBar
-    v-model="settings.disableTransitions"
-    v-motion
-    mb-2
-    icon-on="i-solar:people-nearby-bold-duotone"
-    icon-off="i-solar:running-2-line-duotone"
-    text="settings.animations.stage-transitions.title"
-    :initial="{ opacity: 0, y: 10 }"
-    :enter="{ opacity: 1, y: 0 }"
-    :duration="250 + (19 * 10)"
-    :delay="4 * 50"
-    transition="all ease-in-out duration-250"
-  />
-  <CheckBar
-    v-model="settings.usePageSpecificTransitions"
-    v-motion
-    :disabled="settings.disableTransitions"
-    icon-on="i-solar:running-2-line-duotone"
-    icon-off="i-solar:people-nearby-bold-duotone"
-    text="settings.animations.use-page-specific-transitions.title"
-    description="settings.animations.use-page-specific-transitions.description"
-    :initial="{ opacity: 0, y: 10 }"
-    :enter="{ opacity: 1, y: 0 }"
-    :duration="250 + (20 * 10)"
-    :delay="5 * 50"
-    transition="all ease-in-out duration-250"
-  />
+  <div flex="~ col gap-8" pb-12 font-normal>
+    <!-- Quick Actions -->
+    <div
+      v-if="isStageTamagotchi()"
+      class="flex items-center justify-between border border-neutral-200/80 rounded-2xl bg-white/70 p-4 shadow-sm backdrop-blur-md dark:border-neutral-800/80 dark:bg-neutral-900/70"
+    >
+      <div class="flex items-center gap-3">
+        <div class="size-10 flex shrink-0 items-center justify-center rounded-xl bg-primary-500/10 text-primary-600 dark:bg-primary-400/15 dark:text-primary-400">
+          <div class="i-solar:bug-bold-duotone size-5" />
+        </div>
+        <div>
+          <div class="text-sm text-neutral-800 font-bold dark:text-neutral-200">
+            Chrome DevTools Console
+          </div>
+          <div class="text-xs text-neutral-500 dark:text-neutral-400">
+            Open the Electron main inspector window
+          </div>
+        </div>
+      </div>
+      <button
+        class="flex items-center gap-1.5 border border-primary-500/30 rounded-xl bg-primary-500/10 px-3.5 py-2 text-xs text-primary-700 font-semibold transition-all active:scale-95 dark:border-primary-400/30 dark:bg-primary-400/15 hover:bg-primary-500/20 dark:text-primary-300 dark:hover:bg-primary-400/25"
+        @click="() => openDevTools()"
+      >
+        <div class="i-solar:tuning-2-bold-duotone size-4" />
+        <span>Open Console</span>
+      </button>
+    </div>
 
-  <div flex="~ col gap-4" mt-2 pb-12>
-    <IconItem
-      v-for="(item, index) in menu"
-      :key="item.to"
+    <!-- Clustered Developer Instruments -->
+    <div v-for="group in toolGroups" :key="group.id" flex="~ col gap-4">
+      <div px-4 text="xs neutral-400 dark:neutral-500" font-bold tracking-wider uppercase>
+        {{ group.title }}
+      </div>
+      <RippleGrid
+        :items="group.items"
+        :get-key="item => item.to"
+        :columns="{ default: 1, sm: 2 }"
+        :origin-index="lastClickedIndex"
+        @item-click="({ globalIndex }) => setLastClickedIndex(globalIndex)"
+      >
+        <template #item="{ item }">
+          <IconItem
+            :title="item.title"
+            :description="item.description"
+            :icon="item.icon"
+            :to="item.to"
+          />
+        </template>
+      </RippleGrid>
+    </div>
+
+    <!-- Developer Flags (Bottom Section) -->
+    <div flex="~ col gap-3">
+      <div px-4 text="xs neutral-400 dark:neutral-500" font-bold tracking-wider uppercase>
+        Runtime Animation Flags
+      </div>
+      <div class="flex flex-col gap-2">
+        <CheckBar
+          v-model="settings.disableTransitions"
+          icon-on="i-solar:people-nearby-bold-duotone"
+          icon-off="i-solar:running-2-line-duotone"
+          text="settings.animations.stage-transitions.title"
+        />
+        <CheckBar
+          v-model="settings.usePageSpecificTransitions"
+          :disabled="settings.disableTransitions"
+          icon-on="i-solar:running-2-line-duotone"
+          icon-off="i-solar:people-nearby-bold-duotone"
+          text="settings.animations.use-page-specific-transitions.title"
+          description="settings.animations.use-page-specific-transitions.description"
+        />
+      </div>
+    </div>
+
+    <div
       v-motion
-      :initial="{ opacity: 0, y: 10 }"
-      :enter="{ opacity: 1, y: 0 }"
-      :duration="250"
-      :style="{
-        transitionDelay: `${(5 + index) * 50}ms`, // delay between each item, unocss doesn't support dynamic generation of classes now
-      }"
-      :title="item.title"
-      :description="item.description"
-      :icon="item.icon"
-      :to="item.to"
-    />
-  </div>
-
-  <div
-    v-motion
-    text="neutral-200/50 dark:neutral-600/20" pointer-events-none
-    fixed top="[65dvh]" right--15 z--1
-    :initial="{ scale: 0.9, opacity: 0, rotate: 30 }"
-    :enter="{ scale: 1, opacity: 1, rotate: 0 }"
-    :duration="250"
-    flex items-center justify-center
-  >
-    <div text="60" i-solar:code-bold-duotone />
+      text="neutral-200/50 dark:neutral-600/20" pointer-events-none
+      fixed top="[calc(100dvh-15rem)]" bottom-0 right--5 z--1
+      :initial="{ scale: 0.9, opacity: 0, y: 20 }"
+      :enter="{ scale: 1, opacity: 1, y: 0 }"
+      :duration="500"
+      size-60
+      flex items-center justify-center
+    >
+      <div text="60" i-solar:code-bold-duotone />
+    </div>
   </div>
 </template>
 

@@ -1,158 +1,124 @@
 <script setup lang="ts">
-import { CheckBar, IconItem } from '@proj-airi/stage-ui/components'
+import { SETTINGS_CATALOG_ITEMS } from '@proj-airi/stage-pages/composables/settings-topology'
+import { isStageTamagotchi } from '@proj-airi/stage-shared'
+import { CheckBar, IconItem, RippleGrid } from '@proj-airi/stage-ui/components'
+import { useRippleGridState } from '@proj-airi/stage-ui/composables/use-ripple-grid-state'
 import { useSettings } from '@proj-airi/stage-ui/stores/settings'
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
 const settings = useSettings()
+const { lastClickedIndex, setLastClickedIndex } = useRippleGridState()
 
-const menu = computed(() => [
-  {
-    title: 'Core AI Lab',
-    description: 'Apple Silicon hardware telemetry & native inference lab',
-    icon: 'i-solar:cpu-bold-duotone',
-    to: '/devtools/core-ai-lab',
-  },
-  {
-    title: 'Audio Record',
+interface ToolItem {
+  id: string
+  title: string
+  description: string
+  icon: string
+  to: string
+}
 
-    description: 'Test Audio related composables',
-    icon: 'i-solar:sledgehammer-bold-duotone',
-    to: '/devtools/audio-record',
-  },
-  {
-    title: 'Background Theme color blending',
-    description: 'Test blending & theme',
-    icon: 'i-solar:sledgehammer-bold-duotone',
-    to: '/devtools/background-gradient-blending',
-  },
-  {
-    title: 'Background removal (WebGPU required)',
-    description: 'Utility for background removal',
-    icon: 'i-solar:sledgehammer-bold-duotone',
-    to: '/devtools/background-removal',
-  },
-  {
-    title: 'Chat',
-    description: 'Chat',
-    icon: 'i-solar:sledgehammer-bold-duotone',
-    to: '/devtools/chat',
-  },
-  {
-    title: 'Gesture Circle (Desktop only)',
-    description: 'Test gesture recognition',
-    icon: 'i-solar:sledgehammer-bold-duotone',
-    to: '/devtools/gesture-circle',
-  },
-  {
-    title: 'Image',
-    description: 'Image',
-    icon: 'i-solar:sledgehammer-bold-duotone',
-    to: '/devtools/image',
-  },
-  {
-    title: 'Polaroid',
-    description: 'Utility for taking shots of models',
-    icon: 'i-solar:sledgehammer-bold-duotone',
-    to: '/devtools/polaroid',
-  },
-  {
-    title: t('settings.pages.system.sections.section.developer.sections.section.use-magic-keys.title'),
-    description: t('settings.pages.system.sections.section.developer.sections.section.use-magic-keys.description'),
-    icon: 'i-solar:sledgehammer-bold-duotone',
-    to: '/devtools/use-magic-keys',
-  },
-  {
-    title: 'Color extract',
-    description: 'Test color extraction',
-    icon: 'i-solar:sledgehammer-bold-duotone',
-    to: '/devtools/vibrant',
-  },
-  {
-    title: 'Aliyun Real-time Transcriber',
-    description: 'Stream microphone audio to Aliyun NLS and inspect live transcripts',
-    icon: 'i-solar:sledgehammer-bold-duotone',
-    to: '/devtools/providers-transcription-realtime-aliyun-nls',
-  },
-  {
-    title: 'Performance Playground',
-    description: 'VRM expressions + TTS lip sync playground',
-    icon: 'i-solar:sledgehammer-bold-duotone',
-    to: '/devtools/performance-playground',
-  },
-  {
-    title: 'Notification',
-    description: 'Test notification',
-    icon: 'i-solar:sledgehammer-bold-duotone',
-    to: '/devtools/notifications',
-  },
-  {
-    title: 'WebSocket Inspector',
-    description: 'Inspect raw WebSocket traffic',
-    icon: 'i-solar:transfer-horizontal-bold-duotone',
-    to: '/devtools/websocket-inspector',
-  },
-])
+interface ToolGroup {
+  id: string
+  title: string
+  items: ToolItem[]
+}
+
+const toolGroups = computed<ToolGroup[]>(() => {
+  const items = SETTINGS_CATALOG_ITEMS
+    .filter(item => item.parentId === 'sys-developer')
+    .filter(item => isStageTamagotchi() || !item.desktopOnly)
+    .sort((a, b) => a.order - b.order)
+
+  const groupsMap = new Map<string, ToolGroup>()
+
+  for (const item of items) {
+    const rawCluster = item.clusterGroup || 'RUNTIME & NEURAL LABS'
+    const cleanTitle = rawCluster.replace(/[\u4E00-\u9FFF\u3040-\u309F\u30A0-\u30FF]/g, '').trim() || 'DIAGNOSTICS'
+    const groupId = cleanTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-')
+
+    if (!groupsMap.has(groupId)) {
+      groupsMap.set(groupId, {
+        id: groupId,
+        title: cleanTitle,
+        items: [],
+      })
+    }
+
+    groupsMap.get(groupId)!.items.push({
+      id: item.id,
+      title: item.titleKey ? t(item.titleKey, item.label) : item.label,
+      description: item.descriptionKey ? t(item.descriptionKey, item.description || '') : (item.description || ''),
+      icon: item.icon || 'i-solar:code-bold-duotone',
+      to: item.route || '/settings/system/developer',
+    })
+  }
+
+  return Array.from(groupsMap.values())
+})
 </script>
 
 <template>
-  <CheckBar
-    v-model="settings.disableTransitions"
-    v-motion
-    mb-2
-    icon-on="i-solar:people-nearby-bold-duotone"
-    icon-off="i-solar:running-2-line-duotone"
-    text="settings.animations.stage-transitions.title"
-    :initial="{ opacity: 0, y: 10 }"
-    :enter="{ opacity: 1, y: 0 }"
-    :duration="250 + (19 * 10)"
-    :delay="1 * 50"
-    transition="all ease-in-out duration-250"
-  />
-  <CheckBar
-    v-model="settings.usePageSpecificTransitions"
-    v-motion
-    :disabled="settings.disableTransitions"
-    icon-on="i-solar:running-2-line-duotone"
-    icon-off="i-solar:people-nearby-bold-duotone"
-    text="settings.animations.use-page-specific-transitions.title"
-    description="settings.animations.use-page-specific-transitions.description"
-    :initial="{ opacity: 0, y: 10 }"
-    :enter="{ opacity: 1, y: 0 }"
-    :duration="250 + (20 * 10)"
-    :delay="2 * 50"
-    transition="all ease-in-out duration-250"
-  />
+  <div flex="~ col gap-8" pb-12 font-normal>
+    <!-- Clustered Developer Instruments -->
+    <div v-for="group in toolGroups" :key="group.id" flex="~ col gap-4">
+      <div px-4 text="xs neutral-400 dark:neutral-500" font-bold tracking-wider uppercase>
+        {{ group.title }}
+      </div>
+      <RippleGrid
+        :items="group.items"
+        :get-key="item => item.to"
+        :columns="{ default: 1, sm: 2 }"
+        :origin-index="lastClickedIndex"
+        @item-click="({ globalIndex }) => setLastClickedIndex(globalIndex)"
+      >
+        <template #item="{ item }">
+          <IconItem
+            :title="item.title"
+            :description="item.description"
+            :icon="item.icon"
+            :to="item.to"
+          />
+        </template>
+      </RippleGrid>
+    </div>
 
-  <div flex="~ col gap-4" pb-12>
-    <IconItem
-      v-for="(item, index) in menu"
-      :key="item.to"
+    <!-- Developer Flags (Bottom Section) -->
+    <div flex="~ col gap-3">
+      <div px-4 text="xs neutral-400 dark:neutral-500" font-bold tracking-wider uppercase>
+        Runtime Animation Flags
+      </div>
+      <div class="flex flex-col gap-2">
+        <CheckBar
+          v-model="settings.disableTransitions"
+          icon-on="i-solar:people-nearby-bold-duotone"
+          icon-off="i-solar:running-2-line-duotone"
+          text="settings.animations.stage-transitions.title"
+        />
+        <CheckBar
+          v-model="settings.usePageSpecificTransitions"
+          :disabled="settings.disableTransitions"
+          icon-on="i-solar:running-2-line-duotone"
+          icon-off="i-solar:people-nearby-bold-duotone"
+          text="settings.animations.use-page-specific-transitions.title"
+          description="settings.animations.use-page-specific-transitions.description"
+        />
+      </div>
+    </div>
+
+    <div
       v-motion
-      :initial="{ opacity: 0, y: 10 }"
-      :enter="{ opacity: 1, y: 0 }"
-      :duration="250"
-      :style="{
-        transitionDelay: `${index * 50}ms`, // delay between each item, unocss doesn't support dynamic generation of classes now
-      }"
-      :title="item.title"
-      :description="item.description"
-      :icon="item.icon"
-      :to="item.to"
-    />
-  </div>
-
-  <div
-    v-motion
-    text="neutral-200/50 dark:neutral-600/20" pointer-events-none
-    fixed top="[65dvh]" right--15 z--1
-    :initial="{ scale: 0.9, opacity: 0, rotate: 30 }"
-    :enter="{ scale: 1, opacity: 1, rotate: 0 }"
-    :duration="250"
-    flex items-center justify-center
-  >
-    <div text="60" i-solar:code-bold-duotone />
+      text="neutral-200/50 dark:neutral-600/20" pointer-events-none
+      fixed top="[calc(100dvh-15rem)]" bottom-0 right--5 z--1
+      :initial="{ scale: 0.9, opacity: 0, y: 20 }"
+      :enter="{ scale: 1, opacity: 1, y: 0 }"
+      :duration="500"
+      size-60
+      flex items-center justify-center
+    >
+      <div text="60" i-solar:code-bold-duotone />
+    </div>
   </div>
 </template>
 
