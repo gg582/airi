@@ -47,14 +47,23 @@ Tool authoring conventions in repo: `tool({ name, description, parameters: zod s
 
 `chat.ts` `tryBridgeMarker` (:795+) converts text-emitted pseudo-tool-call markers into first-class slices when the model does not natively tool-call. Recognizes `<|tool:args|>`, `[call_tool:tool, args]`, `<tool_call>...</tool_call>` (both keyed-args and JSON flavors), parses kwargs with a lenient kv regex + `tryParseLenientJson`, looks the tool up in the same `options.tools`/resolver set, and **enqueues a `tool-call` slice into `toolCallQueue`** (:891+) identical to a native call. Bridged calls are therefore subject to the same execution, result handling, and stop/cancel semantics as native tool calls — treat the two as one mechanism when tracing.
 
-## 3. Card-Level Gating Happens at the Gateway, Not Here
+## 3. Card-Level Gating & Progressive Capability Packs
 
-`llmStore.filterToolsByAllowedTools` (`llm.ts:295-331`) reads `activeCard.extensions.airi.generation.known.allowedTools` and runs against every request:
+Card gating happens in two stages: at the **LLM dispatch gateway** (`llmStore.filterToolsByAllowedTools` in `packages/stage-ui/src/stores/llm.ts`) and at the **MCP executor** (`filterToolsForCard` in `apps/stage-tamagotchi/src/renderer/stores/tools/builtin/mcp.ts`), both reading `activeCard.extensions.airi.generation.known.allowedTools`:
 
-- No allowlist → everything **except** names containing `generate_motion` (back-compat default).
-- Allowlist present → `text_journal` / `image_journal` / `mcp*` / `generate_motion` families gated by membership; unknown tool names pass through.
+- **Default (no allowlist)**: Only baseline memory and artistry tools (`['text_journal', 'image_journal']`) are enabled. Advanced/heavy tools (`generate_motion`, `mcp`, `web_search`, `filesystem`) are **strictly opt-in by default** to avoid polluting smaller local models' context windows with tool specifications.
+- **5 Progressive Capability Packs** in Card Creator (`CardCreationTabTools.vue`):
+  1. 🌐 **Web & Research Pack** (`web_search` / `mcp_web_search`): Exposes `open-websearch` multi-engine search & markdown reader.
+  2. 📁 **Local Workspace Pack** (`filesystem` / `mcp_filesystem`): Exposes `@modelcontextprotocol/server-filesystem` folder reading/search.
+  3. 🎨 **Visual Artistry Pack** (`image_journal`): Autonomous image creation & scene backdrop setting.
+  4. 🧠 **Sacred Memory Pack** (`text_journal`): Append-only LTMM journal & STMM daily continuity blocks.
+  5. 💃 **Kinetic Motion Generator Pack** (`generate_motion`): Text-to-VRMA motion diffusion and procedural keyframing.
+- **Allowlist present**:
+  - `text_journal`, `image_journal`, `generate_motion` are gated by their direct name.
+  - MCP meta-tools (`mcp_list_tools`, `mcp_call_tool`) pass if `mcp`, `web_search`, or `filesystem` is present.
+  - Inside `builtin/mcp.ts`, `filterToolsForCard` dynamically filters the discovered tools list and blocks invocations to unpermitted servers (e.g. only web search tools are returned if only `web_search` is checked).
 
-So a tool can be fully registered and still invisible per-card. See `airi-llm-dispatch-gateway` §2/§4-style gating and `airi-card-editor-wizard` for where `allowedTools` is authored in the card schema.
+See `airi-llm-dispatch-gateway` §2/§4 and `airi-card-editor-wizard` for authoring in the card schema.
 
 ## 4. Availability Matrix (audited 2026-08)
 
