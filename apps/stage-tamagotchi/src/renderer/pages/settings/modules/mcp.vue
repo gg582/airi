@@ -13,6 +13,7 @@ import {
   electronMcpGetRuntimeStatus,
   electronMcpOpenConfigFile,
   electronMcpUpdateConfig,
+  electronSelectDirectories,
 } from '../../../../shared/eventa'
 
 console.log('[MCP] Settings module loaded')
@@ -22,6 +23,7 @@ const applyAndRestart = useElectronEventaInvoke(electronMcpApplyAndRestart)
 const getRuntimeStatus = useElectronEventaInvoke(electronMcpGetRuntimeStatus)
 const getConfig = useElectronEventaInvoke(electronMcpGetConfig)
 const updateConfig = useElectronEventaInvoke(electronMcpUpdateConfig)
+const selectDirectories = useElectronEventaInvoke(electronSelectDirectories)
 
 // UI State
 const currentTab = ref<'manage' | 'discover'>('manage')
@@ -61,6 +63,165 @@ const toolsByServer = computed(() => {
   }
   return map
 })
+
+function isFilesystemServer(serverName: string): boolean {
+  const s = config.value?.mcpServers[serverName] || status.value?.servers.find(srv => srv.name === serverName)
+  if (!s)
+    return serverName.toLowerCase().includes('filesystem')
+  const args = s.args || []
+  return serverName.toLowerCase().includes('filesystem') || args.some(a => a.includes('server-filesystem'))
+}
+
+function isOpenWebSearchServer(serverName: string): boolean {
+  const s = config.value?.mcpServers[serverName] || status.value?.servers.find(srv => srv.name === serverName)
+  if (!s)
+    return serverName.toLowerCase().includes('open-websearch') || serverName.toLowerCase().includes('open web search')
+  const args = s.args || []
+  return serverName.toLowerCase().includes('open-websearch') || args.some(a => a.includes('open-websearch'))
+}
+
+function getFilesystemPaths(serverName: string): string[] {
+  const s = config.value?.mcpServers[serverName]
+  if (!s || !s.args)
+    return []
+  // Paths are args that don't start with '-' and aren't package names
+  return s.args.filter(arg => !arg.startsWith('-') && !arg.includes('@modelcontextprotocol/server-filesystem') && !arg.includes('server-filesystem'))
+}
+
+async function handleAddDirectory(serverName: string) {
+  isBusy.value = true
+  errorMessage.value = ''
+  try {
+    const selected = await selectDirectories({
+      title: `Select Folders for ${serverName}`,
+    })
+    if (!selected || !selected.length)
+      return
+
+    const currentConfig = config.value?.mcpServers[serverName]
+    if (!currentConfig)
+      return
+
+    const existingArgs = currentConfig.args || ['-y', '@modelcontextprotocol/server-filesystem']
+    const newArgs = [...existingArgs]
+    for (const p of selected) {
+      if (!newArgs.includes(p))
+        newArgs.push(p)
+    }
+
+    await updateConfig({
+      mcpServers: {
+        ...config.value?.mcpServers,
+        [serverName]: {
+          ...currentConfig,
+          args: newArgs,
+        },
+      },
+    })
+    await handleApplyAndRestart()
+    lastActionMessage.value = `Added ${selected.length} directory path(s) to ${serverName}`
+  }
+  catch (error) {
+    errorMessage.value = error instanceof Error ? error.message : String(error)
+  }
+  finally {
+    isBusy.value = false
+  }
+}
+
+async function handleRemoveDirectory(serverName: string, pathToRemove: string) {
+  isBusy.value = true
+  errorMessage.value = ''
+  try {
+    const currentConfig = config.value?.mcpServers[serverName]
+    if (!currentConfig || !currentConfig.args)
+      return
+
+    const newArgs = currentConfig.args.filter(a => a !== pathToRemove)
+
+    await updateConfig({
+      mcpServers: {
+        ...config.value?.mcpServers,
+        [serverName]: {
+          ...currentConfig,
+          args: newArgs,
+        },
+      },
+    })
+    await handleApplyAndRestart()
+    lastActionMessage.value = `Removed directory from ${serverName}`
+  }
+  catch (error) {
+    errorMessage.value = error instanceof Error ? error.message : String(error)
+  }
+  finally {
+    isBusy.value = false
+  }
+}
+
+async function handleAddPresetDirectory(serverName: string, presetSuffix: string) {
+  isBusy.value = true
+  errorMessage.value = ''
+  try {
+    const currentConfig = config.value?.mcpServers[serverName]
+    if (!currentConfig)
+      return
+
+    // Resolve sensible home directory path prefix
+    const home = typeof process !== 'undefined' && process.env?.HOME ? process.env.HOME : '/Users'
+    const fullPath = `${home}/${presetSuffix}`
+
+    const existingArgs = currentConfig.args || ['-y', '@modelcontextprotocol/server-filesystem']
+    if (existingArgs.includes(fullPath)) {
+      lastActionMessage.value = `Path "${fullPath}" is already added.`
+      return
+    }
+
+    const newArgs = [...existingArgs, fullPath]
+
+    await updateConfig({
+      mcpServers: {
+        ...config.value?.mcpServers,
+        [serverName]: {
+          ...currentConfig,
+          args: newArgs,
+        },
+      },
+    })
+    await handleApplyAndRestart()
+    lastActionMessage.value = `Added preset path "${fullPath}" to ${serverName}`
+  }
+  catch (error) {
+    errorMessage.value = error instanceof Error ? error.message : String(error)
+  }
+  finally {
+    isBusy.value = false
+  }
+}
+
+async function handleDeleteServer(serverName: string) {
+  isBusy.value = true
+  errorMessage.value = ''
+  try {
+    if (!config.value?.mcpServers)
+      return
+
+    const nextMcpServers = { ...config.value.mcpServers }
+    delete nextMcpServers[serverName]
+
+    await updateConfig({
+      mcpServers: nextMcpServers,
+    })
+    await handleApplyAndRestart()
+    lastActionMessage.value = `Deleted server "${serverName}"`
+  }
+  catch (error) {
+    errorMessage.value = error instanceof Error ? error.message : String(error)
+  }
+  finally {
+    isBusy.value = false
+  }
+}
 
 function toggleServer(name: string) {
   const next = new Set(expandedServers.value)
@@ -118,10 +279,10 @@ async function refreshStatus() {
         updatedAt: Date.now(),
         servers: [
           {
-            name: 'Example Filesystem Server (Mock)',
+            name: 'filesystem',
             state: 'stopped',
             command: 'npx',
-            args: ['-y', '@modelcontextprotocol/server-filesystem', '/path/to/search'],
+            args: ['-y', '@modelcontextprotocol/server-filesystem', '/Users'],
             pid: null,
           },
         ],
@@ -228,11 +389,29 @@ async function handleInstall(server: RegistryServer) {
   isBusy.value = true
   lastActionMessage.value = ''
   try {
-    const slug = server.package_name || server.name.toLowerCase().replace(/\s+/g, '-')
+    const rawSlug = server.package_name || server.name.toLowerCase().replace(/\s+/g, '-')
+    let slug = rawSlug
     const command = 'npx'
-    const args: string[] = ['-y']
+    let args: string[] = ['-y']
 
-    if (server.source_code_url?.includes('github.com')) {
+    // Specialized 0-key Web Search
+    if (server.name.toLowerCase().includes('open web search') || rawSlug.includes('open-websearch')) {
+      slug = 'open-websearch'
+      args = ['-y', 'open-websearch@latest']
+    }
+    // Specialized Official Filesystem MCP
+    else if (server.name.toLowerCase().includes('filesystem') || rawSlug.includes('server-filesystem')) {
+      slug = 'filesystem'
+      const home = typeof process !== 'undefined' && process.env?.HOME ? process.env.HOME : '/Users'
+      args = [
+        '-y',
+        '@modelcontextprotocol/server-filesystem',
+        `${home}/Documents/Projects`,
+        `${home}/Downloads`,
+        `${home}/Desktop`,
+      ]
+    }
+    else if (server.source_code_url?.includes('github.com')) {
       const parts = server.source_code_url.split('/')
       const repo = parts[4]?.replace('.git', '')
       if (repo && repo.startsWith('mcp-server-'))
@@ -246,6 +425,7 @@ async function handleInstall(server: RegistryServer) {
 
     await updateConfig({
       mcpServers: {
+        ...config.value?.mcpServers,
         [slug]: {
           command,
           args,
@@ -268,7 +448,9 @@ async function handleInstall(server: RegistryServer) {
 
 function isInstalled(name: string) {
   const slug = name.toLowerCase().replace(/\s+/g, '-')
-  return !!config.value?.mcpServers[slug]
+  return !!config.value?.mcpServers?.[slug]
+    || (name.toLowerCase().includes('open web search') && !!config.value?.mcpServers?.['open-websearch'])
+    || (name.toLowerCase().includes('filesystem') && !!config.value?.mcpServers?.filesystem)
 }
 
 onMounted(async () => {
@@ -435,6 +617,82 @@ onMounted(async () => {
             <Transition name="expand">
               <div v-if="expandedServers.has(server.name)" class="border-t border-black/5 dark:border-white/5">
                 <div class="flex flex-col gap-4 p-4">
+                  <!-- Open WebSearch Special Badge -->
+                  <div
+                    v-if="isOpenWebSearchServer(server.name)"
+                    class="flex items-center gap-2 border border-blue-500/20 rounded-xl bg-blue-500/10 p-3 text-xs text-blue-600 dark:text-blue-400"
+                  >
+                    <div i-ph:globe-hemisphere-west-bold class="shrink-0 text-base" />
+                    <div>
+                      <strong>Zero-Key Web Search Active:</strong> Aggregates live web results (Bing, DuckDuckGo, Brave, Baidu) with clean Markdown extraction and zero API keys required.
+                    </div>
+                  </div>
+
+                  <!-- Filesystem Workspace Paths Manager -->
+                  <div v-if="isFilesystemServer(server.name)" class="flex flex-col gap-3 border border-neutral-200/80 rounded-xl bg-neutral-50/50 p-4 dark:border-neutral-700/60 dark:bg-neutral-800/40">
+                    <div class="flex items-center justify-between">
+                      <div class="flex items-center gap-2">
+                        <div i-ph:folder-open-bold class="text-sm text-amber-500" />
+                        <span class="text-xs text-neutral-800 font-bold dark:text-neutral-200">Allowed Workspace Folders</span>
+                      </div>
+                      <Button size="sm" variant="secondary" :disabled="isBusy" @click="handleAddDirectory(server.name)">
+                        <template #icon>
+                          <div i-ph:plus-bold />
+                        </template>
+                        Add Folder...
+                      </Button>
+                    </div>
+
+                    <!-- Path Chips -->
+                    <div v-if="getFilesystemPaths(server.name).length" class="flex flex-wrap gap-2">
+                      <div
+                        v-for="p in getFilesystemPaths(server.name)"
+                        :key="p"
+                        class="flex items-center gap-1.5 border border-neutral-200 rounded-lg bg-white px-2.5 py-1 text-xs text-neutral-700 shadow-sm dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300"
+                      >
+                        <div i-ph:folder-simple-bold class="shrink-0 text-xs text-amber-500" />
+                        <span class="max-w-xs truncate text-[11px] font-mono">{{ p }}</span>
+                        <button
+                          type="button"
+                          class="ml-1 text-neutral-400 hover:text-red-500 dark:hover:text-red-400"
+                          title="Remove folder from allowed paths"
+                          @click="handleRemoveDirectory(server.name, p)"
+                        >
+                          <div i-ph:x-bold class="text-[10px]" />
+                        </button>
+                      </div>
+                    </div>
+                    <div v-else class="text-xs text-amber-600 dark:text-amber-400">
+                      ⚠️ No directories configured! The filesystem server needs at least one allowed directory to function.
+                    </div>
+
+                    <!-- Quick Preset Path Buttons -->
+                    <div class="flex flex-wrap items-center gap-1.5 pt-1">
+                      <span class="text-[10px] text-neutral-400 font-medium">Quick add:</span>
+                      <button
+                        type="button"
+                        class="rounded-md bg-neutral-200/60 px-2 py-0.5 text-[10px] text-neutral-700 font-medium dark:bg-neutral-700/60 hover:bg-neutral-300 dark:text-neutral-300 dark:hover:bg-neutral-700"
+                        @click="handleAddPresetDirectory(server.name, 'Documents/Projects')"
+                      >
+                        + Projects
+                      </button>
+                      <button
+                        type="button"
+                        class="rounded-md bg-neutral-200/60 px-2 py-0.5 text-[10px] text-neutral-700 font-medium dark:bg-neutral-700/60 hover:bg-neutral-300 dark:text-neutral-300 dark:hover:bg-neutral-700"
+                        @click="handleAddPresetDirectory(server.name, 'Downloads')"
+                      >
+                        + Downloads
+                      </button>
+                      <button
+                        type="button"
+                        class="rounded-md bg-neutral-200/60 px-2 py-0.5 text-[10px] text-neutral-700 font-medium dark:bg-neutral-700/60 hover:bg-neutral-300 dark:text-neutral-300 dark:hover:bg-neutral-700"
+                        @click="handleAddPresetDirectory(server.name, 'Desktop')"
+                      >
+                        + Desktop
+                      </button>
+                    </div>
+                  </div>
+
                   <!-- Command info -->
                   <div class="flex flex-col gap-1.5 rounded-lg bg-black/5 p-3 dark:bg-white/5">
                     <span class="text-[10px] text-neutral-400 font-bold tracking-wider uppercase">Launch Command</span>
@@ -453,7 +711,7 @@ onMounted(async () => {
 
                   <!-- Tools Grid -->
                   <div v-if="toolsByServer[server.name]?.length">
-                    <span class="ml-1 text-[10px] text-neutral-400 font-bold tracking-wider uppercase">Tools</span>
+                    <span class="ml-1 text-[10px] text-neutral-400 font-bold tracking-wider uppercase">Tools ({{ toolsByServer[server.name].length }})</span>
                     <div class="grid grid-cols-1 mt-2 gap-2 sm:grid-cols-2">
                       <div
                         v-for="tool in toolsByServer[server.name]"
@@ -469,6 +727,22 @@ onMounted(async () => {
                         </p>
                       </div>
                     </div>
+                  </div>
+
+                  <!-- Server Actions -->
+                  <div class="flex justify-end border-t border-black/5 pt-3 dark:border-white/5">
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      class="text-red-500 dark:text-red-400 hover:text-red-600"
+                      :disabled="isBusy"
+                      @click="handleDeleteServer(server.name)"
+                    >
+                      <template #icon>
+                        <div i-ph:trash-bold />
+                      </template>
+                      Remove Server
+                    </Button>
                   </div>
                 </div>
               </div>

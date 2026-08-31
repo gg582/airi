@@ -367,14 +367,12 @@ function filterToolsByAllowedTools(tools: Tool[] | undefined): Tool[] | undefine
   const activeCard = cardStore.activeCard
   const allowedTools = activeCard?.extensions?.airi?.generation?.known?.allowedTools
 
-  debug(`llmStore.filterTools | card="${activeCard?.name ?? 'none'}" generation.enabled=${String(activeCard?.extensions?.airi?.generation?.enabled)} allowedTools=${JSON.stringify(allowedTools ?? null)} inTools=[${tools.map((t: any) => t.function?.name || t.name).join(',')}]`)
-
-  // Default to allowing all tools except generate_vrma if allowedTools is not specifically set
-  // (backward compatibility). generation.enabled is a separate flag for model/provider overrides.
+  // Default to allowing text_journal and image_journal only if allowedTools is not specifically set.
+  // Advanced tools (generate_motion, mcp, web_search, filesystem) are strictly opt-in.
   if (!allowedTools) {
     return tools.filter((t: any) => {
       const name = t.function?.name || t.name || ''
-      return !name.includes('generate_motion')
+      return !name.includes('generate_motion') && !name.includes('mcp')
     })
   }
 
@@ -388,6 +386,10 @@ function filterToolsByAllowedTools(tools: Tool[] | undefined): Tool[] | undefine
     }
     if (name.includes('mcp_') || name.startsWith('mcp')) {
       return allowedTools.includes('mcp')
+        || allowedTools.includes('web_search')
+        || allowedTools.includes('filesystem')
+        || allowedTools.includes('mcp_web_search')
+        || allowedTools.includes('mcp_filesystem')
     }
     if (name.includes('generate_motion')) {
       return allowedTools.includes('generate_motion')

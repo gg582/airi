@@ -18,7 +18,7 @@ import { useLogg } from '@guiiai/logg'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js'
 import { defineInvokeHandler } from '@moeru/eventa'
-import { app, shell } from 'electron'
+import { app, dialog, shell } from 'electron'
 import { z } from 'zod'
 
 import {
@@ -29,6 +29,7 @@ import {
   electronMcpListTools,
   electronMcpOpenConfigFile,
   electronMcpUpdateConfig,
+  electronSelectDirectories,
 } from '../../../../shared/eventa'
 import { onAppBeforeQuit } from '../../../libs/bootkit/lifecycle'
 
@@ -378,10 +379,10 @@ export function createMcpStdioManager(): McpStdioManager {
 
     const updated: ElectronMcpStdioConfigFile = {
       ...current,
-      mcpServers: {
-        ...current.mcpServers,
-        ...partial.mcpServers,
-      },
+      ...partial,
+      mcpServers: partial.mcpServers !== undefined
+        ? partial.mcpServers
+        : current.mcpServers,
     }
 
     await writeFile(path, `${JSON.stringify(updated, null, 2)}\n`)
@@ -449,5 +450,17 @@ export function createMcpServersService(params: { context: ReturnType<typeof cre
 
   defineInvokeHandler(params.context, electronMcpUpdateConfig, async (payload) => {
     return params.manager.updateConfig(payload)
+  })
+
+  defineInvokeHandler(params.context, electronSelectDirectories, async (payload) => {
+    const result = await dialog.showOpenDialog({
+      title: payload?.title || 'Select Allowed Directories for Filesystem MCP',
+      defaultPath: payload?.defaultPath,
+      properties: ['openDirectory', 'multiSelections', 'createDirectory'],
+    })
+    if (result.canceled || !result.filePaths.length) {
+      return undefined
+    }
+    return result.filePaths
   })
 }

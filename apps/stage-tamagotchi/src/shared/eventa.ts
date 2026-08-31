@@ -252,6 +252,7 @@ export const electronMcpListTools = defineInvokeEventa<ElectronMcpToolDescriptor
 export const electronMcpCallTool = defineInvokeEventa<ElectronMcpCallToolResult, ElectronMcpCallToolPayload>('eventa:invoke:electron:mcp:call-tool')
 export const electronMcpGetConfig = defineInvokeEventa<ElectronMcpStdioConfigFile>('eventa:invoke:electron:mcp:get-config')
 export const electronMcpUpdateConfig = defineInvokeEventa<void, Partial<ElectronMcpStdioConfigFile>>('eventa:invoke:electron:mcp:update-config')
+export const electronSelectDirectories = defineInvokeEventa<string[] | undefined, { defaultPath?: string, title?: string } | undefined>('eventa:invoke:electron:dialog:select-directories')
 
 export const widgetsOpenWindow = defineInvokeEventa<void, { id?: string }>('eventa:invoke:electron:windows:widgets:open')
 export const widgetsAdd = defineInvokeEventa<string | undefined, WidgetsAddPayload>('eventa:invoke:electron:windows:widgets:add')

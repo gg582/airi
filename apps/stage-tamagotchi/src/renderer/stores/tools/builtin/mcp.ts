@@ -1,6 +1,33 @@
+import type { ElectronMcpToolDescriptor } from '../../../../shared/eventa'
+
 import { tryGetMcpToolBridge } from '@proj-airi/stage-ui/stores/mcp-tool-bridge'
+import { useAiriCardStore } from '@proj-airi/stage-ui/stores/modules/airi-card'
 import { tool } from '@xsai/tool'
 import { z } from 'zod'
+
+function filterToolsForCard(rawTools: ElectronMcpToolDescriptor[]): ElectronMcpToolDescriptor[] {
+  const cardStore = useAiriCardStore()
+  const allowedTools = cardStore.activeCard?.extensions?.airi?.generation?.known?.allowedTools
+  if (!allowedTools) {
+    return []
+  }
+  if (allowedTools.includes('mcp')) {
+    return rawTools
+  }
+  return rawTools.filter((t) => {
+    const sName = t.serverName.toLowerCase()
+    const isWebSearch = sName.includes('websearch') || sName.includes('web-search') || sName.includes('search')
+    const isFilesystem = sName.includes('filesystem')
+
+    if (isWebSearch && (allowedTools.includes('web_search') || allowedTools.includes('mcp_web_search'))) {
+      return true
+    }
+    if (isFilesystem && (allowedTools.includes('filesystem') || allowedTools.includes('mcp_filesystem'))) {
+      return true
+    }
+    return false
+  })
+}
 
 const tools = [
   tool({
@@ -14,7 +41,8 @@ const tools = [
           throw new Error('MCP tool bridge is not available in this runtime.')
         }
 
-        const tools = await bridge.listTools()
+        const rawTools = await bridge.listTools()
+        const tools = filterToolsForCard(rawTools)
 
         const names = tools.map(t => t.name)
         const servers = [...new Set(tools.map(t => t.serverName))]
@@ -53,11 +81,12 @@ const tools = [
             throw new Error('MCP tool bridge is not available in this runtime.')
           }
 
-          const result = await bridge.listTools()
+          const rawTools = await bridge.listTools()
+          const tools = filterToolsForCard(rawTools)
           return {
-            tools: result,
-            names: result.map(t => t.name),
-            servers: [...new Set(result.map(t => t.serverName))],
+            tools,
+            names: tools.map(t => t.name),
+            servers: [...new Set(tools.map(t => t.serverName))],
           }
         }
         catch (e) {
@@ -67,11 +96,21 @@ const tools = [
       }
 
       try {
-        const parametersObject = Object.fromEntries(parameters.map(({ name, value }) => [name, value]))
         const bridge = tryGetMcpToolBridge()
         if (!bridge) {
           throw new Error('MCP tool bridge is not available in this runtime.')
         }
+
+        const rawTools = await bridge.listTools()
+        const allowed = filterToolsForCard(rawTools)
+        if (!allowed.some(t => t.name === name)) {
+          return {
+            isError: true,
+            content: [{ type: 'text', text: `Tool "${name}" is not permitted or enabled for this character card.` }],
+          }
+        }
+
+        const parametersObject = Object.fromEntries(parameters.map(({ name, value }) => [name, value]))
 
         console.log(`[mcp_call_tool] 🌉 Bridge found, executing "${name}"...`)
 
