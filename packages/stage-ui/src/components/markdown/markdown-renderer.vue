@@ -127,20 +127,14 @@ function applyHighlight(el: HTMLElement, activeText: string, actorColor?: string
 
   const highlightsRegistry = (CSS as any).highlights
 
-  // Clear previous highlights
-  if (highlightsRegistry) {
-    highlightsRegistry.delete('spoken-highlight')
-  }
-
-  if (actorColor && containerRef.value) {
-    containerRef.value.style.setProperty('--active-highlight-color', actorColor)
-  }
-  else if (containerRef.value) {
-    containerRef.value.style.removeProperty('--active-highlight-color')
-  }
-
   if (!activeText || !activeText.trim()) {
     lastMatchIndex = 0
+    if (highlightsRegistry) {
+      highlightsRegistry.delete('spoken-highlight')
+    }
+    if (containerRef.value) {
+      containerRef.value.style.removeProperty('--active-highlight-color')
+    }
     return
   }
 
@@ -223,6 +217,8 @@ function applyHighlight(el: HTMLElement, activeText: string, actorColor?: string
     }
   }
 
+  // If this instance does NOT contain the spoken text (e.g. Another actor slice is speaking),
+  // silently yield without modifying the global highlight registry so the other slice's highlight remains intact.
   if (matchIndex === -1)
     return
 
@@ -261,6 +257,14 @@ function applyHighlight(el: HTMLElement, activeText: string, actorColor?: string
     if (highlightsRegistry) {
       highlightsRegistry.set('spoken-highlight', highlight)
     }
+
+    if (actorColor && containerRef.value) {
+      containerRef.value.style.setProperty('--active-highlight-color', actorColor)
+    }
+    else if (containerRef.value) {
+      containerRef.value.style.removeProperty('--active-highlight-color')
+    }
+
     scrollRangeIntoView(range)
   }
   catch (error) {
