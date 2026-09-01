@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import type { SearchItem } from '@proj-airi/stage-ui/constants/settings-search-index'
+import type { SearchItem } from '@proj-airi/stage-ui/constants'
 
-import { staticIndex } from '@proj-airi/stage-ui/constants/settings-search-index'
+import { convertCatalogItemToSearchItem, convertProviderMetadataToSearchItem, getAllCatalogItems } from '@proj-airi/stage-ui/constants'
 import { useAiriCardStore } from '@proj-airi/stage-ui/stores/modules/airi-card'
+import { useProvidersStore } from '@proj-airi/stage-ui/stores/providers'
 import { onClickOutside } from '@vueuse/core'
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -10,6 +11,7 @@ import { useRoute, useRouter } from 'vue-router'
 const route = useRoute()
 const router = useRouter()
 const cardStore = useAiriCardStore()
+const providersStore = useProvidersStore()
 
 const searchQuery = ref('')
 const isOpen = ref(false)
@@ -52,6 +54,7 @@ const dynamicCharacterIndex = computed<SearchItem[]>(() => {
         description: `Open ${cardName}'s card editor`,
         to: `/settings/airi-card?cardId=${id}`,
         icon: 'i-solar:user-bold-duotone',
+        keywords: ['character', 'card', cardName.toLowerCase()],
       }
     })
   }
@@ -60,8 +63,55 @@ const dynamicCharacterIndex = computed<SearchItem[]>(() => {
   }
 })
 
+// ── Dynamic Live Provider Registry Index ──
+const dynamicProviderIndex = computed<SearchItem[]>(() => {
+  try {
+    const metadata = providersStore.allProvidersMetadata
+    if (!metadata)
+      return []
+    return Object.values(metadata).map(convertProviderMetadataToSearchItem)
+  }
+  catch {
+    return []
+  }
+})
+
+// ── Dynamic Settings Catalog Index (Curated + Provider Fallbacks) ──
+const dynamicCatalogIndex = computed<SearchItem[]>(() => {
+  return getAllCatalogItems(providersStore.allProvidersMetadata)
+    .map(convertCatalogItemToSearchItem)
+    .filter((item): item is SearchItem => item !== null)
+})
+
 const fullSearchIndex = computed<SearchItem[]>(() => {
-  return [...dynamicCharacterIndex.value, ...staticIndex]
+  const seenRoutes = new Set<string>()
+  const result: SearchItem[] = []
+
+  // 1. Character Cards
+  for (const item of dynamicCharacterIndex.value) {
+    if (!seenRoutes.has(item.to)) {
+      seenRoutes.add(item.to)
+      result.push(item)
+    }
+  }
+
+  // 2. Live Providers (takes priority for provider routes)
+  for (const item of dynamicProviderIndex.value) {
+    if (!seenRoutes.has(item.to)) {
+      seenRoutes.add(item.to)
+      result.push(item)
+    }
+  }
+
+  // 3. Settings Catalog Pages & DevTools
+  for (const item of dynamicCatalogIndex.value) {
+    if (!seenRoutes.has(item.to)) {
+      seenRoutes.add(item.to)
+      result.push(item)
+    }
+  }
+
+  return result
 })
 
 const searchResults = computed(() => {

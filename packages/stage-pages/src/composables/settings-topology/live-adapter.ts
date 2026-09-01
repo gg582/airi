@@ -8,8 +8,9 @@ import { staticIndex } from '../../pages/settings/data/settings-search-index'
  */
 const CATEGORY_PARENT_MAP: Record<string, string> = {
   'Primary Page': 'hub',
-  'Modules': 'page-modules',
-  'Memory': 'page-memory',
+  'Modules': 'area-modules',
+  'Memory': 'area-memory',
+  'Memory Systems': 'area-memory',
   'Providers (Chat)': 'prov-cat-chat',
   'Providers (Speech)': 'prov-cat-speech',
   'Providers (Transcription)': 'prov-cat-stt',
@@ -17,10 +18,10 @@ const CATEGORY_PARENT_MAP: Record<string, string> = {
   'Providers (Artistry)': 'prov-cat-artistry',
   'Providers (Motion)': 'prov-cat-motion',
   'Providers (Cloud)': 'prov-cat-cloud',
-  'System Preferences': 'page-system',
-  'System Settings': 'page-system',
-  'System': 'page-system',
-  'Developer Tools': 'page-developer-options',
+  'System Preferences': 'area-system',
+  'System Settings': 'area-system',
+  'System': 'area-system',
+  'Developer Tools': 'sys-developer',
 }
 
 /**
@@ -44,7 +45,7 @@ export function buildLiveSettingsTopology(): SettingsTopology {
     glyph: 'HUB',
   }
 
-  // 2. Intermediate Provider Category Nodes (Depth 2 under page-providers)
+  // 2. Intermediate Provider Category Nodes (Depth 2 under area-providers)
   const providerCategories = [
     { id: 'prov-cat-chat', label: 'Chat (LLM Providers)', shortLabel: 'Chat', route: '/settings/providers/chat', icon: 'i-solar:chat-square-like-bold-duotone' },
     { id: 'prov-cat-speech', label: 'Speech (TTS Voices)', shortLabel: 'Speech', route: '/settings/providers/speech', icon: 'i-solar:volume-loud-bold-duotone' },
@@ -61,7 +62,7 @@ export function buildLiveSettingsTopology(): SettingsTopology {
       label: cat.label,
       shortLabel: cat.shortLabel,
       route: cat.route,
-      parentId: 'page-providers',
+      parentId: 'area-providers',
       children: [],
       order: i,
       kind: 'category',
