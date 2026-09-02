@@ -205,7 +205,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div ref="containerRef" :class="[showInput ? 'relative w-full min-w-[200px] max-w-sm lg:max-w-md' : 'shrink-0']">
+  <div ref="containerRef" :class="[showInput ? 'relative w-full min-w-[240px] max-w-md lg:max-w-lg' : 'shrink-0']">
     <!-- Compact Icon Button (Sub-pages default state) -->
     <button
       v-if="!showInput"
@@ -221,7 +221,7 @@ onUnmounted(() => {
     <div
       v-else
       :class="[
-        'group relative flex items-center rounded-xl px-3 py-2 transition-all duration-200',
+        'group relative flex items-center rounded-xl px-3 py-1.5 transition-all duration-200',
         'border border-neutral-200/80 bg-white/70 shadow-2xs backdrop-blur-md',
         'dark:border-neutral-800/80 dark:bg-neutral-900/70',
         'hover:border-primary-500/50',
@@ -261,8 +261,8 @@ onUnmounted(() => {
     <div
       v-if="showInput && isOpen && searchResults.length > 0"
       :class="[
-        'absolute right-0 left-0 sm:left-auto sm:w-[420px] top-full z-[9999] mt-1.5 max-h-88 overflow-y-auto p-1.5',
-        'border rounded-2xl shadow-2xl backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150',
+        'absolute left-0 right-0 sm:left-1/2 sm:-translate-x-1/2 sm:w-[480px] top-full z-[99999] mt-2 max-h-96 overflow-y-auto p-1.5',
+        'border rounded-2xl shadow-2xl backdrop-blur-2xl animate-in fade-in zoom-in-95 duration-150',
         'border-neutral-200/90 bg-white/95',
         'dark:border-neutral-800/90 dark:bg-neutral-900/95',
       ]"

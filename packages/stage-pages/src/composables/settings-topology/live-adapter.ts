@@ -15,6 +15,7 @@ const CATEGORY_PARENT_MAP: Record<string, string> = {
   'Providers (Speech)': 'prov-cat-speech',
   'Providers (Transcription)': 'prov-cat-stt',
   'Providers (Hearing)': 'prov-cat-stt',
+  'Providers (Vision)': 'prov-cat-vision',
   'Providers (Artistry)': 'prov-cat-artistry',
   'Providers (Motion)': 'prov-cat-motion',
   'Providers (Cloud)': 'prov-cat-cloud',
@@ -47,12 +48,13 @@ export function buildLiveSettingsTopology(): SettingsTopology {
 
   // 2. Intermediate Provider Category Nodes (Depth 2 under area-providers)
   const providerCategories = [
-    { id: 'prov-cat-chat', label: 'Chat (LLM Providers)', shortLabel: 'Chat', route: '/settings/providers/chat', icon: 'i-solar:chat-square-like-bold-duotone' },
-    { id: 'prov-cat-speech', label: 'Speech (TTS Voices)', shortLabel: 'Speech', route: '/settings/providers/speech', icon: 'i-solar:volume-loud-bold-duotone' },
-    { id: 'prov-cat-stt', label: 'Transcription (STT)', shortLabel: 'STT', route: '/settings/providers/transcription', icon: 'i-solar:microphone-3-bold-duotone' },
-    { id: 'prov-cat-artistry', label: 'Artistry (Image Models)', shortLabel: 'Artistry', route: '/settings/providers/artistry', icon: 'i-solar:gallery-bold-duotone' },
-    { id: 'prov-cat-motion', label: 'Motion (3D Diffusion)', shortLabel: 'Motion', route: '/settings/providers/motion', icon: 'i-solar:running-bold-duotone' },
-    { id: 'prov-cat-cloud', label: 'Cloud & Backup Storage', shortLabel: 'Cloud', route: '/settings/providers/cloud', icon: 'i-solar:cloud-bold-duotone' },
+    { id: 'prov-cat-chat', label: 'Chat (LLM Providers)', shortLabel: 'Chat', route: '/settings/providers#chat', icon: 'i-solar:chat-square-like-bold-duotone' },
+    { id: 'prov-cat-speech', label: 'Speech (TTS Voices)', shortLabel: 'Speech', route: '/settings/providers#speech', icon: 'i-solar:volume-loud-bold-duotone' },
+    { id: 'prov-cat-stt', label: 'Transcription (STT)', shortLabel: 'STT', route: '/settings/providers#transcription', icon: 'i-solar:microphone-3-bold-duotone' },
+    { id: 'prov-cat-vision', label: 'Vision (VLM Providers)', shortLabel: 'Vision', route: '/settings/providers#vision', icon: 'i-solar:eye-scan-bold-duotone' },
+    { id: 'prov-cat-artistry', label: 'Artistry (Image Models)', shortLabel: 'Artistry', route: '/settings/providers#artistry', icon: 'i-solar:gallery-bold-duotone' },
+    { id: 'prov-cat-motion', label: 'Motion (3D Diffusion)', shortLabel: 'Motion', route: '/settings/providers#motion', icon: 'i-solar:running-bold-duotone' },
+    { id: 'prov-cat-cloud', label: 'Cloud & Backup Storage', shortLabel: 'Cloud', route: '/settings/providers#cloud', icon: 'i-solar:cloud-bold-duotone' },
   ]
 
   for (let i = 0; i < providerCategories.length; i++) {

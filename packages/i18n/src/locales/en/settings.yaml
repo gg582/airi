@@ -373,13 +373,6 @@ pages:
   scene:
     title: Stage Backgrounds
     description: Customize virtual backdrops and stage wallpaper images for your characters.
-  dating-sim:
-    title: Dating Sim Mode
-    description: Adjust interactive game modes, intimacy gating thresholds, and
-      visual behavior rules
-  stage:
-    title: Floating Controls
-    description: Customize floating action strip slots, docking edge, and quick triggers
     beta_label: Scenes System
     beta_description: Each character card specifies its own preferred background
       from this gallery. Setting it here will set it as the default for the
@@ -402,6 +395,13 @@ pages:
       label: Tip!
       description: Using a square image will leverage <b>cover</b> cropping in
         portrait mode, focusing on the center of the scene.
+  dating-sim:
+    title: Dating Sim Mode
+    description: Adjust interactive game modes, intimacy gating thresholds, and
+      visual behavior rules
+  stage:
+    title: Floating Controls
+    description: Customize floating action strip slots, docking edge, and quick triggers
   modules:
     artistry:
       description: Autonomous image generation, ComfyUI studio, and memory illustrations

@@ -17,6 +17,14 @@ Read the relevant section of [`docs/rosetta-stone.md`](./docs/rosetta-stone.md) 
 - **Code is science, not a shouting match or a personality contest; truth wins over deference.** Never be a sycophant or a "yes-man." Do not agree with technical statements or system interpretations just to be polite. If the user's technical assumption, mental model, or proposed direction contradicts source code reality, documented platform behavior, or empirical logs, politely and directly challenge it immediately.
 - State the exact code reality, cite authoritative source files or logs, and explain *why* the assumption differs from reality before agreeing to or executing an invalid direction. Respectful pushback backed by code truth is mandatory; uncritical agreement that leads to broken code is unacceptable.
 
+## Strict Workspace & Repository Boundary
+
+- **Never escape the designated workspace root:** All file searches, greps, inspections, edits, and shell commands MUST remain strictly scoped within the active repository root assigned to this session.
+- **Foreign project context detection:** If user prompts, screenshots, logs, or error traces reference an unrelated codebase, foreign framework, or distinct application architecture not present in this repository:
+  1. **Do not** probe parent or sibling directories, and do not execute cross-repository searches.
+  2. **Do not** assume ownership or silently perform work in a foreign codebase.
+  3. **Pause immediately and ask for clarification** to confirm whether the prompt was intended for a different project session or if cross-workspace access is explicitly authorized.
+
 ## Fork safety
 
 - Never push to, rebase from, fetch, or otherwise inspect the `upstream` remote unless the user explicitly authorizes it. This fork is highly divergent, and upstream is reference-only.

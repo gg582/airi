@@ -455,7 +455,7 @@ export const SETTINGS_CATALOG_ITEMS: CatalogNodeItem[] = [
     shortLabel: 'Chat',
     glyph: '思',
     clusterGroup: 'INTELLIGENCE 知',
-    route: '/settings/providers/chat',
+    route: '/settings/providers#chat',
     icon: 'i-solar:chat-square-like-bold-duotone',
     order: 1,
     parentId: 'area-providers',
@@ -467,7 +467,7 @@ export const SETTINGS_CATALOG_ITEMS: CatalogNodeItem[] = [
     shortLabel: 'Speech',
     glyph: '声',
     clusterGroup: 'VOICE 律',
-    route: '/settings/providers/speech',
+    route: '/settings/providers#speech',
     icon: 'i-solar:volume-loud-bold-duotone',
     order: 2,
     parentId: 'area-providers',
@@ -479,11 +479,35 @@ export const SETTINGS_CATALOG_ITEMS: CatalogNodeItem[] = [
     shortLabel: 'STT',
     glyph: '聴',
     clusterGroup: 'HEARING 聴',
-    route: '/settings/providers/transcription',
+    route: '/settings/providers#transcription',
     icon: 'i-solar:microphone-3-bold-duotone',
     order: 3,
     parentId: 'area-providers',
     kind: 'category',
+  },
+  {
+    id: 'prov-cat-vision',
+    label: 'Vision (VLM Providers)',
+    shortLabel: 'Vision',
+    glyph: '視',
+    clusterGroup: 'VISION 視',
+    route: '/settings/providers#vision',
+    icon: 'i-solar:eye-scan-bold-duotone',
+    order: 4,
+    parentId: 'area-providers',
+    kind: 'category',
+  },
+  {
+    id: 'prov-blip-local',
+    label: 'BLIP / WD (Local)',
+    shortLabel: 'BLIP',
+    glyph: '視',
+    clusterGroup: 'LOCAL 端',
+    route: '/settings/providers/chat/blip-local',
+    icon: 'i-solar:eye-scan-bold-duotone',
+    order: 1,
+    parentId: 'prov-cat-vision',
+    kind: 'page',
   },
   {
     id: 'prov-cat-artistry',
@@ -491,9 +515,9 @@ export const SETTINGS_CATALOG_ITEMS: CatalogNodeItem[] = [
     shortLabel: 'Artistry',
     glyph: '絵',
     clusterGroup: 'VISION 視',
-    route: '/settings/providers/artistry',
+    route: '/settings/providers#artistry',
     icon: 'i-solar:gallery-bold-duotone',
-    order: 4,
+    order: 5,
     parentId: 'area-providers',
     kind: 'category',
   },
@@ -503,9 +527,9 @@ export const SETTINGS_CATALOG_ITEMS: CatalogNodeItem[] = [
     shortLabel: 'Motion',
     glyph: '動',
     clusterGroup: 'KINETICS 動',
-    route: '/settings/providers/motion',
+    route: '/settings/providers#motion',
     icon: 'i-solar:running-bold-duotone',
-    order: 5,
+    order: 6,
     parentId: 'area-providers',
     kind: 'category',
   },
@@ -515,9 +539,9 @@ export const SETTINGS_CATALOG_ITEMS: CatalogNodeItem[] = [
     shortLabel: 'Cloud',
     glyph: '雲',
     clusterGroup: 'STORAGE 庫',
-    route: '/settings/providers/cloud',
+    route: '/settings/providers#cloud',
     icon: 'i-solar:cloud-bold-duotone',
-    order: 6,
+    order: 7,
     parentId: 'area-providers',
     kind: 'category',
   },
@@ -858,11 +882,11 @@ const CATEGORY_PARENT_MAP: Record<string, string> = {
   speech: 'prov-cat-speech',
   transcription: 'prov-cat-stt',
   hearing: 'prov-cat-stt',
+  vision: 'prov-cat-vision',
   artistry: 'prov-cat-artistry',
   motion: 'prov-cat-motion',
   cloud: 'prov-cat-cloud',
   storage: 'prov-cat-cloud',
-  vision: 'prov-cat-chat',
   embed: 'prov-cat-chat',
 }
 
@@ -883,7 +907,9 @@ export function convertProviderToCatalogNodeItem(
 ): CatalogNodeItem {
   const rawCategory = (p.category || 'chat').toLowerCase()
   const parentId = CATEGORY_PARENT_MAP[rawCategory] || 'prov-cat-chat'
-  const routeCategory = rawCategory === 'transcription' || rawCategory === 'hearing' ? 'transcription' : rawCategory
+  const routeCategory = p.id === 'blip-local'
+    ? 'chat'
+    : (rawCategory === 'transcription' || rawCategory === 'hearing' ? 'transcription' : rawCategory)
   const route = `/settings/providers/${routeCategory}/${p.id}`
 
   const isLocal = p.deployment === 'local' || p.id.includes('local') || p.id.includes('wasm') || p.id.includes('rwkv')
@@ -989,4 +1015,151 @@ export function buildSettingsCatalogTopology(
     rootId: 'hub',
     nodesById,
   }
+}
+
+/**
+ * Resolves the unique root-to-node path of node IDs.
+ */
+export function resolvePath(topology: SettingsTopology, activeId: string): string[] {
+  const { rootId, nodesById } = topology
+  if (!nodesById[activeId]) {
+    return rootId ? [rootId] : []
+  }
+
+  const path: string[] = []
+  let currentId: string | null = activeId
+  const visited = new Set<string>()
+
+  while (currentId !== null) {
+    if (visited.has(currentId)) {
+      break
+    }
+    visited.add(currentId)
+    path.unshift(currentId)
+    const node: SettingsTopologyNode | undefined = nodesById[currentId]
+    currentId = node ? node.parentId : null
+  }
+
+  if (path.length > 0 && path[0] !== rootId && nodesById[rootId]) {
+    path.unshift(rootId)
+  }
+
+  return path
+}
+
+/**
+ * Resolves the node ID and path that best corresponds to a given route URL path and optional hash.
+ */
+export function resolvePathFromRoute(
+  topology: SettingsTopology,
+  routePath: string,
+  hash?: string,
+): { nodeId: string, path: string[] } {
+  const normalizedRoute = routePath.replace(/\/$/, '') || '/'
+  const cleanHash = hash ? (hash.startsWith('#') ? hash : `#${hash}`) : ''
+  const fullRouteWithHash = `${normalizedRoute}${cleanHash}`
+  const { rootId, nodesById } = topology
+
+  // 1. Exact route + hash match (e.g. /settings/providers#speech)
+  if (cleanHash) {
+    for (const node of Object.values(nodesById)) {
+      if (node.route && (node.route === fullRouteWithHash || node.route.replace(/\/$/, '') === fullRouteWithHash)) {
+        return {
+          nodeId: node.id,
+          path: resolvePath(topology, node.id),
+        }
+      }
+    }
+  }
+
+  // 2. Exact route match (ignoring hash on route if not matched)
+  for (const node of Object.values(nodesById)) {
+    if (node.route) {
+      const nodeBase = node.route.split('#')[0].replace(/\/$/, '')
+      if (node.route === normalizedRoute || nodeBase === normalizedRoute) {
+        if (!node.route.includes('#')) {
+          return {
+            nodeId: node.id,
+            path: resolvePath(topology, node.id),
+          }
+        }
+      }
+    }
+  }
+
+  // 3. Longest prefix match
+  let bestMatch: SettingsTopologyNode | null = null
+  let bestPrefixLen = 0
+
+  for (const node of Object.values(nodesById)) {
+    if (node.route) {
+      const nodeRouteBase = node.route.split('#')[0].replace(/\/$/, '')
+      if (nodeRouteBase && normalizedRoute.startsWith(nodeRouteBase) && nodeRouteBase.length > bestPrefixLen) {
+        bestMatch = node
+        bestPrefixLen = nodeRouteBase.length
+      }
+    }
+  }
+
+  if (bestMatch) {
+    return {
+      nodeId: bestMatch.id,
+      path: resolvePath(topology, bestMatch.id),
+    }
+  }
+
+  return {
+    nodeId: rootId,
+    path: [rootId],
+  }
+}
+
+/**
+ * Resolves the hierarchical parent route to navigate "Back" to.
+ */
+export function resolveSettingsBackRoute(
+  routePath: string,
+  options?: {
+    isDesktop?: boolean
+    topology?: SettingsTopology
+  },
+): string | null {
+  const normalizedRoute = routePath.replace(/\/$/, '') || '/'
+
+  // 1. Root of settings
+  if (normalizedRoute === '/settings') {
+    return options?.isDesktop ? null : '/'
+  }
+
+  // 2. Special case for providers category tabs
+  if (normalizedRoute.startsWith('/settings/providers/')) {
+    const segments = normalizedRoute.split('/').filter(Boolean)
+    const category = segments[2]
+    const hash = category && category !== 'chat' ? `#${category}` : '#chat'
+    return `/settings/providers${hash}`
+  }
+
+  // 3. Topology lookup
+  const topology = options?.topology || buildSettingsCatalogTopology()
+  const { nodeId, path } = resolvePathFromRoute(topology, normalizedRoute)
+  const matchedNode = topology.nodesById[nodeId]
+
+  if (matchedNode?.route && matchedNode.route !== normalizedRoute && normalizedRoute.startsWith(matchedNode.route)) {
+    return matchedNode.route
+  }
+
+  if (path.length > 1) {
+    const parentNodeId = path[path.length - 2]
+    const parentNode = topology.nodesById[parentNodeId]
+    if (parentNode?.route) {
+      return parentNode.route
+    }
+  }
+
+  const segments = normalizedRoute.split('/').filter(Boolean)
+  if (segments.length > 1) {
+    return `/${segments.slice(0, -1).join('/')}`
+  }
+
+  return '/settings'
 }

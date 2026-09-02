@@ -1,66 +1,26 @@
 <script setup lang="ts">
-import { PageHeader } from '@proj-airi/stage-ui/components'
+import { buildSettingsCatalogTopology, resolveSettingsBackRoute } from '@proj-airi/stage-ui/constants'
 import { useProvidersStore } from '@proj-airi/stage-ui/stores/providers'
 import { useTheme } from '@proj-airi/ui'
+import { useMediaQuery } from '@vueuse/core'
 import { computed, onMounted, ref, watch } from 'vue'
-import { useI18n } from 'vue-i18n'
 import { RouterView, useRoute, useRouter } from 'vue-router'
+
+import SettingsBreadcrumbHeader from '../components/Layouts/SettingsMasterDetail/SettingsBreadcrumbHeader.vue'
+import SettingsSidebarNav from '../components/Layouts/SettingsMasterDetail/SettingsSidebarNav.vue'
 
 import { themeColorFromValue, useThemeColor } from '../composables/theme-color'
 
 const route = useRoute()
 const router = useRouter()
 const { isDark: dark } = useTheme()
-const { t } = useI18n()
 const providersStore = useProvidersStore()
-const routeMeta = computed(() => route.meta as {
-  titleKey?: string
-  subtitleKey?: string
-  title?: string
-  subtitle?: string
-  rootOfSettings?: boolean
-})
 
-const providerTitle = computed(() => {
-  if (!route.path.startsWith('/settings/providers/'))
-    return undefined
+// Widescreen breakpoint for Master-Detail dual-pane mode (1024px+)
+const isWidescreen = useMediaQuery('(min-width: 1024px)')
 
-  const segments = route.path.split('/').filter(Boolean)
-  const providerId = segments[3]
-
-  if (!providerId)
-    return undefined
-
-  try {
-    const metadata = providersStore.getProviderMetadata(providerId)
-    return t(metadata.nameKey)
-  }
-  catch {
-    return undefined
-  }
-})
-
-// const activeSettingsTutorial = ref('default')
-const routeHeaderMetadata = computed(() => {
-  const { titleKey, subtitleKey, title, subtitle } = routeMeta.value
-  const resolvedTitle = titleKey ? t(titleKey) : title
-  const resolvedSubtitle = subtitleKey ? t(subtitleKey) : subtitle
-
-  if (resolvedTitle || resolvedSubtitle) {
-    return {
-      title: resolvedTitle,
-      subtitle: resolvedSubtitle,
-    }
-  }
-
-  if (providerTitle.value) {
-    return {
-      title: providerTitle.value,
-      subtitle: t('settings.title'),
-    }
-  }
-
-  return undefined
+const topology = computed(() => {
+  return buildSettingsCatalogTopology(providersStore.allProvidersMetadata)
 })
 
 const { updateThemeColor } = useThemeColor(themeColorFromValue({ light: 'rgb(255 255 255)', dark: 'rgb(18 18 18)' }))
@@ -69,7 +29,7 @@ watch(route, () => updateThemeColor(), { immediate: true })
 onMounted(() => updateThemeColor())
 
 // The window doesn't scroll here; this layout-owned container does, so the
-// router has no chance to reset it (no scrollBehavior is defined anywhere).
+// router has no chance to reset it.
 const scrollContainerRef = ref<HTMLElement>()
 watch(() => route.path, () => {
   if (scrollContainerRef.value)
@@ -77,29 +37,17 @@ watch(() => route.path, () => {
 })
 
 function handleBack() {
-  // If we are at the root of settings (or rootOfSettings is set), navigate back to the home screen
-  if (route.path === '/settings' || route.path === '/settings/' || route.meta?.rootOfSettings) {
+  const target = resolveSettingsBackRoute(route.path, {
+    isDesktop: isWidescreen.value,
+    topology: topology.value,
+  })
+
+  if (target) {
+    router.push(target)
+  }
+  else {
     router.push('/')
-    return
   }
-
-  if (route.path.startsWith('/settings/providers/')) {
-    const segments = route.path.split('/').filter(Boolean)
-    const category = segments[2]
-    const hash = category && category !== 'chat' ? `#${category}` : '#chat'
-    router.replace(`/settings/providers${hash}`)
-    return
-  }
-
-  // Hierarchical back navigation: step up one level in the URL path hierarchy
-  const segments = route.path.split('/').filter(Boolean)
-  if (segments.length > 2) {
-    router.push(`/${segments.slice(0, -1).join('/')}`)
-    return
-  }
-
-  // Every other settings sub-route backs up to the settings root.
-  router.push('/settings')
 }
 </script>
 
@@ -111,18 +59,43 @@ function handleBack() {
       paddingRight: 'env(safe-area-inset-right, 0px)',
       paddingLeft: 'env(safe-area-inset-left, 0px)',
     }"
-    h-full w-full
+    class="h-full w-full overflow-hidden bg-white text-neutral-900 transition-colors dark:bg-neutral-950 dark:text-neutral-100"
   >
-    <!-- Content -->
-    <div class="max-h-[calc(100%-40px)] px-3 py-0 sm:max-h-[calc(100%-56px)] 2xl:max-w-screen-2xl md:py-0 xl:px-4" flex="~ col" mx-auto h-full min-h-0>
-      <PageHeader
-        :title="routeHeaderMetadata?.title || ''"
-        :subtitle="routeHeaderMetadata?.subtitle"
-        :disable-back-button="false"
-        @back="handleBack"
-      />
-      <div id="settings-scroll-container" ref="scrollContainerRef" relative min-h-0 flex-1 overflow-y-auto scrollbar-none>
-        <RouterView />
+    <!-- Master-Detail Dual-Pane Mode (Desktop / Widescreen >= 1024px) -->
+    <div v-if="isWidescreen" class="h-full w-full flex overflow-hidden">
+      <!-- Left: Navigation Sidebar -->
+      <aside class="h-full w-64 shrink-0 xl:w-72">
+        <SettingsSidebarNav />
+      </aside>
+
+      <!-- Right: Main Content Area with Header -->
+      <main class="h-full min-w-0 flex flex-1 flex-col overflow-hidden bg-white/60 dark:bg-neutral-950/60">
+        <SettingsBreadcrumbHeader :show-sidebar="true" @back="handleBack" />
+
+        <div
+          id="settings-scroll-container"
+          ref="scrollContainerRef"
+          class="relative min-h-0 flex-1 overflow-y-auto p-4 scrollbar-none lg:p-8 sm:p-6"
+        >
+          <div class="mx-auto max-w-5xl">
+            <RouterView />
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <!-- Single Column Mode (Mobile / Narrow < 1024px) -->
+    <div v-else class="h-full w-full flex flex-col overflow-hidden">
+      <SettingsBreadcrumbHeader :show-sidebar="false" @back="handleBack" />
+
+      <div
+        id="settings-scroll-container"
+        ref="scrollContainerRef"
+        class="relative min-h-0 flex-1 overflow-y-auto px-3 py-3 scrollbar-none sm:px-4 sm:py-4"
+      >
+        <div class="mx-auto max-w-2xl">
+          <RouterView />
+        </div>
       </div>
     </div>
   </div>
