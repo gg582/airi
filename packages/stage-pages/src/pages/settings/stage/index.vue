@@ -2,11 +2,12 @@
 import { isStageTamagotchi } from '@proj-airi/stage-shared'
 import { CUSTOMIZER_CATALOG } from '@proj-airi/stage-ui/constants/control-customizer'
 import { useSettingsControlStrip } from '@proj-airi/stage-ui/stores/settings/control-strip'
+import { Button } from '@proj-airi/ui'
 import { storeToRefs } from 'pinia'
 import { computed, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 
-const router = useRouter()
+const { t } = useI18n()
 const controlStripStore = useSettingsControlStrip()
 const { buttons, dockedEdge } = storeToRefs(controlStripStore)
 
@@ -134,264 +135,276 @@ function handleMoveButton(indexInActive: number, direction: 'left' | 'right') {
 function handleResetDefaults() {
   controlStripStore.resetButtons()
 }
-
-function handleGoBack() {
-  if (window.history.length > 1) {
-    router.back()
-  }
-  else {
-    router.push('/')
-  }
-}
 </script>
 
 <template>
-  <div class="min-h-screen w-full bg-neutral-50/50 pb-20 text-neutral-800 dark:bg-neutral-950/80 dark:text-neutral-200">
-    <!-- Top Navigation Bar -->
-    <header class="sticky top-0 z-30 flex items-center justify-between border-b border-neutral-200/60 bg-white/80 px-4 py-3 shadow-sm backdrop-blur-xl dark:border-neutral-800/60 dark:bg-neutral-900/80">
-      <div class="flex items-center gap-3">
-        <button
-          type="button"
-          class="size-9 flex cursor-pointer items-center justify-center rounded-xl bg-neutral-100 text-neutral-600 transition active:scale-95 dark:bg-neutral-800 hover:bg-neutral-200 dark:text-neutral-300 dark:hover:bg-neutral-700"
-          title="Back"
-          @click="handleGoBack"
-        >
-          <div class="i-solar:arrow-left-linear size-5" />
-        </button>
+  <div :class="['w-full max-w-5xl mx-auto flex flex-col gap-6 p-4 sm:p-6 lg:p-8 pb-28']">
+    <!-- Hero / Title Card with Reset Action -->
+    <div
+      :class="[
+        'relative overflow-hidden rounded-3xl border border-neutral-200/80 dark:border-neutral-800',
+        'bg-white/70 dark:bg-neutral-900/60 p-5 sm:p-6 backdrop-blur-xl shadow-sm',
+        'flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4',
+      ]"
+    >
+      <div :class="['flex items-center gap-3.5']">
+        <div :class="['size-12 rounded-2xl bg-primary-500/10 text-primary-500 dark:bg-primary-500/20 dark:text-primary-400 flex items-center justify-center text-2xl shrink-0']">
+          <div :class="['i-solar:widget-2-bold-duotone']" />
+        </div>
         <div>
-          <h1 class="text-sm text-neutral-900 font-bold tracking-tight dark:text-neutral-100">
-            Control Strip
+          <h1 :class="['text-lg sm:text-xl font-bold text-neutral-900 dark:text-neutral-100']">
+            {{ t('settings.pages.stage.title', 'Floating Controls') }}
           </h1>
-          <p class="text-[10px] text-neutral-400 font-medium">
-            Customize floating buttons & dock behavior
+          <p :class="['text-xs sm:text-sm text-neutral-500 dark:text-neutral-400']">
+            {{ t('settings.pages.stage.description', 'Customize floating action strip slots, docking edge, and quick triggers.') }}
           </p>
         </div>
       </div>
 
-      <!-- Reset defaults button -->
-      <button
-        type="button"
-        class="flex cursor-pointer items-center gap-1 rounded-xl bg-neutral-100 px-2.5 py-1.5 text-xs text-neutral-600 font-semibold transition active:scale-95 dark:bg-neutral-800 hover:bg-neutral-200 dark:text-neutral-300 dark:hover:bg-neutral-700"
-        title="Reset Strip to Defaults"
+      <Button
+        variant="secondary"
+        size="sm"
+        :class="['rounded-xl px-3.5 h-9 font-medium flex items-center gap-1.5 shrink-0']"
         @click="handleResetDefaults"
       >
-        <div class="i-solar:restart-square-linear size-3.5" />
-        <span class="hidden sm:inline">Reset Defaults</span>
-      </button>
-    </header>
+        <div :class="['i-solar:restart-square-linear text-base']" />
+        <span>Reset Defaults</span>
+      </Button>
+    </div>
 
-    <main class="mx-auto max-w-xl flex flex-col gap-6 px-4 pt-4">
-      <!-- Section 1: Edge Docking Preference -->
-      <section class="flex flex-col gap-2.5">
-        <div class="flex items-center justify-between">
-          <label class="text-[11px] text-neutral-400 font-bold tracking-wider uppercase">
-            1. Edge Docking Side
+    <!-- Section 1: Edge Docking Preference (Mobile / Web only) -->
+    <section v-if="!isStageTamagotchi()" :class="['flex flex-col gap-2.5']">
+      <div :class="['flex items-center justify-between']">
+        <label :class="['text-xs text-neutral-500 dark:text-neutral-400 font-bold tracking-wider uppercase']">
+          Edge Docking Side
+        </label>
+        <span :class="['text-xs text-neutral-400 font-medium font-mono']">
+          14px Notch Anchor
+        </span>
+      </div>
+
+      <div :class="['grid grid-cols-2 gap-2 rounded-2xl bg-neutral-100/70 p-1.5 dark:bg-neutral-900/70 border border-neutral-200/60 dark:border-neutral-800/60']">
+        <button
+          type="button"
+          :class="[
+            'flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer',
+            dockedEdge === 'left'
+              ? 'bg-white text-primary-600 shadow-sm dark:bg-neutral-800 dark:text-primary-400 ring-1 ring-primary-500/20'
+              : 'text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-200',
+          ]"
+          @click="dockedEdge = 'left'"
+        >
+          <div :class="['i-solar:sidebar-minimalistic-bold-duotone size-4 rotate-180']" />
+          <span>Left Edge</span>
+        </button>
+
+        <button
+          type="button"
+          :class="[
+            'flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer',
+            dockedEdge !== 'left'
+              ? 'bg-white text-primary-600 shadow-sm dark:bg-neutral-800 dark:text-primary-400 ring-1 ring-primary-500/20'
+              : 'text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-200',
+          ]"
+          @click="dockedEdge = 'right'"
+        >
+          <div :class="['i-solar:sidebar-minimalistic-bold-duotone size-4']" />
+          <span>Right Edge (Default)</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- Section 2: Active Strip Slots Preview -->
+    <section :class="['flex flex-col gap-2.5']">
+      <div :class="['flex items-center justify-between']">
+        <div :class="['flex items-center gap-2']">
+          <label :class="['text-xs text-neutral-500 dark:text-neutral-400 font-bold tracking-wider uppercase']">
+            Active Strip Slots
           </label>
-          <span class="text-[10px] text-neutral-400 font-medium">
-            14px Notch Anchor
+          <span :class="['rounded-full bg-primary-500/10 px-2 py-0.5 text-[11px] text-primary-600 font-bold font-mono dark:text-primary-400 border border-primary-500/20']">
+            {{ activeButtons.length }} Active
           </span>
         </div>
+        <span :class="['text-xs text-neutral-400']">
+          Reorder or remove
+        </span>
+      </div>
 
-        <div class="grid grid-cols-2 gap-2 rounded-2xl bg-neutral-100/70 p-1.5 dark:bg-neutral-900/70">
-          <button
-            type="button"
-            :class="[
-              'flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer',
-              dockedEdge === 'left'
-                ? 'bg-white text-primary-600 shadow-sm dark:bg-neutral-800 dark:text-primary-400 ring-1 ring-primary-500/20'
-                : 'text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-200',
-            ]"
-            @click="dockedEdge = 'left'"
-          >
-            <div class="i-solar:sidebar-minimalistic-bold-duotone size-4 rotate-180" />
-            <span>Left Edge</span>
-          </button>
-
-          <button
-            type="button"
-            :class="[
-              'flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer',
-              dockedEdge !== 'left'
-                ? 'bg-white text-primary-600 shadow-sm dark:bg-neutral-800 dark:text-primary-400 ring-1 ring-primary-500/20'
-                : 'text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-200',
-            ]"
-            @click="dockedEdge = 'right'"
-          >
-            <div class="i-solar:sidebar-minimalistic-bold-duotone size-4" />
-            <span>Right Edge (Default)</span>
-          </button>
-        </div>
-      </section>
-
-      <!-- Section 2: Active Strip Slots Preview -->
-      <section class="flex flex-col gap-2.5">
-        <div class="flex items-center justify-between">
-          <div class="flex items-center gap-1.5">
-            <label class="text-[11px] text-neutral-400 font-bold tracking-wider uppercase">
-              2. Active Strip Slots
-            </label>
-            <span class="rounded-full bg-primary-500/10 px-1.5 py-0.5 text-[10px] text-primary-600 font-bold font-mono dark:text-primary-400">
-              {{ activeButtons.length }} Active
-            </span>
-          </div>
-          <span class="text-[10px] text-neutral-400">
-            Reorder or remove
-          </span>
+      <!-- Strip Container -->
+      <div :class="['flex flex-col border border-neutral-200/80 rounded-2xl bg-white/70 p-3.5 shadow-xs backdrop-blur-md dark:border-neutral-800/80 dark:bg-neutral-900/60']">
+        <div v-if="activeButtons.length === 0" :class="['py-8 text-center text-xs text-neutral-400']">
+          No controls active on the strip. Add some from the catalog below!
         </div>
 
-        <!-- Strip Container -->
-        <div class="flex flex-col border border-neutral-200/60 rounded-2xl bg-white/70 p-3 shadow-sm backdrop-blur-md dark:border-neutral-800/60 dark:bg-neutral-900/60">
-          <div v-if="activeButtons.length === 0" class="py-6 text-center text-xs text-neutral-400">
-            No controls active on the strip. Add some from the list below!
-          </div>
+        <div v-else :class="['space-y-2']">
+          <div
+            v-for="(btn, idx) in activeButtons"
+            :key="btn.id"
+            :class="['flex items-center justify-between rounded-xl bg-neutral-50 dark:bg-neutral-800/60 px-3.5 py-2.5 text-xs font-medium border border-neutral-200/50 dark:border-neutral-700/50 transition-all']"
+          >
+            <!-- Icon + Label -->
+            <div :class="['min-w-0 flex items-center gap-3 pr-2']">
+              <span :class="['text-[11px] text-neutral-400 font-bold font-mono w-5']">{{ idx + 1 }}.</span>
+              <div :class="['size-8 flex items-center justify-center rounded-lg bg-white dark:bg-neutral-700 text-primary-500 shadow-xs border border-neutral-200/60 dark:border-neutral-600/40']">
+                <div :class="[btn.icon, 'size-4.5']" />
+              </div>
+              <span :class="['truncate text-neutral-800 font-semibold dark:text-neutral-200']">
+                {{ btn.label }}
+              </span>
+            </div>
 
-          <div v-else class="space-y-1.5">
+            <!-- Actions: Shift Left / Shift Right / Remove -->
+            <div :class="['flex shrink-0 items-center gap-1']">
+              <button
+                type="button"
+                :disabled="idx === 0"
+                :class="['size-8 flex items-center justify-center rounded-lg text-neutral-400 transition active:scale-95 hover:bg-neutral-200 hover:text-neutral-700 disabled:opacity-20 dark:hover:bg-neutral-700 dark:hover:text-neutral-200 cursor-pointer disabled:cursor-not-allowed']"
+                title="Move Up"
+                @click="handleMoveButton(idx, 'left')"
+              >
+                <div :class="['i-solar:alt-arrow-up-bold size-4']" />
+              </button>
+              <button
+                type="button"
+                :disabled="idx === activeButtons.length - 1"
+                :class="['size-8 flex items-center justify-center rounded-lg text-neutral-400 transition active:scale-95 hover:bg-neutral-200 hover:text-neutral-700 disabled:opacity-20 dark:hover:bg-neutral-700 dark:hover:text-neutral-200 cursor-pointer disabled:cursor-not-allowed']"
+                title="Move Down"
+                @click="handleMoveButton(idx, 'right')"
+              >
+                <div :class="['i-solar:alt-arrow-down-bold size-4']" />
+              </button>
+              <button
+                type="button"
+                :class="['size-8 flex items-center justify-center rounded-lg text-neutral-400 transition active:scale-95 hover:bg-red-500/10 hover:text-red-500 dark:hover:bg-red-500/20 cursor-pointer']"
+                title="Remove from Strip"
+                @click="handleRemoveControl(btn.id)"
+              >
+                <div :class="['i-solar:close-circle-bold size-4.5']" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 3: Category Filter Chips -->
+    <section :class="['flex flex-col gap-2.5']">
+      <label :class="['text-xs text-neutral-500 dark:text-neutral-400 font-bold tracking-wider uppercase']">
+        Browse Catalog by Category
+      </label>
+
+      <!-- Horizontal Scrollable Chips -->
+      <div :class="['flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none']">
+        <button
+          v-for="cat in categories"
+          :key="cat.id"
+          type="button"
+          :class="[
+            'flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all cursor-pointer shrink-0',
+            selectedCategory === cat.id
+              ? 'bg-primary-500 text-white shadow-xs shadow-primary-500/20'
+              : 'bg-white/80 text-neutral-600 dark:bg-neutral-900/80 dark:text-neutral-400 border border-neutral-200/60 dark:border-neutral-800/60 hover:bg-neutral-100 dark:hover:bg-neutral-800',
+          ]"
+          @click="selectedCategory = cat.id"
+        >
+          <div :class="[cat.icon, 'size-3.5']" />
+          <span>{{ cat.name }}</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- Section 4: Available Controls List -->
+    <section :class="['flex flex-col gap-2.5']">
+      <div :class="['flex items-center justify-between']">
+        <label :class="['text-xs text-neutral-500 dark:text-neutral-400 font-bold tracking-wider uppercase']">
+          Available Controls ({{ filteredItems.length }})
+        </label>
+      </div>
+
+      <div :class="['grid grid-cols-1 md:grid-cols-2 gap-3']">
+        <div
+          v-for="item in filteredItems"
+          :key="item.id"
+          :class="[
+            'flex items-center justify-between border border-neutral-200/80 rounded-2xl bg-white/80 p-3.5 shadow-xs backdrop-blur-md transition-all',
+            'dark:border-neutral-800/80 hover:border-primary-500/40 dark:bg-neutral-900/80',
+          ]"
+        >
+          <!-- Left: Icon & Info -->
+          <div :class="['min-w-0 flex items-start gap-3 pr-2']">
             <div
-              v-for="(btn, idx) in activeButtons"
-              :key="btn.id"
-              class="flex items-center justify-between rounded-xl bg-neutral-50 px-3 py-2 text-xs font-medium dark:bg-neutral-800/60"
+              :class="[
+                'size-10 rounded-xl flex items-center justify-center shrink-0 transition-colors',
+                isControlOnStrip(item.id)
+                  ? 'bg-primary-500/10 text-primary-500 dark:bg-primary-500/20 dark:text-primary-400'
+                  : 'bg-neutral-100 text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400',
+              ]"
             >
-              <!-- Icon + Label -->
-              <div class="min-w-0 flex items-center gap-2.5 pr-2">
-                <span class="text-[10px] text-neutral-400 font-bold font-mono">{{ idx + 1 }}.</span>
-                <div class="size-7 flex items-center justify-center rounded-lg bg-white text-primary-500 shadow-sm dark:bg-neutral-700">
-                  <div :class="[btn.icon, 'size-4']" />
-                </div>
-                <span class="truncate text-neutral-800 font-semibold dark:text-neutral-200">
-                  {{ btn.label }}
+              <div :class="[item.icon, 'size-5']" />
+            </div>
+
+            <div :class="['min-w-0 flex flex-col']">
+              <div :class="['flex items-center gap-1.5']">
+                <span :class="['truncate text-xs text-neutral-900 font-bold dark:text-neutral-100']">
+                  {{ item.label }}
+                </span>
+                <span :class="['rounded bg-neutral-100 px-1.5 py-0.2 text-[9px] text-neutral-400 font-semibold uppercase dark:bg-neutral-800']">
+                  {{ item.groupName }}
                 </span>
               </div>
-
-              <!-- Actions: Shift Left / Shift Right / Remove -->
-              <div class="flex shrink-0 items-center gap-1">
-                <button
-                  type="button"
-                  :disabled="idx === 0"
-                  class="size-7 flex items-center justify-center rounded-lg text-neutral-400 transition active:scale-95 hover:bg-neutral-200 hover:text-neutral-700 disabled:opacity-20 dark:hover:bg-neutral-700 dark:hover:text-neutral-200"
-                  title="Move Up / Earlier"
-                  @click="handleMoveButton(idx, 'left')"
-                >
-                  <div class="i-solar:alt-arrow-up-bold size-3.5" />
-                </button>
-                <button
-                  type="button"
-                  :disabled="idx === activeButtons.length - 1"
-                  class="size-7 flex items-center justify-center rounded-lg text-neutral-400 transition active:scale-95 hover:bg-neutral-200 hover:text-neutral-700 disabled:opacity-20 dark:hover:bg-neutral-700 dark:hover:text-neutral-200"
-                  title="Move Down / Later"
-                  @click="handleMoveButton(idx, 'right')"
-                >
-                  <div class="i-solar:alt-arrow-down-bold size-3.5" />
-                </button>
-                <button
-                  type="button"
-                  class="size-7 flex items-center justify-center rounded-lg text-neutral-400 transition active:scale-95 hover:bg-red-500/10 hover:text-red-500 dark:hover:bg-red-500/20"
-                  title="Remove from Strip"
-                  @click="handleRemoveControl(btn.id)"
-                >
-                  <div class="i-solar:close-circle-bold size-4" />
-                </button>
-              </div>
+              <p :class="['line-clamp-2 mt-0.5 text-[11px] text-neutral-500 leading-snug dark:text-neutral-400']">
+                {{ item.description }}
+              </p>
             </div>
           </div>
-        </div>
-      </section>
 
-      <!-- Section 3: Category Filter Chips -->
-      <section class="flex flex-col gap-2.5">
-        <label class="text-[11px] text-neutral-400 font-bold tracking-wider uppercase">
-          3. Browse Catalog by Category
-        </label>
+          <!-- Right: 1-Tap Toggle Button -->
+          <div :class="['shrink-0 pl-2']">
+            <button
+              v-if="isControlOnStrip(item.id)"
+              type="button"
+              :class="[
+                'flex cursor-pointer items-center gap-1 border border-primary-500/30 rounded-xl bg-primary-500/10 px-2.5 py-1.5 text-xs text-primary-600 font-bold transition active:scale-95',
+                'hover:border-red-500/30 hover:bg-red-500/10 dark:text-primary-400 hover:text-red-600',
+              ]"
+              title="Click to remove from strip"
+              @click="handleRemoveControl(item.id)"
+            >
+              <div :class="['i-solar:check-circle-bold size-3.5 text-primary-500']" />
+              <span>On Strip</span>
+            </button>
 
-        <!-- Horizontal Scrollable Chips -->
-        <div class="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
-          <button
-            v-for="cat in categories"
-            :key="cat.id"
-            type="button"
-            :class="[
-              'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all cursor-pointer shrink-0',
-              selectedCategory === cat.id
-                ? 'bg-primary-500 text-white shadow-sm shadow-primary-500/20'
-                : 'bg-white/80 text-neutral-600 dark:bg-neutral-900/80 dark:text-neutral-400 border border-neutral-200/60 dark:border-neutral-800/60 hover:bg-neutral-100 dark:hover:bg-neutral-800',
-            ]"
-            @click="selectedCategory = cat.id"
-          >
-            <div :class="[cat.icon, 'size-3.5']" />
-            <span>{{ cat.name }}</span>
-          </button>
-        </div>
-      </section>
-
-      <!-- Section 4: Available Controls List -->
-      <section class="flex flex-col gap-2.5">
-        <div class="flex items-center justify-between">
-          <label class="text-[11px] text-neutral-400 font-bold tracking-wider uppercase">
-            4. Available Controls ({{ filteredItems.length }})
-          </label>
-        </div>
-
-        <div class="flex flex-col gap-2">
-          <div
-            v-for="item in filteredItems"
-            :key="item.id"
-            class="flex items-center justify-between border border-neutral-200/60 rounded-2xl bg-white/80 p-3 shadow-sm backdrop-blur-md transition-all dark:border-neutral-800/60 hover:border-primary-500/30 dark:bg-neutral-900/80"
-          >
-            <!-- Left: Icon & Info -->
-            <div class="min-w-0 flex items-start gap-3 pr-2">
-              <div
-                :class="[
-                  'size-10 rounded-xl flex items-center justify-center shrink-0 transition-colors',
-                  isControlOnStrip(item.id)
-                    ? 'bg-primary-500/10 text-primary-500 dark:bg-primary-500/20 dark:text-primary-400'
-                    : 'bg-neutral-100 text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400',
-                ]"
-              >
-                <div :class="[item.icon, 'size-5']" />
-              </div>
-
-              <div class="min-w-0 flex flex-col">
-                <div class="flex items-center gap-1.5">
-                  <span class="truncate text-xs text-neutral-900 font-bold dark:text-neutral-100">
-                    {{ item.label }}
-                  </span>
-                  <span class="rounded bg-neutral-100 px-1 py-0.2 text-[9px] text-neutral-400 font-semibold uppercase dark:bg-neutral-800">
-                    {{ item.groupName }}
-                  </span>
-                </div>
-                <p class="line-clamp-2 mt-0.5 text-[11px] text-neutral-500 leading-snug dark:text-neutral-400">
-                  {{ item.description }}
-                </p>
-              </div>
-            </div>
-
-            <!-- Right: 1-Tap Toggle Button -->
-            <div class="shrink-0 pl-2">
-              <button
-                v-if="isControlOnStrip(item.id)"
-                type="button"
-                class="flex cursor-pointer items-center gap-1 border border-primary-500/30 rounded-xl bg-primary-500/10 px-2.5 py-1.5 text-xs text-primary-600 font-bold transition active:scale-95 hover:border-red-500/30 hover:bg-red-500/10 dark:text-primary-400 hover:text-red-600"
-                title="Click to remove from strip"
-                @click="handleRemoveControl(item.id)"
-              >
-                <div class="i-solar:check-circle-bold size-3.5 text-primary-500" />
-                <span>On Strip</span>
-              </button>
-
-              <button
-                v-else
-                type="button"
-                :disabled="activeButtons.length >= MAX_MOBILE_SLOTS"
-                class="flex cursor-pointer items-center gap-1 rounded-xl bg-neutral-100 px-2.5 py-1.5 text-xs text-neutral-700 font-bold transition active:scale-95 disabled:cursor-not-allowed dark:bg-neutral-800 hover:bg-primary-500 dark:text-neutral-200 hover:text-white disabled:opacity-40 dark:hover:bg-primary-600 dark:hover:text-white"
-                :title="activeButtons.length >= MAX_MOBILE_SLOTS ? 'Maximum 7 slots reached' : 'Add to strip'"
-                @click="handleAddControl(item)"
-              >
-                <div class="i-solar:add-circle-linear size-3.5" />
-                <span>Add</span>
-              </button>
-            </div>
+            <button
+              v-else
+              type="button"
+              :disabled="activeButtons.length >= MAX_MOBILE_SLOTS"
+              :class="[
+                'flex cursor-pointer items-center gap-1 rounded-xl bg-neutral-100 px-2.5 py-1.5 text-xs text-neutral-700 font-bold transition active:scale-95',
+                'disabled:cursor-not-allowed dark:bg-neutral-800 hover:bg-primary-500 dark:text-neutral-200 hover:text-white disabled:opacity-40 dark:hover:bg-primary-600 dark:hover:text-white',
+              ]"
+              :title="activeButtons.length >= MAX_MOBILE_SLOTS ? 'Maximum 7 slots reached' : 'Add to strip'"
+              @click="handleAddControl(item)"
+            >
+              <div :class="['i-solar:add-circle-linear size-3.5']" />
+              <span>Add</span>
+            </button>
           </div>
         </div>
-      </section>
-    </main>
+      </div>
+    </section>
   </div>
 </template>
+
+<route lang="yaml">
+meta:
+  layout: settings
+  titleKey: settings.pages.stage.title
+  subtitleKey: settings.title
+  descriptionKey: settings.pages.stage.description
+  icon: i-solar:widget-2-bold-duotone
+  settingsEntry: true
+  order: 8
+  stageTransition:
+    name: slide
+    pageSpecificAvailable: true
+</route>
