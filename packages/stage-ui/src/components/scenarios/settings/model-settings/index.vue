@@ -271,13 +271,14 @@ function handleOffsetChange(offset: { x: number, y: number }) {
       <div v-if="!modelSupportCalloutDismissed" class="relative">
         <Callout label="We support both 2D and 3D models">
           <p>
-            Click <strong>Select Model</strong> to import different formats of
-            models into catalog, currently, <code>.zip</code> (Live2D) and <code>.vrm</code> (VRM) are supported.
+            Click <button type="button" class="cursor-pointer font-semibold underline hover:text-primary-600 dark:hover:text-primary-300" @click="openModelSelector('library')">
+              Select Model
+            </button> to import models into your catalog. We support <strong>Live2D</strong> (Cubism 3.0 to 5.0 <code>.zip</code>), <strong>MMD</strong> (PMX files in <code>.zip</code>), <strong>Spine</strong> (3.8 to 4.2 <code>.zip</code>), and <strong>VRM</strong> (both 0.x and 1.x <code>.vrm</code>).
           </p>
           <p>
-            Neuro-sama uses 2D model driven by Live2D Inc. developed framework.
-            While Grok Ani (first female character announced in Grok Companion)
-            uses 3D model that is driven by VRM / MMD open formats.
+            Custom animation uploads are also supported for VRM and MMD via <code>.vrma</code> and <code>.vmd</code> motion files. Check out the <button type="button" class="cursor-pointer font-semibold underline hover:text-primary-600 dark:hover:text-primary-300" @click="openModelSelector('explore')">
+              Explore
+            </button> tab inside <strong>Select Model</strong> to discover and download new community models!
           </p>
         </Callout>
         <div
