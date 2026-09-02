@@ -17,6 +17,7 @@ const emit = defineEmits<{
   (e: 'edit'): void
   (e: 'exportJson'): void
   (e: 'exportPng'): void
+  (e: 'sync'): void
 }>()
 
 interface Props {
@@ -29,6 +30,7 @@ interface Props {
   consciousnessModel: string
   voiceModel: string
   displayModelId?: string
+  syncStatus?: 'synced' | 'cloud-only' | 'partial' | 'syncing'
 }
 
 const selfieCountdown = ref<number | null>(null)
@@ -290,6 +292,42 @@ function handleSelfieClick() {
               ? 'i-solar:check-circle-bold-duotone text-primary-500 dark:text-primary-400'
               : 'i-solar:play-circle-broken text-neutral-500 dark:text-neutral-400',
           ]"
+        />
+      </button>
+
+      <!-- Selective Sync Status & Action Button -->
+      <button
+        v-if="syncStatus"
+        :class="[
+          'rounded-lg p-1.5 transition-colors hover:bg-neutral-200 dark:hover:bg-neutral-700/50',
+          syncStatus === 'syncing' ? 'cursor-wait opacity-80' : '',
+        ]"
+        :title="
+          syncStatus === 'syncing'
+            ? 'Syncing card assets...'
+            : syncStatus === 'cloud-only'
+              ? 'Stored in Cloud (Click to sync)'
+              : syncStatus === 'partial'
+                ? 'Partially Synced (Click to sync)'
+                : 'Synced & Ready (Click to re-sync)'
+        "
+        @click.stop="emit('sync')"
+      >
+        <div
+          v-if="syncStatus === 'syncing'"
+          class="i-solar:restart-circle-bold-duotone animate-spin text-sm text-primary-500 dark:text-primary-400"
+        />
+        <div
+          v-else-if="syncStatus === 'cloud-only'"
+          class="i-solar:cloud-download-bold-duotone text-sm text-amber-500 dark:text-amber-400"
+        />
+        <div
+          v-else-if="syncStatus === 'partial'"
+          class="i-solar:cloud-upload-bold-duotone text-sm text-amber-500/80 dark:text-amber-400/80"
+        />
+        <div
+          v-else
+          class="i-solar:bolt-bold-duotone text-sm text-emerald-500/70 dark:text-emerald-400/70"
         />
       </button>
 

@@ -66,12 +66,18 @@ function handleScroll() {
   checkScrollPosition()
 }
 
+let observer: ResizeObserver | null = null
+
+onUnmounted(() => {
+  observer?.disconnect()
+})
+
 // Use a ResizeObserver to catch changes even during v-auto-animate transitions
 onMounted(async () => {
   if (!chatHistoryRef.value)
     return
 
-  const observer = new ResizeObserver(() => {
+  observer = new ResizeObserver(() => {
     if (isAtBottom.value) {
       scrollToBottom(true)
     }
@@ -87,8 +93,6 @@ onMounted(async () => {
   // Ensure scroll is correct even if dynamic styling or images cause height shifts
   setTimeout(() => scrollToBottom(true), 50)
   setTimeout(() => scrollToBottom(true), 150)
-
-  onUnmounted(() => observer.disconnect())
 })
 
 watch([() => props.messages, () => props.streamingMessage], () => scrollToBottom(), { deep: true, flush: 'post' })

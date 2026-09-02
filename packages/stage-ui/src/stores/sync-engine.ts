@@ -3461,6 +3461,51 @@ export const useSyncEngineStore = defineStore('sync-engine', () => {
     return false
   }
 
+  function getCardSyncStatus(cardId: string, displayModelId?: string): 'synced' | 'cloud-only' | 'partial' {
+    if (!syncEnabled.value || !selectiveSyncEnabled.value) {
+      return 'synced'
+    }
+
+    if (!selectiveCheckedIds.value || selectiveCheckedIds.value.length === 0) {
+      return 'cloud-only'
+    }
+
+    const hasChat = selectiveCheckedIds.value.includes(`chat-${cardId}`)
+    const hasBg = selectiveCheckedIds.value.includes(`bg-char-${cardId}`)
+    const hasModel = displayModelId
+      ? (selectiveCheckedIds.value.includes(`model-${displayModelId}`) || selectiveCheckedIds.value.includes(`model-${displayModelId.replace('display-model-', '')}`))
+      : true
+
+    if (hasChat && hasBg && hasModel) {
+      return 'synced'
+    }
+    if (hasChat || hasBg || (displayModelId && hasModel)) {
+      return 'partial'
+    }
+    return 'cloud-only'
+  }
+
+  async function syncCard(cardId: string, displayModelId?: string): Promise<boolean> {
+    if (!syncEnabled.value) {
+      toast.error('Cloud Sync is currently disabled.')
+      return false
+    }
+
+    if (selectiveSyncEnabled.value) {
+      const updated = new Set(selectiveCheckedIds.value || [])
+      updated.add(`chat-${cardId}`)
+      updated.add(`bg-char-${cardId}`)
+      if (displayModelId) {
+        updated.add(`model-${displayModelId}`)
+      }
+      selectiveCheckedIds.value = Array.from(updated)
+    }
+
+    toast.info('Starting targeted sync for character assets...')
+    await triggerSync(true)
+    return true
+  }
+
   // Initialize conflicts on store load
   void loadConflicts()
 
@@ -3495,6 +3540,8 @@ export const useSyncEngineStore = defineStore('sync-engine', () => {
     restoreSettingsFromRemote,
     selectiveSyncEnabled,
     selectiveCheckedIds,
+    getCardSyncStatus,
+    syncCard,
     fetchGDriveManifest,
     saveGDriveManifest,
   }

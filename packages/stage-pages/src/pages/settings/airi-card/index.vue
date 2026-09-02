@@ -13,6 +13,7 @@ import { useArtistryStore } from '@proj-airi/stage-ui/stores/modules/artistry'
 import { useSpeechStore } from '@proj-airi/stage-ui/stores/modules/speech'
 import { useOnboardingStore } from '@proj-airi/stage-ui/stores/onboarding'
 import { useSettingsStageModel } from '@proj-airi/stage-ui/stores/settings/stage-model'
+import { useSyncEngineStore } from '@proj-airi/stage-ui/stores/sync-engine'
 import { AiriCardSchema } from '@proj-airi/stage-ui/types'
 import { Button, InputFile } from '@proj-airi/ui'
 import { Select } from '@proj-airi/ui/components/form'
@@ -31,12 +32,15 @@ const CardDetailDialog = defineAsyncComponent(() => import('./components/CardDet
 const CardImportWizard = defineAsyncComponent(() => import('./components/CardImportWizard.vue'))
 const CreateModeSelectorDialog = defineAsyncComponent(() => import('./components/CreateModeSelectorDialog.vue'))
 const DeleteCardDialog = defineAsyncComponent(() => import('./components/DeleteCardDialog.vue'))
+const SyncCardDialog = defineAsyncComponent(() => import('./components/SyncCardDialog.vue'))
 
 const { t } = useI18n()
 const cardStore = useAiriCardStore()
 const displayModelsStore = useDisplayModelsStore()
+const syncEngineStore = useSyncEngineStore()
 const { addCard, removeCard } = cardStore
 const { cards, activeCardId, cardsLoading } = storeToRefs(cardStore)
+const { selectiveSyncEnabled } = storeToRefs(syncEngineStore)
 const modelStore = useModelStore()
 const stageModelStore = useSettingsStageModel()
 const backgroundStore = useBackgroundStore()
@@ -47,6 +51,14 @@ const { stageModelSelected } = storeToRefs(stageModelStore)
 const route = useRoute()
 const router = useRouter()
 
+// Card sync filter & tracking
+const cardSyncFilter = ref<'all' | 'synced'>('all')
+const syncingCardIds = ref<Set<string>>(new Set())
+
+// Sync and activate confirmation
+const showSyncConfirm = ref(false)
+const cardToSyncAndActivate = ref<string | null>(null)
+
 // Currently selected card ID (different from active card ID)
 const selectedCardId = ref<string>('')
 // Currently editing card ID
@@ -55,6 +67,66 @@ const editingCardId = ref<string>('')
 const isCardDialogOpen = ref(false)
 const isCardCreationDialogOpen = ref(false)
 const isCreateModePromptOpen = ref(false)
+
+function getCardSyncStatus(cardId: string): 'synced' | 'cloud-only' | 'partial' | 'syncing' {
+  if (syncingCardIds.value.has(cardId)) {
+    return 'syncing'
+  }
+  const displayModelId = getDisplayModelId(cardId)
+  return syncEngineStore.getCardSyncStatus(cardId, displayModelId)
+}
+
+async function handleCardSync(cardId: string) {
+  const card = cardStore.getCard(cardId)
+  const cardName = card?.name || 'Character'
+  const displayModelId = getDisplayModelId(cardId)
+
+  syncingCardIds.value.add(cardId)
+  try {
+    const success = await syncEngineStore.syncCard(cardId, displayModelId)
+    if (success) {
+      toast.success(`Assets for "${cardName}" synced successfully!`)
+    }
+  }
+  catch (e: any) {
+    console.error(`Failed to sync card ${cardId}:`, e)
+    toast.error(`Sync failed: ${e.message || String(e)}`)
+  }
+  finally {
+    syncingCardIds.value.delete(cardId)
+  }
+}
+
+async function handleCardActivate(id: string) {
+  const status = getCardSyncStatus(id)
+  if (status === 'cloud-only' || status === 'partial') {
+    cardToSyncAndActivate.value = id
+    showSyncConfirm.value = true
+    return
+  }
+  await performActivate(id)
+}
+
+async function handleConfirmSyncAndActivate() {
+  if (!cardToSyncAndActivate.value)
+    return
+  const id = cardToSyncAndActivate.value
+  showSyncConfirm.value = false
+  await handleCardSync(id)
+  await performActivate(id)
+  cardToSyncAndActivate.value = null
+}
+
+async function performActivate(id: string) {
+  try {
+    await cardStore.activateCard(id)
+    const artistryStore = useArtistryStore()
+    artistryStore.resetState()
+  }
+  catch (err) {
+    console.error('[index.vue] Failed to activate card:', err)
+  }
+}
 
 // Card browser drawer & wizard states
 const activeBrowserSource = ref<any>(null)
@@ -530,13 +602,19 @@ const cardsArray = computed<CardItem[]>(() => {
   }))
 })
 
-// Filtered cards based on search query
+// Filtered cards based on search query and sync status
 const filteredCards = computed<CardItem[]>(() => {
+  let list = cardsArray.value
+
+  if (selectiveSyncEnabled.value && cardSyncFilter.value === 'synced') {
+    list = list.filter(item => getCardSyncStatus(item.id) === 'synced')
+  }
+
   if (!searchQuery.value)
-    return cardsArray.value
+    return list
 
   const query = searchQuery.value.toLowerCase()
-  return cardsArray.value.filter(item =>
+  return list.filter(item =>
     item.name.toLowerCase().includes(query)
     || (item.description && item.description.toLowerCase().includes(query)),
   )
@@ -1008,18 +1086,6 @@ async function exportCardPng(cardId: string) {
   URL.revokeObjectURL(url)
 }
 
-// Card activation
-async function activateCard(id: string) {
-  try {
-    await cardStore.activateCard(id)
-    const artistryStore = useArtistryStore()
-    artistryStore.resetState()
-  }
-  catch (err) {
-    console.error('[index.vue] Failed to activate card:', err)
-  }
-}
-
 // Clear editing state when creation/edit dialog closes
 watch(isCardCreationDialogOpen, (isOpen) => {
   if (!isOpen) {
@@ -1111,6 +1177,39 @@ function getDisplayModelId(id: string) {
             class="h-[32px] min-w-[100px] text-xs !border-transparent !bg-transparent hover:!bg-neutral-100 dark:hover:!bg-neutral-800/50"
           />
         </div>
+
+        <!-- Selective Sync Filter Toggle (Only visible when Selective Sync is active) -->
+        <div
+          v-if="selectiveSyncEnabled"
+          class="h-[36px] flex items-center border border-neutral-200/80 rounded-xl bg-white/70 p-0.5 dark:border-neutral-800/80 dark:bg-neutral-900/40"
+        >
+          <button
+            type="button"
+            :class="[
+              'px-2.5 py-1 text-xs font-semibold rounded-lg transition-all',
+              cardSyncFilter === 'all'
+                ? 'bg-primary-500/10 text-primary-600 dark:text-primary-400 font-bold shadow-xs'
+                : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200',
+            ]"
+            @click="cardSyncFilter = 'all'"
+          >
+            All
+          </button>
+          <button
+            type="button"
+            :class="[
+              'px-2.5 py-1 text-xs font-semibold rounded-lg flex items-center gap-1 transition-all',
+              cardSyncFilter === 'synced'
+                ? 'bg-primary-500/10 text-primary-600 dark:text-primary-400 font-bold shadow-xs'
+                : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200',
+            ]"
+            title="Show only synced cards"
+            @click="cardSyncFilter = 'synced'"
+          >
+            <div class="i-solar:bolt-bold text-[11px] text-emerald-500" />
+            <span>Synced</span>
+          </button>
+        </div>
       </div>
 
       <!-- Right actions (Import / Create) -->
@@ -1194,8 +1293,10 @@ function getDisplayModelId(id: string) {
           :consciousness-model="getModuleShortName(item.id, 'consciousness')"
           :voice-model="getModuleShortName(item.id, 'voice')"
           :display-model-id="getDisplayModelId(item.id)"
+          :sync-status="getCardSyncStatus(item.id)"
           @select="handleSelectCard(item.id)"
-          @activate="activateCard(item.id)"
+          @activate="handleCardActivate(item.id)"
+          @sync="handleCardSync(item.id)"
           @delete="confirmDelete(item.id)"
           @edit="handleEditCard(item.id)"
           @export-json="exportCard(item.id)"
@@ -1225,6 +1326,15 @@ function getDisplayModelId(id: string) {
       </Alert>
     </div>
   </div>
+
+  <!-- Sync and activate confirmation dialog -->
+  <SyncCardDialog
+    v-if="showSyncConfirm"
+    v-model="showSyncConfirm"
+    :card-name="cardToSyncAndActivate ? cardStore.getCard(cardToSyncAndActivate)?.name : ''"
+    @confirm="handleConfirmSyncAndActivate"
+    @cancel="cardToSyncAndActivate = null"
+  />
 
   <!-- Delete confirmation dialog -->
   <DeleteCardDialog

@@ -498,37 +498,49 @@ export const useChatSessionStore = defineStore('chat-session', () => {
     const loadPromise = (async () => {
       const stored = await chatSessionsRepo.getSession(sessionId)
 
+      if (!stored) {
+        // Fallback: check if the session is registered in the character index (e.g. metadata is synced but payload is cloud-only)
+        const indexMeta = getSessionMeta(sessionId)
+        if (indexMeta) {
+          sessionMetas.value[sessionId] = indexMeta
+          ensureGeneration(sessionId)
+          debug(`[ChatSession] loadSession: session ${sessionId} is registered in index but not yet present in local IDB. Preserved index metadata.`)
+        }
+        else {
+          debug(`[ChatSession] loadSession aborted: session ${sessionId} was not found in storage or index.`)
+        }
+        return
+      }
+
       // NOTICE: Guard against mid-flight session deletions during the async IDB fetch.
       // If the session is no longer registered in our character index, abort loading.
-      const characterId = stored?.meta.characterId
+      const characterId = stored.meta?.characterId
       const characterIndex = characterId ? index.value?.characters[characterId] : undefined
       if (!characterIndex || !characterIndex.sessions[sessionId]) {
         debug(`[ChatSession] loadSession aborted: session ${sessionId} was deleted mid-flight.`)
         return
       }
 
-      if (stored) {
-        const currentMessages = sessionMessages.value[sessionId] ?? []
-        const mergedMessages = force
-          ? stored.messages
-          : mergeLoadedSessionMessages(stored.messages, currentMessages)
+      const currentMessages = sessionMessages.value[sessionId] ?? []
+      const mergedMessages = force
+        ? stored.messages
+        : mergeLoadedSessionMessages(stored.messages, currentMessages)
 
-        // Ensure the meta messageCount is correct and up to date
-        const actualCount = mergedMessages.length
-        let needsPersist = mergedMessages !== stored.messages
+      // Ensure the meta messageCount is correct and up to date
+      const actualCount = mergedMessages.length
+      let needsPersist = mergedMessages !== stored.messages
 
-        if (stored.meta.messageCount !== actualCount) {
-          stored.meta.messageCount = actualCount
-          needsPersist = true
-        }
-
-        sessionMetas.value[sessionId] = stored.meta
-        sessionMessages.value[sessionId] = mergedMessages
-        ensureGeneration(sessionId)
-
-        if (needsPersist)
-          await persistSession(sessionId)
+      if (stored.meta.messageCount !== actualCount) {
+        stored.meta.messageCount = actualCount
+        needsPersist = true
       }
+
+      sessionMetas.value[sessionId] = stored.meta
+      sessionMessages.value[sessionId] = mergedMessages
+      ensureGeneration(sessionId)
+
+      if (needsPersist)
+        await persistSession(sessionId)
       loadedSessions.add(sessionId)
     })()
 
@@ -745,7 +757,7 @@ export const useChatSessionStore = defineStore('chat-session', () => {
       return
     }
     if (!sessionMessages.value[sessionId] || sessionMessages.value[sessionId].length === 0) {
-      const meta = sessionMetas.value[sessionId]
+      const meta = sessionMetas.value[sessionId] || getSessionMeta(sessionId)
       if (meta && (meta.messageCount || 0) > 0) {
         debug(`[ChatSession] ensureSession skipped for ${sessionId}: meta indicates ${meta.messageCount} messages exist but memory is empty.`)
         return
