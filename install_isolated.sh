@@ -7,7 +7,7 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$REPO_ROOT"
 
-ISOLATED_DATA_DIR="${AIRI_ISOLATED_DATA_DIR:-$HOME/.config/ai.moeru.airi-fork}"
+ISOLATED_DATA_DIR="${AIRI_ISOLATED_DATA_DIR:-$HOME/.config/ai.moeru.airi.dasilva333}"
 DEFAULT_PORT="${AIRI_ISOLATED_PORT:-5174}"
 APP_ID="ai.moeru.airi.dasilva333"
 APP_NAME="AIRI (dasilva333)"
@@ -53,7 +53,7 @@ if [ "$(uname -s)" = "Linux" ]; then
 fi
 
 # Isolated User Data Directory & Origin Port
-export AIRI_USER_DATA_DIR="${AIRI_USER_DATA_DIR:-$HOME/.config/ai.moeru.airi-fork}"
+export AIRI_USER_DATA_DIR="${AIRI_USER_DATA_DIR:-$HOME/.config/ai.moeru.airi.dasilva333}"
 export APP_USER_DATA_PATH="$AIRI_USER_DATA_DIR"
 mkdir -p "$AIRI_USER_DATA_DIR"
 

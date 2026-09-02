@@ -12,7 +12,7 @@ if [ "$(uname -s)" = "Linux" ]; then
 fi
 
 # Isolated User Data Directory so it never collides with stock AIRI
-export AIRI_USER_DATA_DIR="${AIRI_USER_DATA_DIR:-$HOME/.config/ai.moeru.airi-fork}"
+export AIRI_USER_DATA_DIR="${AIRI_USER_DATA_DIR:-$HOME/.config/ai.moeru.airi.dasilva333}"
 export APP_USER_DATA_PATH="$AIRI_USER_DATA_DIR"
 mkdir -p "$AIRI_USER_DATA_DIR"
 
