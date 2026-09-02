@@ -730,7 +730,7 @@ const tabs: Tab[] = [
   { id: 'generation', label: 'Generation', icon: 'i-solar:tuning-square-bold-duotone' },
   { id: 'acting', label: 'Acting', icon: 'i-solar:mask-happly-bold-duotone' },
   { id: 'modules', label: t('settings.pages.card.modules'), icon: 'i-solar:widget-4-bold-duotone' },
-  { id: 'artistry', label: t('settings.pages.modules.artistry.title'), icon: 'i-solar:gallery-bold-duotone' },
+  { id: 'artistry', label: t('settings.pages.card.creation.artistry', 'Artistry'), icon: 'i-solar:gallery-bold-duotone' },
   { id: 'proactivity', label: t('settings.pages.card.creation.proactivity', 'Proactivity'), icon: 'i-solar:heart-pulse-bold-duotone' },
   { id: 'tools', label: 'Tools', icon: 'i-solar:widget-bold-duotone' },
   { id: 'cognition', label: 'Cognition', icon: 'i-solar:cpu-bolt-bold-duotone' },
