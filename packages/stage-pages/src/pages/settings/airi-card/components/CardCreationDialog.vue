@@ -340,8 +340,10 @@ const consciousnessProviderOptions = computed(() => {
 const artistryProviderOptions = computed(() => {
   return [
     { value: 'none', label: 'None (Disabled)' },
-    { value: 'replicate', label: 'Replicate' },
-    { value: 'comfyui', label: 'ComfyUI' },
+    { value: 'pollinations', label: 'Pollinations AI (Free)' },
+    { value: 'comfyui', label: 'ComfyUI (Local)' },
+    { value: 'nanobanana', label: 'Nano Banana (Google AI Studio)' },
+    { value: 'replicate', label: 'Replicate (Cloud)' },
   ]
 })
 

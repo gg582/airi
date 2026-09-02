@@ -217,10 +217,6 @@ All core mechanisms have been verified in the cleanroom harness (`scripts/tests/
 | **Phase 7b** | Scaffold Prefill Discovery | Prefilling setup boilerplate eliminated 100% of base model configuration loops. |
 | **Phase 8** | Verified Synthetic Watercolor Corpus | Built 100% non-blank multi-theme training dataset (`p5-watercolor-corpus.jsonl`). |
 | **Phase 9** | PyTorch MPS State-Tuner | Exported **12.19 MB `p5-watercolor-1.5b.state`** cartridge optimized on Apple Silicon Metal GPU. |
-| **Phase 10** | 20-Scene Nature, Florals & Skies Sweep | **45% non-blank hit rate**; **19–30s generation latency**; up to **83.1% ink coverage** (*Turquoise Ocean Waves*) and **60.2% ink with 210 colors** (*Winter Ramen Shop*). |
-
----
-
 ## 7. Implementation Checklist
 
 - [x] **Cleanroom Harness & Engine Validation** (`scripts/tests/rwkv-harness/`)
@@ -230,3 +226,5 @@ All core mechanisms have been verified in the cleanroom harness (`scripts/tests/
 - [ ] **Store Integration**: Extend `useArtistryStore` in `packages/stage-ui/src/stores/modules/artistry.ts` with `codePainterMode: 'procedural' | 'rwkv'` and provider options.
 - [ ] **Settings UI**: Build `packages/stage-pages/src/pages/settings/providers/artistry/code-painter.vue` with `BrainModelPicker` and RWKV cartridge selector.
 - [ ] **Tool & Autonomous Artistry Bridge**: Wire `image-journal.ts` and `artistry-autonomous.ts` to dispatch via the selected Code Painter engine when active.
+
+

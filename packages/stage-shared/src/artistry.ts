@@ -180,3 +180,14 @@ export const ARTISTRY_PRESET_GROUPS = [
     ],
   },
 ]
+
+export const POLLINATIONS_DEFAULT_MODELS = [
+  { id: '', name: 'Free Router (Pollinations Auto)', description: 'Fastest available free cluster node' },
+  { id: 'flux', name: 'FLUX.1 Schnell', description: 'Fast, high-quality images at a tiny cost', price: '0.002 pollen' },
+  { id: 'gptimage-large', name: 'GPT Image 1.5', description: 'High-fidelity image generation with fine detail', price: '0.000024 pollen' },
+  { id: 'nanobanana-pro', name: 'Nano Banana Pro', description: 'Studio-quality images up to 4K with reasoning', price: '0.00012 pollen' },
+  { id: 'seedream-pro', name: 'Seedream 4.5', description: 'Premium photorealism for lifelike scenes and portraits', price: '0.04 pollen' },
+  { id: 'kontext', name: 'FLUX.1 Kontext Pro', description: 'Edits an existing image from plain instructions', price: '0.03 pollen' },
+  { id: 'MarcosFRG/sdxl-lightning', name: 'SDXL Lightning', description: 'Ultra-fast distilled text-to-image in 1-8 steps', price: '0.0014 pollen' },
+  { id: 'MarcosFRG/flux-2-klein-4b', name: 'FLUX.2 Klein 4B', description: 'Sub-second text-to-image transformer', price: '0.0025 pollen' },
+]

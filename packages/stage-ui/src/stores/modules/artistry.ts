@@ -58,6 +58,55 @@ export const useArtistryStore = defineStore('artistry', () => {
     '1K',
   )
 
+  // --- Pollinations AI provider settings ---
+  const pollinationsApiKey = useLocalStorageManualReset<string>('artistry-pollinations-api-key', '')
+  const pollinationsModel = useLocalStorageManualReset<string>('artistry-pollinations-model', '')
+  const pollinationsWidth = useLocalStorageManualReset<number>('artistry-pollinations-width', 1024)
+  const pollinationsHeight = useLocalStorageManualReset<number>('artistry-pollinations-height', 1024)
+  const pollinationsCachedModels = useLocalStorageManualReset<Array<{ id: string, name: string, description?: string, price?: string }>>(
+    'artistry-pollinations-cached-models',
+    [],
+  )
+
+  async function fetchPollinationsModels(force = false): Promise<Array<{ id: string, name: string, description?: string, price?: string }>> {
+    if (!force && pollinationsCachedModels.value.length > 0)
+      return pollinationsCachedModels.value
+
+    try {
+      const res = await fetch('https://gen.pollinations.ai/models', { signal: AbortSignal.timeout(8000) })
+      if (!res.ok)
+        throw new Error(`HTTP ${res.status}`)
+      const data = await res.json()
+      const imageModels = data.filter((m: any) => m.category === 'image' || m.output_modalities?.includes('image'))
+      const parsed = [
+        { id: '', name: 'Free Router (Pollinations Auto)', description: 'Fastest available free cluster node' },
+        ...imageModels.map((m: any) => ({
+          id: m.name,
+          name: m.title || m.name,
+          description: m.description,
+          price: m.pricing?.completionImageTokens ? `${m.pricing.completionImageTokens} pollen` : undefined,
+        })),
+      ]
+      pollinationsCachedModels.value = parsed
+      return parsed
+    }
+    catch {
+      if (pollinationsCachedModels.value.length === 0) {
+        pollinationsCachedModels.value = [
+          { id: '', name: 'Free Router (Pollinations Auto)', description: 'Fastest available free cluster node' },
+          { id: 'flux', name: 'FLUX.1 Schnell', description: 'Fast, high-quality images at a tiny cost', price: '0.002 pollen' },
+          { id: 'gptimage-large', name: 'GPT Image 1.5', description: 'High-fidelity image generation with fine detail', price: '0.000024 pollen' },
+          { id: 'nanobanana-pro', name: 'Nano Banana Pro', description: 'Studio-quality images up to 4K with reasoning', price: '0.00012 pollen' },
+          { id: 'seedream-pro', name: 'Seedream 4.5', description: 'Premium photorealism for lifelike scenes and portraits', price: '0.04 pollen' },
+          { id: 'kontext', name: 'FLUX.1 Kontext Pro', description: 'Edits an existing image from plain instructions', price: '0.03 pollen' },
+          { id: 'MarcosFRG/sdxl-lightning', name: 'SDXL Lightning', description: 'Ultra-fast distilled text-to-image in 1-8 steps', price: '0.0014 pollen' },
+          { id: 'MarcosFRG/flux-2-klein-4b', name: 'FLUX.2 Klein 4B', description: 'Sub-second text-to-image transformer', price: '0.0025 pollen' },
+        ]
+      }
+      return pollinationsCachedModels.value
+    }
+  }
+
   function resetState() {
     activeProvider.reset()
     activeModel.reset()
@@ -73,6 +122,11 @@ export const useArtistryStore = defineStore('artistry', () => {
     nanobananaApiKey.reset()
     nanobananaModel.reset()
     nanobananaResolution.reset()
+    pollinationsApiKey.reset()
+    pollinationsModel.reset()
+    pollinationsWidth.reset()
+    pollinationsHeight.reset()
+    pollinationsCachedModels.reset()
   }
 
   const configured = computed(() => {
@@ -91,6 +145,10 @@ export const useArtistryStore = defineStore('artistry', () => {
       return !!nanobananaApiKey.value
     }
 
+    if (activeProvider.value === 'pollinations') {
+      return true
+    }
+
     return true
   })
 
@@ -105,6 +163,10 @@ export const useArtistryStore = defineStore('artistry', () => {
     nanobananaApiKey: nanobananaApiKey.value,
     nanobananaModel: nanobananaModel.value,
     nanobananaResolution: nanobananaResolution.value,
+    pollinationsApiKey: pollinationsApiKey.value,
+    pollinationsModel: pollinationsModel.value,
+    pollinationsWidth: pollinationsWidth.value,
+    pollinationsHeight: pollinationsHeight.value,
   }))
 
   return {
@@ -131,6 +193,14 @@ export const useArtistryStore = defineStore('artistry', () => {
     nanobananaApiKey,
     nanobananaModel,
     nanobananaResolution,
+
+    // Pollinations AI provider config
+    pollinationsApiKey,
+    pollinationsModel,
+    pollinationsWidth,
+    pollinationsHeight,
+    pollinationsCachedModels,
+    fetchPollinationsModels,
 
     resetState,
   }

@@ -8,6 +8,7 @@ import { useLogg } from '@guiiai/logg'
 
 import { ComfyUIProvider } from './providers/comfyui'
 import { NanoBananaProvider } from './providers/nanobanana'
+import { PollinationsProvider } from './providers/pollinations'
 import { ReplicateProvider } from './providers/replicate'
 
 const log = useLogg('artistry-bridge').useGlobalConfig()
@@ -34,6 +35,10 @@ function createRunId(widgetId: string) {
 }
 
 async function downloadImageAsBase64(url: string): Promise<string> {
+  if (url.startsWith('data:image/')) {
+    const commaIndex = url.indexOf(',')
+    return commaIndex >= 0 ? url.slice(commaIndex + 1) : url
+  }
   try {
     log.log(`[Artistry Bridge] Downloading image from: ${url}`)
     const response = await fetch(url)
@@ -53,6 +58,7 @@ export const artistryProviders = new Map<string, ArtistryProvider>()
 artistryProviders.set('comfyui', new ComfyUIProvider())
 artistryProviders.set('replicate', new ReplicateProvider())
 artistryProviders.set('nanobanana', new NanoBananaProvider())
+artistryProviders.set('pollinations', new PollinationsProvider())
 
 // Deduplication map for headless requests
 const pendingHeadlessRequests = new Map<string, Promise<{ imageUrl?: string, base64?: string, error?: string }>>()

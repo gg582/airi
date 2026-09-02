@@ -67,6 +67,22 @@ const allCloudProvidersMetadata = computed(() => {
 const allArtistryProvidersMetadata = computed(() => {
   return [
     {
+      id: 'pollinations',
+      category: 'artistry',
+      icon: 'i-solar:magic-stick-3-bold-duotone',
+      iconColor: 'text-emerald-500',
+      name: 'Pollinations AI',
+      localizedName: 'Pollinations AI',
+      description: 'Zero-config free cloud image generator with optional Pollen key.',
+      localizedDescription: 'Zero-config free cloud image generator with optional Pollen key.',
+      configured: true,
+      to: '/settings/providers/artistry/pollinations',
+      pricing: 'free',
+      deployment: 'cloud',
+      beginnerRecommended: true,
+      iconImage: undefined,
+    },
+    {
       id: 'comfyui',
       category: 'artistry',
       icon: 'i-solar:gallery-bold-duotone',

@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { REPLICATE_IMAGEGEN_PRESETS } from '@proj-airi/stage-shared'
+import { POLLINATIONS_DEFAULT_MODELS, REPLICATE_IMAGEGEN_PRESETS } from '@proj-airi/stage-shared'
 import { BrainModelPicker } from '@proj-airi/stage-ui/components/scenarios/chat'
 import { useArtistryStore } from '@proj-airi/stage-ui/stores/modules/artistry'
 import { useConsciousnessStore } from '@proj-airi/stage-ui/stores/modules/consciousness'
 import { FieldInput } from '@proj-airi/ui'
 import { Select } from '@proj-airi/ui/components/form'
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 defineProps<{
@@ -40,6 +40,52 @@ const comfyuiWorkflows = computed(() => artistryStore.comfyuiSavedWorkflows || [
 const isAnyWorkflowSelected = computed(() => {
   return comfyuiWorkflows.value.some(wf => wf.id === selectedArtistryModel.value)
 })
+
+const isRefreshingPollinations = ref(false)
+
+const pollinationsModelList = computed(() => {
+  if (artistryStore.pollinationsCachedModels.length === 0)
+    return POLLINATIONS_DEFAULT_MODELS
+  return artistryStore.pollinationsCachedModels
+})
+
+const pollinationsModelSelectOptions = computed(() => {
+  return pollinationsModelList.value.map(m => ({
+    value: m.id,
+    label: m.price ? `${m.name} (${m.price})` : m.name,
+  }))
+})
+
+async function refreshPollinations() {
+  isRefreshingPollinations.value = true
+  try {
+    await artistryStore.fetchPollinationsModels(true)
+  }
+  finally {
+    isRefreshingPollinations.value = false
+  }
+}
+
+onMounted(() => {
+  if (artistryStore.pollinationsCachedModels.length === 0) {
+    artistryStore.fetchPollinationsModels()
+  }
+})
+
+const nanobananaModelPresets = [
+  { id: 'gemini-3.1-flash-image-preview', label: 'Nano Banana 2', sub: 'Gemini 3.1 Flash' },
+  { id: 'gemini-3-pro-image-preview', label: 'Nano Banana Pro', sub: 'Gemini 3 Pro' },
+  { id: 'gemini-2.5-flash-image', label: 'Nano Banana', sub: 'Gemini 2.5 Flash' },
+]
+
+function handlePollinationsSelect(modelId: string) {
+  selectedArtistryModel.value = modelId
+}
+
+function handleNanobananaSelect(modelId: string) {
+  selectedArtistryModel.value = modelId
+}
+
 const spawnModeOptions = computed(() => [
   { value: 'bg', label: t('settings.pages.modules.artistry.spawn_mode.options.bg') },
   { value: 'inline', label: t('settings.pages.modules.artistry.spawn_mode.options.inline') },
@@ -328,6 +374,80 @@ function applyTokenTemplate() {
         <p :class="['text-[10px]', 'text-neutral-400', 'px-1']">
           {{ t('settings.pages.modules.artistry.spawn_mode.description') }}
         </p>
+      </div>
+
+      <!-- Pollinations AI Model Presets / Selector -->
+      <div
+        v-if="selectedArtistryProvider === 'pollinations'"
+        class="mb-2 flex flex-col gap-3"
+      >
+        <div class="flex items-center justify-between">
+          <span class="text-xs text-neutral-500 font-medium dark:text-neutral-400">
+            Pollinations Models (Free & Pollen)
+          </span>
+          <button
+            type="button"
+            class="flex items-center gap-1 text-[11px] text-neutral-500 transition-colors hover:text-neutral-800 dark:hover:text-neutral-200"
+            :disabled="isRefreshingPollinations"
+            @click="refreshPollinations"
+          >
+            <div
+              class="i-solar:refresh-bold-duotone text-xs"
+              :class="{ 'animate-spin': isRefreshingPollinations }"
+            />
+            <span>{{ isRefreshingPollinations ? 'Refreshing...' : 'Refresh' }}</span>
+          </button>
+        </div>
+
+        <div class="grid grid-cols-3 gap-3">
+          <button
+            v-for="model in pollinationsModelList.slice(0, 6)"
+            :key="model.id"
+            type="button"
+            :class="[
+              'flex flex-col items-center justify-center rounded-xl border p-3 transition-all',
+              selectedArtistryModel === model.id
+                ? 'border-emerald-500 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                : 'border-neutral-200 bg-white hover:border-emerald-300 dark:border-neutral-700 dark:bg-neutral-800',
+            ]"
+            @click="handlePollinationsSelect(model.id)"
+          >
+            <span class="text-center text-xs font-bold">{{ model.name }}</span>
+            <span class="mt-1 text-[10px] opacity-60">{{ model.price || 'Free Auto' }}</span>
+          </button>
+        </div>
+
+        <div v-if="pollinationsModelList.length > 6" class="mt-1">
+          <label class="text-[11px] text-neutral-400">Full Catalog Selector:</label>
+          <Select
+            v-model="selectedArtistryModel"
+            :options="pollinationsModelSelectOptions"
+            placeholder="Select a model..."
+            class="mt-1 w-full"
+          />
+        </div>
+      </div>
+
+      <!-- Nano Banana Model Presets -->
+      <div
+        v-if="selectedArtistryProvider === 'nanobanana'"
+        class="grid grid-cols-3 mb-2 gap-3"
+      >
+        <button
+          v-for="model in nanobananaModelPresets"
+          :key="model.id"
+          type="button"
+          :class="[
+            'flex flex-col items-center justify-center rounded-xl border p-3 transition-all',
+            selectedArtistryModel === model.id
+              ? 'border-amber-500 bg-amber-500/10 text-amber-600 dark:text-amber-400'
+              : 'border-neutral-200 bg-white hover:border-amber-300 dark:border-neutral-700 dark:bg-neutral-800',
+          ]"
+          @click="handleNanobananaSelect(model.id)"
+        >
+          <span class="text-xs font-bold">{{ model.label }}</span>
+          <span class="mt-1 text-[10px] opacity-60">{{ model.sub }}</span>
+        </button>
       </div>
 
       <div v-if="selectedArtistryProvider === 'replicate'" class="grid grid-cols-3 mb-2 gap-3">
