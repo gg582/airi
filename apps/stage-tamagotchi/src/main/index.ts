@@ -189,6 +189,11 @@ if (forceHighPerformanceGpu) {
   console.log('[AIRI] High-performance GPU overrides enabled via AIRI_FORCE_HIGH_PERFORMANCE_GPU=1')
 }
 
+const appUserDataPath = env.AIRI_USER_DATA_DIR?.trim() || env.APP_USER_DATA_PATH?.trim()
+if (appUserDataPath) {
+  app.setPath('userData', appUserDataPath)
+}
+
 app.dock?.setIcon(icon)
 electronApp.setAppUserModelId('ai.moeru.airi')
 
